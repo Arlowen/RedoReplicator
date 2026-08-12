@@ -1,8 +1,8 @@
-# Project Codex Rules
+# 项目规则
 
-## Java Environment
+## Java 环境
 
-- Use JDK 17 for all project development, builds, tests, and runtime verification.
+- 项目开发、构建、测试和运行验证统一使用 JDK 17。
 
 ## 编码规则
 
@@ -31,8 +31,8 @@
 - 注释只解释不明显的业务约束、协议边界或复杂流程，不写重复代码字面含义的注释。
 - 前端调用后端时，使用的接口名称要求格式为驼峰命名法。
 
-## Required Remote Push
+## 远程推送规则
 
-- After completing any project change, commit and push all task-related changes to the configured remote before reporting completion.
-- Do not leave completed changes only in the local working tree.
-- If the commit or push fails, report the failure clearly and do not claim that the change has been fully completed.
+- 完成任何项目变更后，必须先提交并将任务相关变更推送到已配置的远程仓库，再报告任务完成。
+- 不得将已完成的变更仅保留在本地工作区。
+- 如果提交或推送失败，必须明确报告失败情况，不得宣称变更已经全部完成。
