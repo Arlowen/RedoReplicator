@@ -2,8 +2,8 @@ source_path	target_java_type	status	notes
 src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, startup preflight and single-process runtime lock are wired; capture lifecycle, signals and worker orchestration remain
 src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, startup preflight and single-process runtime lock are wired; capture lifecycle, signals and worker orchestration remain
 src/StreamClient.cpp	-	excluded	Network stream client is out of scope
-src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.Builder	pending	Translate native JSON construction
-src/builder/Builder.h	io.github.arlowen.redoreplicator.output.Builder	pending	Oracle NUMBER binary decoder translated; row value assembly and JSON construction remain
+src/builder/Builder.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoRowDecoder	pending	Row grouping, before/after field assembly, supplemental values, fragments and PK placeholders translated; compressed rows, LOBs and JSON conversion remain
+src/builder/Builder.h	io.github.arlowen.redoreplicator.redo.transaction.RedoRowDecoder	pending	Oracle NUMBER decoder and typed row value contract translated; remaining type conversion, LOB and JSON construction remain
 src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
 src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
 src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope

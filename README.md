@@ -48,7 +48,10 @@ Multi-thread scheduling, JSONL output and the full capture lifecycle are not
 wired yet. The JSONL file layer itself now writes `redo-000001.jsonl` style
 files, rolls only between complete messages, fsyncs each LWN batch, truncates an
 uncommitted tail to H2's safe byte offset, and refuses to start when the file is
-shorter than that offset.
+shorter than that offset. User-table redo pairs can now be assembled into
+typed before/after column bytes with row identity, supplemental images,
+multi-piece value merging and primary-key placeholders; compressed rows remain
+an explicit unsupported boundary until their decoder is translated.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
