@@ -55,6 +55,14 @@ public final class SchemaCatalog {
         }
     }
 
+    public void addAllMissing(SchemaCatalog catalog) {
+        for (TableSchema table : catalog.tables()) {
+            if (!tablesByName.containsKey(table.qualifiedName())) {
+                add(table);
+            }
+        }
+    }
+
     public SchemaCatalog copy() {
         SchemaCatalog copy = new SchemaCatalog();
         copy.addAll(this);

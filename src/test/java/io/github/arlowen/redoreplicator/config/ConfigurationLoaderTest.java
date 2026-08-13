@@ -188,6 +188,30 @@ class ConfigurationLoaderTest {
         }
     }
 
+    @Test
+    void fingerprintsTheNormalizedRuntimeConfiguration() throws Exception {
+        ConfigurationLoader loader = new ConfigurationLoader();
+        ResolvedConfiguration first = loader.load(
+                installationDirectory,
+                writeConfiguration(validConfiguration()));
+        ResolvedConfiguration same = loader.load(
+                installationDirectory,
+                writeConfiguration(validConfiguration()));
+        ResolvedConfiguration changed = loader.load(
+                installationDirectory,
+                writeConfiguration(validConfiguration().replace(
+                        "transactionMemoryMb: 8",
+                        "transactionMemoryMb: 16")));
+        ConfigurationFingerprint fingerprint =
+                new ConfigurationFingerprint();
+
+        String firstValue = fingerprint.calculate(first);
+
+        assertEquals(64, firstValue.length());
+        assertEquals(firstValue, fingerprint.calculate(same));
+        assertFalse(firstValue.equals(fingerprint.calculate(changed)));
+    }
+
     private Path writeConfiguration(String yaml) throws IOException {
         Path configurationFile = installationDirectory.resolve("config.yaml");
         Files.writeString(configurationFile, yaml);

@@ -14,9 +14,12 @@ low-watermark replay. Multi-block undo is merged across redo records, including
 middle fragments and split field buffers, then decoded again before pairing it
 with the business redo vector. Binary-vector integration tests cover that path
 through transaction spill, partial rollback and commit. Runtime YAML/CLI wiring
-now supplies the spill limit, but multi-row DML output, continuous online redo
-routing and XDB dictionary families are not complete, so the project is not
-ready to capture Oracle redo yet.
+now supplies the spill limit. The default CLI command opens H2, initializes the
+selected-table and SYS dictionaries at the replay SCN, discovers redo
+continuously and commits each complete LWN through JSONL fsync and the H2 safe
+position. Multi-row DML output, LOB reconstruction, the complete charset
+catalog, compressed rows and XDB dictionary families are not complete, so the
+project is not production-ready yet.
 
 Strict YAML loading and the Picocli startup preflight are available. The loader
 rejects unknown or duplicate keys, invalid table regular expressions, duplicate
@@ -44,8 +47,9 @@ waits for online redo growth and advances to the exact next sequence only after
 the current file finishes. Startup uses the configured/current SCN only when H2
 has no state; recovery ignores YAML, validates the Oracle identity and replays
 from the earliest open-transaction low-watermark or the durable file offset.
-Multi-thread scheduling and the full capture lifecycle are not wired yet. The
-JSONL file layer itself now writes `redo-000001.jsonl` style files, rolls only
+RAC and multiple active redo threads remain out of scope; the runtime currently
+requires a single active thread. The JSONL file layer itself now writes
+`redo-000001.jsonl` style files, rolls only
 between complete messages, fsyncs each LWN batch, truncates an uncommitted tail
 to H2's safe byte offset, and refuses to start when the file is shorter than
 that offset. User-table redo pairs can now be assembled into
@@ -69,8 +73,10 @@ publish complete schema versions or drop tombstones at commit. Startup-side
 catalog loading requires the physical schema of every translated SYS table at
 the target SCN. The LWN commit processor now writes and fsyncs the complete
 JSONL batch before atomically storing schema versions, the low-watermark and the
-single durable position in H2. The global capture loop still needs to invoke
-this processor.
+single durable position in H2. The CLI now invokes that processor from a
+continuous per-thread loop, waits when online redo has no complete LWN, switches
+to the exact next sequence, and handles SIGTERM only between complete LWN
+commits.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
@@ -95,13 +101,14 @@ java -jar target/redo-replicator-0.1.0-SNAPSHOT.jar \
   --install-dir . --file conf/redo-replicator.yaml --validate
 ```
 
-The default command performs the same preflight but currently stops before the
-not-yet-implemented continuous redo discovery and capture loop. The release
+The default command performs the preflight and then starts continuous capture;
+`--validate` exits after preflight without opening runtime state. The release
 layout uses the same entry point through `bin/run.sh`; `bin/validate.sh` adds
 `--validate`. Runtime startup takes an OS file lock under `data/` before opening
 H2 or clearing stale transaction spill, so a second process cannot touch the
-same installation state. During source-tree development, the scripts can target
-the Maven artifact explicitly:
+same installation state. SIGTERM requests a stop at the next complete LWN
+boundary, after JSONL fsync and H2 commit. During source-tree development, the
+scripts can target the Maven artifact explicitly:
 
 ```bash
 REDO_REPLICATOR_JAR="$PWD/target/redo-replicator-0.1.0-SNAPSHOT.jar" \

@@ -124,6 +124,25 @@ class SystemTransactionManagerTest {
     }
 
     @Test
+    void ignoresUpdatesAndDeletesForUntrackedDictionaryRows() throws Exception {
+        SystemTransactionManager manager = manager(
+                SystemDictionaryState.empty());
+        RowId untracked = rowId(99);
+        manager.apply(XID_1, update(
+                SystemDictionaryTable.COLUMN,
+                untracked,
+                Map.of("NAME", text("IGNORED"))));
+        manager.apply(XID_1, SystemDictionaryChange.delete(
+                SystemDictionaryTable.OBJECT, untracked));
+
+        SystemTransactionCommit commit = manager.commit(
+                XID_1, Scn.of(750));
+
+        assertTrue(commit.dictionaryState().rows().isEmpty());
+        assertTrue(commit.schemaVersions().isEmpty());
+    }
+
+    @Test
     void mergesInterleavedTransactionsThatTouchDifferentRows() throws Exception {
         SysUser first = new SysUser(rowId(10), 12, "APP", IntX.zero());
         SysUser second = new SysUser(rowId(11), 13, "REPORT", IntX.zero());

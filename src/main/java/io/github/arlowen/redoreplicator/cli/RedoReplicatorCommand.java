@@ -8,10 +8,11 @@ package io.github.arlowen.redoreplicator.cli;
 
 import io.github.arlowen.redoreplicator.config.ConfigurationLoader;
 import io.github.arlowen.redoreplicator.config.ResolvedConfiguration;
+import io.github.arlowen.redoreplicator.error.ConfigurationException;
 import io.github.arlowen.redoreplicator.error.RedoReplicatorException;
-import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
-import io.github.arlowen.redoreplicator.runtime.RedoRuntimeFactory;
+import io.github.arlowen.redoreplicator.runtime.OracleCaptureRunner;
 import io.github.arlowen.redoreplicator.runtime.RuntimeLock;
+import io.github.arlowen.redoreplicator.runtime.ShutdownCoordinator;
 import io.github.arlowen.redoreplicator.source.OracleConnectionFactory;
 import io.github.arlowen.redoreplicator.source.OracleSourceValidation;
 import io.github.arlowen.redoreplicator.source.OracleSourceValidator;
@@ -38,7 +39,7 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
 
     private final ConfigurationLoader configurationLoader;
     private final OracleSourceValidator sourceValidator;
-    private final RedoRuntimeFactory runtimeFactory;
+    private final OracleCaptureRunner captureRunner;
 
     @Option(
             names = {"-f", "--file"},
@@ -59,16 +60,16 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
 
     public RedoReplicatorCommand() {
         this(new ConfigurationLoader(), new OracleSourceValidator(),
-                new RedoRuntimeFactory());
+                new OracleCaptureRunner());
     }
 
     RedoReplicatorCommand(
             ConfigurationLoader configurationLoader,
             OracleSourceValidator sourceValidator,
-            RedoRuntimeFactory runtimeFactory) {
+            OracleCaptureRunner captureRunner) {
         this.configurationLoader = configurationLoader;
         this.sourceValidator = sourceValidator;
-        this.runtimeFactory = runtimeFactory;
+        this.captureRunner = captureRunner;
     }
 
     @Override
@@ -79,42 +80,43 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
             for (String warning : configuration.warnings()) {
                 System.err.println("WARNING: " + warning);
             }
-            OracleSourceValidation source = validateSource(configuration);
-            if (validateOnly) {
-                System.out.println("Validation successful: Oracle "
-                        + source.databaseContext().version() + ", "
-                        + source.redoFiles().size()
-                        + " readable redo/archive file(s)");
-                return 0;
+            OracleConnectionFactory connectionFactory =
+                    new OracleConnectionFactory(
+                            configuration.configuration().database());
+            try (Connection connection = connectionFactory.open()) {
+                OracleSourceValidation source = sourceValidator.validate(
+                        connection, configuration);
+                if (validateOnly) {
+                    System.out.println("Validation successful: Oracle "
+                            + source.databaseContext().version() + ", "
+                            + source.redoFiles().size()
+                            + " readable redo/archive file(s)");
+                    return 0;
+                }
+                createRuntimeDirectories(configuration);
+                try (RuntimeLock ignoredLock = RuntimeLock.acquire(
+                        configuration.stateDirectory());
+                     StateDatabase state = StateDatabase.open(
+                             configuration.stateDirectory());
+                     ShutdownCoordinator shutdown =
+                             ShutdownCoordinator.install()) {
+                    captureRunner.run(
+                            connection, configuration, source, state,
+                            shutdown::stopRequested);
+                }
             }
-            createRuntimeDirectories(configuration);
-            try (RuntimeLock ignoredLock = RuntimeLock.acquire(
-                    configuration.stateDirectory());
-                 StateDatabase ignoredState = StateDatabase.open(
-                    configuration.stateDirectory());
-                 RedoTransactionBuffer transactionBuffer =
-                         runtimeFactory.openTransactionBuffer(
-                                 configuration)) {
-                System.err.println("Redo capture loop is not implemented yet; "
-                        + "use --validate to run startup checks");
-                return EXIT_RUNTIME;
-            }
-        } catch (RedoReplicatorException e) {
+            return 0;
+        } catch (ConfigurationException e) {
             System.err.println("ERROR " + e.getErrorCode() + ": "
                     + e.getMessage());
             return EXIT_CONFIGURATION;
+        } catch (RedoReplicatorException e) {
+            System.err.println("ERROR " + e.getErrorCode() + ": "
+                    + e.getMessage());
+            return EXIT_RUNTIME;
         } catch (IOException | SQLException e) {
             System.err.println("ERROR: " + e.getMessage());
             return EXIT_RUNTIME;
-        }
-    }
-
-    private OracleSourceValidation validateSource(
-            ResolvedConfiguration configuration) throws SQLException {
-        OracleConnectionFactory connectionFactory = new OracleConnectionFactory(
-                configuration.configuration().database());
-        try (Connection connection = connectionFactory.open()) {
-            return sourceValidator.validate(connection, configuration);
         }
     }
 

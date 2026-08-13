@@ -161,6 +161,22 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
+    void skipsResolvedTablesOutsideTheConfiguredOutputFilter() {
+        RedoJsonChangeAssembler filtered = new RedoJsonChangeAssembler(
+                ByteOrder.LITTLE_ENDIAN, StandardCharsets.UTF_8,
+                qualifiedName -> qualifiedName.endsWith(".ORDERS"));
+
+        List<RedoJsonChange> changes = filtered.assemble(
+                transaction(List.of(
+                        insertEntry(),
+                        RedoTransactionEntry.single(singleRecordDdl(
+                                "APP", "TRUNCATE TABLE APP.USERS")))),
+                catalog(table("APP")));
+
+        assertTrue(changes.isEmpty());
+    }
+
+    @Test
     void routesCommittedSystemRowsWithoutWritingUserJson() throws Exception {
         RowId rowId = RowId.of(SYS_DATA_OBJECT_ID, 100, 3);
         SystemTransactionManager manager = systemManager(

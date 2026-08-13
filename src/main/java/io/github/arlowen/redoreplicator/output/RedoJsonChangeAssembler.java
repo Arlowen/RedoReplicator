@@ -35,21 +35,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public final class RedoJsonChangeAssembler {
     private final RedoRowDecoder rowDecoder;
     private final Charset databaseCharacterSet;
     private final SystemDictionaryRedoBridge systemDictionaryBridge;
     private final TableSchemaJsonCodec tableSchemaJsonCodec;
+    private final Predicate<String> outputTableFilter;
 
     public RedoJsonChangeAssembler(
             ByteOrder byteOrder, Charset databaseCharacterSet) {
+        this(byteOrder, databaseCharacterSet, ignored -> true);
+    }
+
+    public RedoJsonChangeAssembler(
+            ByteOrder byteOrder,
+            Charset databaseCharacterSet,
+            Predicate<String> outputTableFilter) {
         rowDecoder = new RedoRowDecoder(Objects.requireNonNull(
                 byteOrder, "byteOrder"));
         systemDictionaryBridge = new SystemDictionaryRedoBridge(byteOrder);
         tableSchemaJsonCodec = new TableSchemaJsonCodec();
         this.databaseCharacterSet = Objects.requireNonNull(
                 databaseCharacterSet, "databaseCharacterSet");
+        this.outputTableFilter = Objects.requireNonNull(
+                outputTableFilter, "outputTableFilter");
     }
 
     public List<RedoJsonChange> assemble(
@@ -171,6 +182,8 @@ public final class RedoJsonChangeAssembler {
                     entry.first(), transaction.commitPosition().scn(),
                     transactionSchemaCatalog, schemaCatalog,
                     previousSchemaCatalog)
+                    .filter(change -> outputTableFilter.test(
+                            change.change().qualifiedName()))
                     .ifPresent(changes::add);
             return;
         }
@@ -204,6 +217,9 @@ public final class RedoJsonChangeAssembler {
                     "System dictionary redo for "
                             + table.qualifiedName()
                             + " must use the system transaction pipeline");
+        }
+        if (!outputTableFilter.test(table.qualifiedName())) {
+            return;
         }
         changes.add(new RedoJsonDmlChange(
                 rowDecoder.decode(table, group)));

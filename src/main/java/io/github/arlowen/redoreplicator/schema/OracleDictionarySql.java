@@ -39,6 +39,27 @@ final class OracleDictionarySql {
                AND BITAND(MOD(O.FLAGS, 18446744073709551616), 128) = 0
             """;
 
+    static final String TABLE_IDENTITIES = """
+            SELECT U.NAME, O.NAME, U.USER#, O.OBJ#, NVL(T.DATAOBJ#, 0),
+                   NVL(T.CLUCOLS, 0)
+              FROM SYS.USER$ AS OF SCN ? U
+              JOIN SYS.OBJ$ AS OF SCN ? O ON O.OWNER# = U.USER#
+             JOIN SYS.TAB$ AS OF SCN ? T ON T.OBJ# = O.OBJ#
+             WHERE O.TYPE# = 2
+               AND U.NAME <> 'SYS'
+               AND BITAND(MOD(O.FLAGS, 18446744073709551616), 128) = 0
+             ORDER BY U.NAME, O.NAME
+            """;
+
+    static final String TABLE_PARTITION_IDENTITIES = """
+            SELECT P.BO#, P.OBJ#, NVL(P.DATAOBJ#, 0)
+              FROM SYS.TABPART$ AS OF SCN ? P
+            UNION ALL
+            SELECT C.BO#, S.OBJ#, NVL(S.DATAOBJ#, 0)
+              FROM SYS.TABCOMPART$ AS OF SCN ? C
+              JOIN SYS.TABSUBPART$ AS OF SCN ? S ON S.POBJ# = C.OBJ#
+            """;
+
     static final String COLUMNS = """
             SELECT C.COL#, C.SEGCOL#, C.INTCOL#, C.NAME, C.TYPE#, C.LENGTH,
                    NVL(C.PRECISION#, -1), NVL(C.SCALE, -1),

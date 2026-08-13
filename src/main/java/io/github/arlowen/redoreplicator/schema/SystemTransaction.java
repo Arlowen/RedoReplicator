@@ -54,9 +54,7 @@ final class SystemTransaction {
             return;
         }
         if (current == null) {
-            throw new DataException(50020,
-                    "Dictionary row is missing for " + change.operation()
-                            + " of " + key);
+            return;
         }
         if (change.operation() == SystemDictionaryOperation.UPDATE) {
             SystemDictionaryRow updated = rowPatcher.apply(

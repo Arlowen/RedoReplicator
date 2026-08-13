@@ -87,7 +87,7 @@ public final class RedoLwnProcessor {
         Objects.requireNonNull(lwn, "lwn");
         SchemaCatalog catalog = schemaCatalogLoader.loadAt(
                 lwn.position().scn());
-        catalog.addAll(systemSchemaCatalog);
+        catalog.addAllMissing(systemSchemaCatalog);
         List<byte[]> messages = new ArrayList<>();
         List<TableSchemaVersion> schemaVersions = new ArrayList<>();
 

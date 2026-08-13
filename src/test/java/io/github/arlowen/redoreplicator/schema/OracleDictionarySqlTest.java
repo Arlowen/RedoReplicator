@@ -18,6 +18,14 @@ class OracleDictionarySqlTest {
         assertTrue(OracleDictionarySql.TABLE.contains("SYS.TAB$ AS OF SCN ?"));
         assertTrue(OracleDictionarySql.TABLE.contains(
                 "SYS.DEFERRED_STG$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.TABLE_IDENTITIES.contains(
+                "SYS.USER$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.TABLE_IDENTITIES.contains(
+                "SYS.OBJ$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.TABLE_PARTITION_IDENTITIES.contains(
+                "SYS.TABPART$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.TABLE_PARTITION_IDENTITIES.contains(
+                "SYS.TABSUBPART$ AS OF SCN ?"));
         assertTrue(OracleDictionarySql.COLUMNS.contains("SYS.COL$ AS OF SCN ?"));
         assertTrue(OracleDictionarySql.PRIMARY_KEY_MEMBERSHIP.contains(
                 "SYS.CDEF$ AS OF SCN ?"));

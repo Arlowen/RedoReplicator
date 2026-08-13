@@ -16,6 +16,7 @@ import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.redo.parser.ParsedLwn;
 import io.github.arlowen.redoreplicator.redo.parser.RedoStreamParser;
 import io.github.arlowen.redoreplicator.redo.reader.RedoReadBatch;
+import io.github.arlowen.redoreplicator.redo.reader.RedoFileHeader;
 import io.github.arlowen.redoreplicator.redo.reader.RedoReadStatus;
 import io.github.arlowen.redoreplicator.redo.reader.RedoReader;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
@@ -118,6 +119,14 @@ public final class RedoThreadStream implements AutoCloseable {
 
     public Optional<RedoPosition> parsedPosition() {
         return Optional.ofNullable(parsedPosition);
+    }
+
+    public Optional<RedoFileHeader> openHeader() throws IOException {
+        requireOpen();
+        if (!openReader()) {
+            return Optional.empty();
+        }
+        return Optional.of(reader.header());
     }
 
     @Override

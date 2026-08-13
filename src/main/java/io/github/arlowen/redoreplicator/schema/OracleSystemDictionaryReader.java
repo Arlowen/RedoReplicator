@@ -27,7 +27,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public final class OracleSystemDictionaryReader {
+public final class OracleSystemDictionaryReader
+        implements SystemDictionaryStateLoader {
+    @Override
     public Optional<SystemDictionaryState> loadTable(
             Connection connection, String owner, String table, Scn targetScn)
             throws SQLException {
