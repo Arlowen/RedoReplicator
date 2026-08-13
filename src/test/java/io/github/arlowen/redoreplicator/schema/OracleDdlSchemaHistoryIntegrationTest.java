@@ -7,6 +7,7 @@
 package io.github.arlowen.redoreplicator.schema;
 
 import io.github.arlowen.redoreplicator.redo.common.FileOffset;
+import io.github.arlowen.redoreplicator.redo.common.RowId;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.source.OracleDatabaseContext;
@@ -68,6 +69,18 @@ class OracleDdlSchemaHistoryIntegrationTest {
                                 createScn));
                 TableSchema createdSchema = created.decode(codec);
                 assertEquals(1, createdSchema.columns().size());
+                SystemDictionaryState coreDictionary =
+                        new OracleSystemDictionaryReader().loadCoreTable(
+                                capture, ddlUsername, TABLE, createScn).orElseThrow();
+                TableSchema replaySchema = new SystemDictionarySchemaAssembler().assemble(
+                        coreDictionary,
+                        context.containerName(),
+                        created.objectId(),
+                        0,
+                        0).orElseThrow();
+                assertEquals(createdSchema, replaySchema);
+                assertTrue(coreDictionary.rows().stream()
+                        .allMatch(row -> row.rowId().toString().length() == RowId.SIZE));
 
                 execute(ddl, "ALTER TABLE " + TABLE + " ADD DESCRIPTION VARCHAR2(100)");
                 Scn alterScn = currentScn(capture);

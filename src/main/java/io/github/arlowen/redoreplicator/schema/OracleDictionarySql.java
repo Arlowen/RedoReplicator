@@ -109,6 +109,60 @@ final class OracleDictionarySql {
              WHERE LCP.LOBJ# = ?
             """;
 
+    static final String SYSTEM_TABLE_IDENTITY = """
+            SELECT U.USER#, O.OBJ#
+              FROM SYS.USER$ AS OF SCN ? U
+              JOIN SYS.OBJ$ AS OF SCN ? O ON O.OWNER# = U.USER#
+             WHERE U.NAME = ?
+               AND O.NAME = ?
+               AND O.TYPE# = 2
+               AND BITAND(MOD(O.FLAGS, 18446744073709551616), 128) = 0
+            """;
+
+    static final String SYSTEM_USER_ROW = """
+            SELECT ROWIDTOCHAR(U.ROWID), U.USER#, U.NAME, NVL(U.SPARE1, 0)
+              FROM SYS.USER$ AS OF SCN ? U
+             WHERE U.USER# = ?
+            """;
+
+    static final String SYSTEM_OBJECT_ROWS = """
+            SELECT ROWIDTOCHAR(O.ROWID), O.OWNER#, O.OBJ#,
+                   NVL(O.DATAOBJ#, 0), O.TYPE#, O.NAME, NVL(O.FLAGS, 0)
+              FROM SYS.OBJ$ AS OF SCN ? O
+             WHERE O.OBJ# = ?
+            """;
+
+    static final String SYSTEM_TABLE_ROWS = """
+            SELECT ROWIDTOCHAR(T.ROWID), T.OBJ#, NVL(T.DATAOBJ#, 0),
+                   NVL(T.TS#, 0), NVL(T.CLUCOLS, 0),
+                   NVL(T.FLAGS, 0), NVL(T.PROPERTY, 0)
+              FROM SYS.TAB$ AS OF SCN ? T
+             WHERE T.OBJ# = ?
+            """;
+
+    static final String SYSTEM_COLUMN_ROWS = """
+            SELECT ROWIDTOCHAR(C.ROWID), C.OBJ#, C.COL#, C.SEGCOL#, C.INTCOL#,
+                   C.NAME, C.TYPE#, C.LENGTH, NVL(C.PRECISION#, -1),
+                   NVL(C.SCALE, -1), NVL(C.CHARSETFORM, 0),
+                   NVL(C.CHARSETID, 0), C.NULL$, NVL(C.PROPERTY, 0)
+              FROM SYS.COL$ AS OF SCN ? C
+             WHERE C.OBJ# = ?
+             ORDER BY C.SEGCOL#, C.INTCOL#, C.COL#
+            """;
+
+    static final String SYSTEM_CONSTRAINT_ROWS = """
+            SELECT ROWIDTOCHAR(D.ROWID), D.CON#, D.OBJ#, D.TYPE#
+              FROM SYS.CDEF$ AS OF SCN ? D
+             WHERE D.OBJ# = ?
+            """;
+
+    static final String SYSTEM_CONSTRAINT_COLUMN_ROWS = """
+            SELECT ROWIDTOCHAR(C.ROWID), C.CON#, C.INTCOL#, C.OBJ#,
+                   NVL(C.SPARE1, 0)
+              FROM SYS.CCOL$ AS OF SCN ? C
+             WHERE C.OBJ# = ?
+            """;
+
     private OracleDictionarySql() {
     }
 }

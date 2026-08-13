@@ -29,5 +29,18 @@ class OracleDictionarySqlTest {
                 "SYS.LOBCOMPPART$ AS OF SCN ?"));
         assertTrue(OracleDictionarySql.LOB_PARTITIONS.contains(
                 "SYS.LOBFRAG$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.SYSTEM_USER_ROW.contains(
+                "SYS.USER$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.SYSTEM_USER_ROW.contains("ROWIDTOCHAR(U.ROWID)"));
+        assertTrue(OracleDictionarySql.SYSTEM_OBJECT_ROWS.contains(
+                "SYS.OBJ$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.SYSTEM_TABLE_ROWS.contains(
+                "SYS.TAB$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.SYSTEM_COLUMN_ROWS.contains(
+                "SYS.COL$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.SYSTEM_CONSTRAINT_ROWS.contains(
+                "SYS.CDEF$ AS OF SCN ?"));
+        assertTrue(OracleDictionarySql.SYSTEM_CONSTRAINT_COLUMN_ROWS.contains(
+                "SYS.CCOL$ AS OF SCN ?"));
     }
 }
