@@ -215,6 +215,73 @@ class SystemTransactionManagerTest {
                 .findFirst().orElseThrow().length());
     }
 
+    @Test
+    void replaysRemainingSystemFamiliesIntoLobAndPartitionSchema() throws Exception {
+        SystemTransactionManager manager = manager(SystemDictionaryState.empty());
+        for (SystemDictionaryChange change : extendedTableChanges()) {
+            manager.apply(XID_1, change);
+        }
+
+        SystemTransactionCommit commit = manager.commit(XID_1, Scn.of(1100));
+
+        assertEquals(1, commit.schemaVersions().size());
+        TableSchema schema = commit.schemaVersions().get(0).decode(jsonCodec);
+        assertEquals(1, schema.columns().get(1).guardSegment());
+        assertEquals(List.of(
+                        new TablePartition(300, 301),
+                        new TablePartition(320, 321)),
+                schema.partitions());
+        assertEquals(1, schema.lobs().size());
+        LobSchema lob = schema.lobs().get(0);
+        assertEquals(200, lob.lobObjectId());
+        assertEquals(List.of(211L), lob.indexDataObjectIds());
+        assertEquals(List.of(221L, 241L, 201L),
+                lob.partitions().stream().map(LobPartition::dataObjectId).toList());
+        assertTrue(lob.partitions().stream()
+                .allMatch(partition -> partition.pageSize() == 16_264));
+        assertEquals(1, commit.dictionaryState().deferredStorage().size());
+        assertEquals(1, commit.dictionaryState().extendedColumns().size());
+        assertEquals(1, commit.dictionaryState().lobCompositePartitions().size());
+        assertEquals(2, commit.dictionaryState().lobFragments().size());
+        assertEquals(1, commit.dictionaryState().tableCompositePartitions().size());
+        assertEquals(1, commit.dictionaryState().tablePartitions().size());
+        assertEquals(1, commit.dictionaryState().tableSubpartitions().size());
+        assertEquals(1, commit.dictionaryState().tablespaces().size());
+    }
+
+    @Test
+    void mapsIndirectLobFragmentChangeBackToBaseTable() throws Exception {
+        List<SystemDictionaryRow> rows = new ArrayList<>(extendedTableState().rows());
+        rows.add(new SysTs(rowId(30), 8, "LOB_TS_32K", 32_768));
+        SystemTransactionManager manager = manager(SystemDictionaryState.of(rows));
+        manager.apply(XID_1, update(
+                SystemDictionaryTable.LOB_FRAGMENT,
+                rowId(16),
+                Map.of("TS#", number(8))));
+
+        SystemTransactionCommit commit = manager.commit(XID_1, Scn.of(1200));
+
+        assertEquals(1, commit.schemaVersions().size());
+        TableSchema schema = commit.schemaVersions().get(0).decode(jsonCodec);
+        assertEquals(32_528, schema.lobs().get(0).pageSize(241));
+        assertEquals(16_264, schema.lobs().get(0).pageSize(221));
+    }
+
+    @Test
+    void mapsGeneratedLobIndexObjectChangeBackToBaseTable() throws Exception {
+        SystemTransactionManager manager = manager(extendedTableState());
+        manager.apply(XID_1, update(
+                SystemDictionaryTable.OBJECT,
+                rowId(8),
+                Map.of("DATAOBJ#", number(212))));
+
+        SystemTransactionCommit commit = manager.commit(XID_1, Scn.of(1300));
+
+        assertEquals(1, commit.schemaVersions().size());
+        TableSchema schema = commit.schemaVersions().get(0).decode(jsonCodec);
+        assertEquals(List.of(212L), schema.lobs().get(0).indexDataObjectIds());
+    }
+
     private SystemTransactionManager manager(SystemDictionaryState state) {
         return new SystemTransactionManager(
                 state,
@@ -237,6 +304,101 @@ class SystemTransactionManagerTest {
                     SystemDictionaryState.of(rows)).rows());
         }
         return SystemDictionaryState.of(rows);
+    }
+
+    private static SystemDictionaryState extendedTableState() {
+        List<SystemDictionaryRow> rows = new ArrayList<>();
+        for (SystemDictionaryChange change : extendedTableChanges()) {
+            SystemTransaction transaction = new SystemTransaction(
+                    XID_1,
+                    SystemDictionaryState.of(rows),
+                    StandardCharsets.UTF_8);
+            transaction.apply(change);
+            rows = new ArrayList<>(transaction.commitAgainst(
+                    SystemDictionaryState.of(rows)).rows());
+        }
+        return SystemDictionaryState.of(rows);
+    }
+
+    private static List<SystemDictionaryChange> extendedTableChanges() {
+        List<SystemDictionaryChange> changes = new ArrayList<>(createTableChanges());
+        changes.add(update(SystemDictionaryTable.TABLE, rowId(2), Map.of(
+                "PROPERTY", number((1L << 5) | (1L << 18)))));
+        changes.add(update(SystemDictionaryTable.COLUMN, rowId(4), Map.of(
+                "TYPE#", number(OracleColumnType.CLOB.code()),
+                "PROPERTY", number((1L << 7) | (1L << 39)))));
+        changes.add(insert(SystemDictionaryTable.OBJECT, rowId(7), Map.of(
+                "OWNER#", number(USER_ID),
+                "OBJ#", number(200),
+                "DATAOBJ#", number(201),
+                "TYPE#", number(21),
+                "NAME", text("SYS_LOB0000000100C00002$$"),
+                "FLAGS", number(0))));
+        changes.add(insert(SystemDictionaryTable.OBJECT, rowId(8), Map.of(
+                "OWNER#", number(USER_ID),
+                "OBJ#", number(210),
+                "DATAOBJ#", number(211),
+                "TYPE#", number(1),
+                "NAME", text("SYS_IL0000000100C00002$$"),
+                "FLAGS", number(0))));
+        changes.add(insert(SystemDictionaryTable.OBJECT, rowId(9), Map.of(
+                "OWNER#", number(USER_ID),
+                "OBJ#", number(220),
+                "DATAOBJ#", number(221),
+                "TYPE#", number(40),
+                "NAME", text("SYS_LOB_P1"),
+                "FLAGS", number(0))));
+        changes.add(insert(SystemDictionaryTable.OBJECT, rowId(10), Map.of(
+                "OWNER#", number(USER_ID),
+                "OBJ#", number(240),
+                "DATAOBJ#", number(241),
+                "TYPE#", number(41),
+                "NAME", text("SYS_LOB_SP1"),
+                "FLAGS", number(0))));
+        changes.add(insert(SystemDictionaryTable.DEFERRED_STORAGE, rowId(11), Map.of(
+                "OBJ#", number(OBJECT_ID),
+                "FLAGS_STG", number(0))));
+        changes.add(insert(SystemDictionaryTable.EXTENDED_COLUMN, rowId(12), Map.of(
+                "TABOBJ#", number(OBJECT_ID),
+                "COLNUM", number(2),
+                "GUARD_ID", number(1))));
+        changes.add(insert(SystemDictionaryTable.LOB, rowId(13), Map.of(
+                "OBJ#", number(OBJECT_ID),
+                "COL#", number(2),
+                "INTCOL#", number(2),
+                "LOBJ#", number(200),
+                "TS#", number(7))));
+        changes.add(insert(SystemDictionaryTable.LOB_COMPOSITE_PARTITION,
+                rowId(14), Map.of(
+                        "PARTOBJ#", number(230),
+                        "LOBJ#", number(200))));
+        changes.add(insert(SystemDictionaryTable.LOB_FRAGMENT, rowId(15), Map.of(
+                "FRAGOBJ#", number(220),
+                "PARENTOBJ#", number(200),
+                "TS#", number(7))));
+        changes.add(insert(SystemDictionaryTable.LOB_FRAGMENT, rowId(16), Map.of(
+                "FRAGOBJ#", number(240),
+                "PARENTOBJ#", number(230),
+                "TS#", number(7))));
+        changes.add(insert(SystemDictionaryTable.TABLE_PARTITION, rowId(17), Map.of(
+                "OBJ#", number(300),
+                "DATAOBJ#", number(301),
+                "BO#", number(OBJECT_ID))));
+        changes.add(insert(SystemDictionaryTable.TABLE_COMPOSITE_PARTITION,
+                rowId(18), Map.of(
+                        "OBJ#", number(310),
+                        "DATAOBJ#", number(311),
+                        "BO#", number(OBJECT_ID))));
+        changes.add(insert(SystemDictionaryTable.TABLE_SUBPARTITION,
+                rowId(19), Map.of(
+                        "OBJ#", number(320),
+                        "DATAOBJ#", number(321),
+                        "POBJ#", number(310))));
+        changes.add(insert(SystemDictionaryTable.TABLESPACE, rowId(20), Map.of(
+                "TS#", number(7),
+                "NAME", text("LOB_TS_16K"),
+                "BLOCKSIZE", number(16_384))));
+        return List.copyOf(changes);
     }
 
     private static List<SystemDictionaryChange> createTableChanges() {

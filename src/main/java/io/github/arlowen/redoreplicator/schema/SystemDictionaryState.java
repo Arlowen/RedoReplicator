@@ -6,9 +6,6 @@
  */
 package io.github.arlowen.redoreplicator.schema;
 
-import io.github.arlowen.redoreplicator.redo.common.RowId;
-
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,148 +13,122 @@ import java.util.Map;
 import java.util.Set;
 
 public final class SystemDictionaryState {
-    private final Map<RowId, SysUser> users;
-    private final Map<RowId, SysObj> objects;
-    private final Map<RowId, SysTab> tables;
-    private final Map<RowId, SysCol> columns;
-    private final Map<RowId, SysCDef> constraints;
-    private final Map<RowId, SysCCol> constraintColumns;
+    private final Map<SystemDictionaryKey, SystemDictionaryRow> rows;
 
-    private SystemDictionaryState(Map<RowId, SysUser> users,
-                                  Map<RowId, SysObj> objects,
-                                  Map<RowId, SysTab> tables,
-                                  Map<RowId, SysCol> columns,
-                                  Map<RowId, SysCDef> constraints,
-                                  Map<RowId, SysCCol> constraintColumns) {
-        this.users = Map.copyOf(users);
-        this.objects = Map.copyOf(objects);
-        this.tables = Map.copyOf(tables);
-        this.columns = Map.copyOf(columns);
-        this.constraints = Map.copyOf(constraints);
-        this.constraintColumns = Map.copyOf(constraintColumns);
+    private SystemDictionaryState(
+            Map<SystemDictionaryKey, SystemDictionaryRow> rows) {
+        this.rows = Map.copyOf(rows);
     }
 
     public static SystemDictionaryState empty() {
-        return new SystemDictionaryState(
-                Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
+        return new SystemDictionaryState(Map.of());
     }
 
     public static SystemDictionaryState of(Collection<SystemDictionaryRow> rows) {
-        Map<SystemDictionaryKey, SystemDictionaryRow> replacements = new LinkedHashMap<>();
+        Map<SystemDictionaryKey, SystemDictionaryRow> indexed = new LinkedHashMap<>();
         for (SystemDictionaryRow row : rows) {
             SystemDictionaryKey key = new SystemDictionaryKey(
                     row.dictionaryTable(), row.rowId());
-            SystemDictionaryRow previous = replacements.putIfAbsent(key, row);
+            SystemDictionaryRow previous = indexed.putIfAbsent(key, row);
             if (previous != null) {
                 throw new IllegalArgumentException("Duplicate dictionary row " + key);
             }
         }
-        return empty().withChanges(replacements, Set.of());
+        return new SystemDictionaryState(indexed);
     }
 
     SystemDictionaryRow find(SystemDictionaryKey key) {
-        return switch (key.table()) {
-            case USER -> users.get(key.rowId());
-            case OBJECT -> objects.get(key.rowId());
-            case TABLE -> tables.get(key.rowId());
-            case COLUMN -> columns.get(key.rowId());
-            case CONSTRAINT -> constraints.get(key.rowId());
-            case CONSTRAINT_COLUMN -> constraintColumns.get(key.rowId());
-        };
+        return rows.get(key);
     }
 
     public List<SysUser> users() {
-        return List.copyOf(users.values());
+        return rows(SysUser.class);
     }
 
     public List<SysObj> objects() {
-        return List.copyOf(objects.values());
+        return rows(SysObj.class);
     }
 
     public List<SysTab> tables() {
-        return List.copyOf(tables.values());
+        return rows(SysTab.class);
     }
 
     public List<SysCol> columns() {
-        return List.copyOf(columns.values());
+        return rows(SysCol.class);
+    }
+
+    public List<SysDeferredStg> deferredStorage() {
+        return rows(SysDeferredStg.class);
+    }
+
+    public List<SysECol> extendedColumns() {
+        return rows(SysECol.class);
+    }
+
+    public List<SysLob> lobs() {
+        return rows(SysLob.class);
+    }
+
+    public List<SysLobCompPart> lobCompositePartitions() {
+        return rows(SysLobCompPart.class);
+    }
+
+    public List<SysLobFrag> lobFragments() {
+        return rows(SysLobFrag.class);
     }
 
     public List<SysCDef> constraints() {
-        return List.copyOf(constraints.values());
+        return rows(SysCDef.class);
     }
 
     public List<SysCCol> constraintColumns() {
-        return List.copyOf(constraintColumns.values());
+        return rows(SysCCol.class);
+    }
+
+    public List<SysTabComPart> tableCompositePartitions() {
+        return rows(SysTabComPart.class);
+    }
+
+    public List<SysTabPart> tablePartitions() {
+        return rows(SysTabPart.class);
+    }
+
+    public List<SysTabSubPart> tableSubpartitions() {
+        return rows(SysTabSubPart.class);
+    }
+
+    public List<SysTs> tablespaces() {
+        return rows(SysTs.class);
     }
 
     public List<SystemDictionaryRow> rows() {
-        List<SystemDictionaryRow> rows = new ArrayList<>();
-        rows.addAll(users.values());
-        rows.addAll(objects.values());
-        rows.addAll(tables.values());
-        rows.addAll(columns.values());
-        rows.addAll(constraints.values());
-        rows.addAll(constraintColumns.values());
-        return List.copyOf(rows);
+        return List.copyOf(rows.values());
     }
 
     SystemDictionaryState withChanges(
             Map<SystemDictionaryKey, SystemDictionaryRow> replacements,
             Set<SystemDictionaryKey> deletions) {
-        Map<RowId, SysUser> nextUsers = new LinkedHashMap<>(users);
-        Map<RowId, SysObj> nextObjects = new LinkedHashMap<>(objects);
-        Map<RowId, SysTab> nextTables = new LinkedHashMap<>(tables);
-        Map<RowId, SysCol> nextColumns = new LinkedHashMap<>(columns);
-        Map<RowId, SysCDef> nextConstraints = new LinkedHashMap<>(constraints);
-        Map<RowId, SysCCol> nextConstraintColumns = new LinkedHashMap<>(
-                constraintColumns);
-
+        Map<SystemDictionaryKey, SystemDictionaryRow> next = new LinkedHashMap<>(rows);
         for (SystemDictionaryKey key : deletions) {
-            remove(key, nextUsers, nextObjects, nextTables, nextColumns,
-                    nextConstraints, nextConstraintColumns);
+            next.remove(key);
         }
         for (Map.Entry<SystemDictionaryKey, SystemDictionaryRow> entry
                 : replacements.entrySet()) {
-            put(entry.getKey(), entry.getValue(), nextUsers, nextObjects,
-                    nextTables, nextColumns, nextConstraints, nextConstraintColumns);
+            SystemDictionaryRow row = entry.getValue();
+            if (row.dictionaryTable() != entry.getKey().table()
+                    || !row.rowId().equals(entry.getKey().rowId())) {
+                throw new IllegalArgumentException(
+                        "Dictionary replacement does not match " + entry.getKey());
+            }
+            next.put(entry.getKey(), row);
         }
-        return new SystemDictionaryState(
-                nextUsers, nextObjects, nextTables, nextColumns,
-                nextConstraints, nextConstraintColumns);
+        return new SystemDictionaryState(next);
     }
 
-    private static void remove(SystemDictionaryKey key,
-                               Map<RowId, SysUser> users,
-                               Map<RowId, SysObj> objects,
-                               Map<RowId, SysTab> tables,
-                               Map<RowId, SysCol> columns,
-                               Map<RowId, SysCDef> constraints,
-                               Map<RowId, SysCCol> constraintColumns) {
-        switch (key.table()) {
-            case USER -> users.remove(key.rowId());
-            case OBJECT -> objects.remove(key.rowId());
-            case TABLE -> tables.remove(key.rowId());
-            case COLUMN -> columns.remove(key.rowId());
-            case CONSTRAINT -> constraints.remove(key.rowId());
-            case CONSTRAINT_COLUMN -> constraintColumns.remove(key.rowId());
-        }
-    }
-
-    private static void put(SystemDictionaryKey key, SystemDictionaryRow row,
-                            Map<RowId, SysUser> users,
-                            Map<RowId, SysObj> objects,
-                            Map<RowId, SysTab> tables,
-                            Map<RowId, SysCol> columns,
-                            Map<RowId, SysCDef> constraints,
-                            Map<RowId, SysCCol> constraintColumns) {
-        switch (key.table()) {
-            case USER -> users.put(key.rowId(), (SysUser) row);
-            case OBJECT -> objects.put(key.rowId(), (SysObj) row);
-            case TABLE -> tables.put(key.rowId(), (SysTab) row);
-            case COLUMN -> columns.put(key.rowId(), (SysCol) row);
-            case CONSTRAINT -> constraints.put(key.rowId(), (SysCDef) row);
-            case CONSTRAINT_COLUMN -> constraintColumns.put(
-                    key.rowId(), (SysCCol) row);
-        }
+    private <T extends SystemDictionaryRow> List<T> rows(Class<T> type) {
+        return rows.values().stream()
+                .filter(type::isInstance)
+                .map(type::cast)
+                .toList();
     }
 }

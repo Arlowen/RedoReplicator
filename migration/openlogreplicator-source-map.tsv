@@ -8,8 +8,8 @@ src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	
 src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
 src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope
 src/builder/BuilderProtobuf.h	-	excluded	Protobuf output is out of scope
-src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	Core USER OBJ TAB COL CDEF CCOL transaction overlay commit rollback and conflict handling translated; remaining SYS families and redo row bridge remain
-src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	Core USER OBJ TAB COL CDEF CCOL transaction overlay commit rollback and conflict handling translated; remaining SYS families and redo row bridge remain
+src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families have transaction overlay commit rollback conflict handling and schema assembly; raw redo row bridge and XDB families remain
+src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families have transaction overlay commit rollback conflict handling and schema assembly; raw redo row bridge and XDB families remain
 src/common/Attribute.h	io.github.arlowen.redoreplicator.redo.common.Attribute	translated	Translated and parity-tested transaction attribute mapping
 src/common/Clock.h	io.github.arlowen.redoreplicator.runtime.ReplicatorClock	translated	Translated wall-clock contract
 src/common/ClockHW.cpp	io.github.arlowen.redoreplicator.runtime.SystemClock	translated	Translated JDK wall-clock implementation
@@ -65,17 +65,17 @@ src/common/metrics/MetricsPrometheus.h	-	excluded	Prometheus and metrics endpoin
 src/common/table/SysCCol.h	io.github.arlowen.redoreplicator.schema.SysCCol	translated	Translated constraint-column row identity and values with binary update support
 src/common/table/SysCDef.h	io.github.arlowen.redoreplicator.schema.SysCDef	translated	Translated constraint row identity types and primary-key classification
 src/common/table/SysCol.h	io.github.arlowen.redoreplicator.schema.SysCol	translated	Translated column dictionary row fields properties and binary update support
-src/common/table/SysDeferredStg.h	io.github.arlowen.redoreplicator.redo.common.SysDeferredStg	pending	Translate redo domain model
-src/common/table/SysECol.h	io.github.arlowen.redoreplicator.redo.common.SysECol	pending	Translate redo domain model
-src/common/table/SysLob.h	io.github.arlowen.redoreplicator.redo.common.SysLob	pending	Translate redo domain model
-src/common/table/SysLobCompPart.h	io.github.arlowen.redoreplicator.redo.common.SysLobCompPart	pending	Translate redo domain model
-src/common/table/SysLobFrag.h	io.github.arlowen.redoreplicator.redo.common.SysLobFrag	pending	Translate redo domain model
+src/common/table/SysDeferredStg.h	io.github.arlowen.redoreplicator.schema.SysDeferredStg	translated	Translated delayed segment row flags compression and binary update support
+src/common/table/SysECol.h	io.github.arlowen.redoreplicator.schema.SysECol	translated	Translated guard column mapping and binary update support
+src/common/table/SysLob.h	io.github.arlowen.redoreplicator.schema.SysLob	translated	Translated LOB ownership columns tablespace and binary update support
+src/common/table/SysLobCompPart.h	io.github.arlowen.redoreplicator.schema.SysLobCompPart	translated	Translated composite LOB partition relationship and binary update support
+src/common/table/SysLobFrag.h	io.github.arlowen.redoreplicator.schema.SysLobFrag	translated	Translated LOB fragment parent tablespace and binary update support
 src/common/table/SysObj.h	io.github.arlowen.redoreplicator.schema.SysObj	translated	Translated object row flags identity and table classification
 src/common/table/SysTab.h	io.github.arlowen.redoreplicator.schema.SysTab	translated	Translated table row identity flags and properties
-src/common/table/SysTabComPart.h	io.github.arlowen.redoreplicator.redo.common.SysTabComPart	pending	Translate redo domain model
-src/common/table/SysTabPart.h	io.github.arlowen.redoreplicator.redo.common.SysTabPart	pending	Translate redo domain model
-src/common/table/SysTabSubPart.h	io.github.arlowen.redoreplicator.redo.common.SysTabSubPart	pending	Translate redo domain model
-src/common/table/SysTs.h	io.github.arlowen.redoreplicator.redo.common.SysTs	pending	Translate redo domain model
+src/common/table/SysTabComPart.h	io.github.arlowen.redoreplicator.schema.SysTabComPart	translated	Translated composite table partition relationship and binary update support
+src/common/table/SysTabPart.h	io.github.arlowen.redoreplicator.schema.SysTabPart	translated	Translated table partition identity and binary update support
+src/common/table/SysTabSubPart.h	io.github.arlowen.redoreplicator.schema.SysTabSubPart	translated	Translated table subpartition relationship and binary update support
+src/common/table/SysTs.h	io.github.arlowen.redoreplicator.schema.SysTs	translated	Translated tablespace block size mapping and binary update support
 src/common/table/SysUser.h	io.github.arlowen.redoreplicator.schema.SysUser	translated	Translated user row identity name and supplemental flags
 src/common/table/TablePack.h	io.github.arlowen.redoreplicator.redo.common.TablePack	pending	Translate redo domain model
 src/common/table/XdbTtSet.h	io.github.arlowen.redoreplicator.redo.common.XdbTtSet	pending	Translate redo domain model

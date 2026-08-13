@@ -18,8 +18,17 @@ final class SystemDictionaryRowValidator {
             case OBJECT -> present(values, "OWNER#", "OBJ#", "TYPE#", "NAME");
             case TABLE -> present(values, "OBJ#");
             case COLUMN -> present(values, "OBJ#", "INTCOL#", "NAME", "TYPE#");
+            case DEFERRED_STORAGE -> present(values, "OBJ#");
+            case EXTENDED_COLUMN -> present(values, "TABOBJ#");
+            case LOB -> present(values, "OBJ#", "LOBJ#");
+            case LOB_COMPOSITE_PARTITION -> present(values, "PARTOBJ#", "LOBJ#");
+            case LOB_FRAGMENT -> present(values, "FRAGOBJ#", "PARENTOBJ#");
             case CONSTRAINT -> present(values, "CON#", "OBJ#", "TYPE#");
             case CONSTRAINT_COLUMN -> present(values, "CON#", "INTCOL#", "OBJ#");
+            case TABLE_COMPOSITE_PARTITION -> present(values, "OBJ#", "BO#");
+            case TABLE_PARTITION -> present(values, "OBJ#", "BO#");
+            case TABLE_SUBPARTITION -> present(values, "OBJ#", "POBJ#");
+            case TABLESPACE -> present(values, "TS#", "NAME", "BLOCKSIZE");
         };
         if (!complete) {
             throw new DataException(50020,

@@ -60,6 +60,32 @@ class OracleDictionaryIntegrationTest {
             assertEquals(1, schema.lobs().size());
             assertFalse(schema.lobs().get(0).indexDataObjectIds().isEmpty());
 
+            SystemDictionaryState systemDictionary =
+                    new OracleSystemDictionaryReader().loadTable(
+                            connection, owner, TABLE_NAME, context.currentScn())
+                            .orElseThrow();
+            long defaultCharacterSetId = schema.columns().stream()
+                    .filter(column -> column.type() == OracleColumnType.VARCHAR)
+                    .map(ColumnSchema::charsetId)
+                    .findFirst()
+                    .orElseThrow();
+            long defaultNationalCharacterSetId = schema.columns().stream()
+                    .filter(column -> column.type() == OracleColumnType.CLOB)
+                    .map(ColumnSchema::charsetId)
+                    .findFirst()
+                    .orElseThrow();
+            TableSchema replaySchema = new SystemDictionarySchemaAssembler().assemble(
+                    systemDictionary,
+                    context.containerName(),
+                    schema.objectId(),
+                    defaultCharacterSetId,
+                    defaultNationalCharacterSetId).orElseThrow();
+            assertEquals(schema, replaySchema);
+            assertTrue(systemDictionary.rows().stream()
+                    .allMatch(row -> row.rowId().toString().length() == 18));
+            assertEquals(1, systemDictionary.lobs().size());
+            assertFalse(systemDictionary.tablespaces().isEmpty());
+
             persistInitialSchema(context, schema);
         }
     }

@@ -27,8 +27,6 @@ final class SystemTransaction {
     private final SystemDictionaryRowValidator rowValidator;
     private final Map<SystemDictionaryKey, SystemDictionaryRow> replacements;
     private final Set<SystemDictionaryKey> deletions;
-    private final Set<Long> directlyTouchedObjects;
-    private final Set<Long> touchedUsers;
 
     SystemTransaction(Xid xid, SystemDictionaryState baseState,
                       Charset characterSet) {
@@ -38,8 +36,6 @@ final class SystemTransaction {
         rowValidator = new SystemDictionaryRowValidator();
         replacements = new LinkedHashMap<>();
         deletions = new LinkedHashSet<>();
-        directlyTouchedObjects = new LinkedHashSet<>();
-        touchedUsers = new LinkedHashSet<>();
     }
 
     void apply(SystemDictionaryChange change) {
@@ -54,7 +50,7 @@ final class SystemTransaction {
             SystemDictionaryRow inserted = rowPatcher.apply(
                     change.table(), change.rowId(), null, change.values());
             rowValidator.validateInsert(inserted, change.values());
-            replace(key, current, inserted);
+            replace(key, inserted);
             return;
         }
         if (current == null) {
@@ -65,11 +61,10 @@ final class SystemTransaction {
         if (change.operation() == SystemDictionaryOperation.UPDATE) {
             SystemDictionaryRow updated = rowPatcher.apply(
                     change.table(), change.rowId(), current, change.values());
-            replace(key, current, updated);
+            replace(key, updated);
             return;
         }
 
-        touch(current);
         replacements.remove(key);
         deletions.add(key);
     }
@@ -88,10 +83,14 @@ final class SystemTransaction {
     }
 
     Set<Long> touchedObjectIds(SystemDictionaryState nextState) {
-        Set<Long> touched = new LinkedHashSet<>(directlyTouchedObjects);
-        if (!touchedUsers.isEmpty()) {
-            collectObjectsForUsers(touched, baseState);
-            collectObjectsForUsers(touched, nextState);
+        Set<Long> touched = new LinkedHashSet<>();
+        for (SystemDictionaryKey key : changedKeys()) {
+            SystemDictionaryRow before = baseState.find(key);
+            SystemDictionaryRow after = nextState.find(key);
+            collectDependentObjects(before, baseState, touched);
+            collectDependentObjects(before, nextState, touched);
+            collectDependentObjects(after, baseState, touched);
+            collectDependentObjects(after, nextState, touched);
         }
         touched.remove(0L);
         return Set.copyOf(touched);
@@ -114,30 +113,92 @@ final class SystemTransaction {
         return keys;
     }
 
-    private void replace(SystemDictionaryKey key, SystemDictionaryRow before,
-                         SystemDictionaryRow after) {
-        touch(before);
-        touch(after);
+    private void replace(SystemDictionaryKey key, SystemDictionaryRow after) {
         deletions.remove(key);
         replacements.put(key, after);
     }
 
-    private void touch(SystemDictionaryRow row) {
+    private static void collectDependentObjects(
+            SystemDictionaryRow row, SystemDictionaryState state,
+            Set<Long> touched) {
         if (row == null) {
             return;
         }
         if (row instanceof SysUser user) {
-            touchedUsers.add(user.userId());
+            for (SysObj object : state.objects()) {
+                if (object.ownerId() == user.userId()) {
+                    touched.add(object.objectId());
+                }
+            }
             return;
         }
-        directlyTouchedObjects.add(row.dependentObjectId());
+        touched.add(row.dependentObjectId());
+        if (row instanceof SysLobCompPart partition) {
+            collectTableForLob(partition.lobObjectId(), state, touched);
+            return;
+        }
+        if (row instanceof SysLobFrag fragment) {
+            collectTableForLobParent(fragment.parentObjectId(), state, touched);
+            return;
+        }
+        if (row instanceof SysTabSubPart subpartition) {
+            for (SysTabComPart partition : state.tableCompositePartitions()) {
+                if (partition.objectId() == subpartition.parentObjectId()) {
+                    touched.add(partition.baseObjectId());
+                }
+            }
+            return;
+        }
+        if (row instanceof SysTs tablespace) {
+            for (SysLob lob : state.lobs()) {
+                if (lob.tablespaceId() == tablespace.tablespaceId()) {
+                    touched.add(lob.objectId());
+                }
+            }
+            for (SysLobFrag fragment : state.lobFragments()) {
+                if (fragment.tablespaceId() == tablespace.tablespaceId()) {
+                    collectTableForLobParent(fragment.parentObjectId(), state, touched);
+                }
+            }
+            return;
+        }
+        if (row instanceof SysObj object) {
+            collectTableForLob(object.objectId(), state, touched);
+            for (SysLobFrag fragment : state.lobFragments()) {
+                if (fragment.fragmentObjectId() == object.objectId()) {
+                    collectTableForLobParent(fragment.parentObjectId(), state, touched);
+                }
+            }
+            collectTableForLobIndex(object, state, touched);
+        }
     }
 
-    private void collectObjectsForUsers(Set<Long> touched,
-                                        SystemDictionaryState state) {
-        for (SysObj object : state.objects()) {
-            if (touchedUsers.contains(object.ownerId())) {
-                touched.add(object.objectId());
+    private static void collectTableForLob(
+            long lobObjectId, SystemDictionaryState state, Set<Long> touched) {
+        for (SysLob lob : state.lobs()) {
+            if (lob.lobObjectId() == lobObjectId) {
+                touched.add(lob.objectId());
+            }
+        }
+    }
+
+    private static void collectTableForLobParent(
+            long parentObjectId, SystemDictionaryState state, Set<Long> touched) {
+        collectTableForLob(parentObjectId, state, touched);
+        for (SysLobCompPart partition : state.lobCompositePartitions()) {
+            if (partition.partitionObjectId() == parentObjectId) {
+                collectTableForLob(partition.lobObjectId(), state, touched);
+            }
+        }
+    }
+
+    private static void collectTableForLobIndex(
+            SysObj object, SystemDictionaryState state, Set<Long> touched) {
+        for (SysLob lob : state.lobs()) {
+            String indexName = String.format(
+                    "SYS_IL%010dC%05d$$", lob.objectId(), lob.internalColumn());
+            if (object.name().equals(indexName)) {
+                touched.add(lob.objectId());
             }
         }
     }

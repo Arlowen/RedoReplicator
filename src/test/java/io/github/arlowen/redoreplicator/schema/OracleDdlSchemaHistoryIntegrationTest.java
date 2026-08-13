@@ -70,7 +70,7 @@ class OracleDdlSchemaHistoryIntegrationTest {
                 TableSchema createdSchema = created.decode(codec);
                 assertEquals(1, createdSchema.columns().size());
                 SystemDictionaryState coreDictionary =
-                        new OracleSystemDictionaryReader().loadCoreTable(
+                        new OracleSystemDictionaryReader().loadTable(
                                 capture, ddlUsername, TABLE, createScn).orElseThrow();
                 TableSchema replaySchema = new SystemDictionarySchemaAssembler().assemble(
                         coreDictionary,

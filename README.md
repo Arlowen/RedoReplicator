@@ -3,10 +3,11 @@
 RedoReplicator is an in-progress JDK 17 translation of OpenLogReplicator's Oracle redo change data capture engine. The implementation target and acceptance gates are defined in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
 The project is currently implementing stage 3: initial Oracle dictionary loading,
-schema history, H2 recovery state and transactional replay for the core
-`SYS.USER$`, `OBJ$`, `TAB$`, `COL$`, `CDEF$` and `CCOL$` dictionary families.
-The remaining SYS families and the raw redo row bridge are not complete, so the
-project is not ready to capture Oracle redo yet.
+schema history, H2 recovery state and transactional replay for all fifteen SYS
+dictionary families used by OpenLogReplicator. LOB, partition, guard-column and
+delayed-segment relationships are rebuilt into complete schema versions. The raw
+redo row bridge and XDB dictionary families are not complete, so the project is
+not ready to capture Oracle redo yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),

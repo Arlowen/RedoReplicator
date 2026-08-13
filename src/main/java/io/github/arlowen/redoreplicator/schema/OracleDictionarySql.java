@@ -132,6 +132,14 @@ final class OracleDictionarySql {
              WHERE O.OBJ# = ?
             """;
 
+    static final String SYSTEM_OBJECT_ROWS_BY_NAME = """
+            SELECT ROWIDTOCHAR(O.ROWID), O.OWNER#, O.OBJ#,
+                   NVL(O.DATAOBJ#, 0), O.TYPE#, O.NAME, NVL(O.FLAGS, 0)
+              FROM SYS.OBJ$ AS OF SCN ? O
+             WHERE O.OWNER# = ?
+               AND O.NAME = ?
+            """;
+
     static final String SYSTEM_TABLE_ROWS = """
             SELECT ROWIDTOCHAR(T.ROWID), T.OBJ#, NVL(T.DATAOBJ#, 0),
                    NVL(T.TS#, 0), NVL(T.CLUCOLS, 0),
@@ -150,6 +158,39 @@ final class OracleDictionarySql {
              ORDER BY C.SEGCOL#, C.INTCOL#, C.COL#
             """;
 
+    static final String SYSTEM_DEFERRED_STORAGE_ROWS = """
+            SELECT ROWIDTOCHAR(D.ROWID), D.OBJ#, NVL(D.FLAGS_STG, 0)
+              FROM SYS.DEFERRED_STG$ AS OF SCN ? D
+             WHERE D.OBJ# = ?
+            """;
+
+    static final String SYSTEM_EXTENDED_COLUMN_ROWS = """
+            SELECT ROWIDTOCHAR(E.ROWID), E.TABOBJ#, NVL(E.COLNUM, 0),
+                   NVL(E.GUARD_ID, -1)
+              FROM SYS.ECOL$ AS OF SCN ? E
+             WHERE E.TABOBJ# = ?
+            """;
+
+    static final String SYSTEM_LOB_ROWS = """
+            SELECT ROWIDTOCHAR(L.ROWID), L.OBJ#, L.COL#, L.INTCOL#,
+                   L.LOBJ#, L.TS#
+              FROM SYS.LOB$ AS OF SCN ? L
+             WHERE L.OBJ# = ?
+             ORDER BY L.INTCOL#
+            """;
+
+    static final String SYSTEM_LOB_COMPOSITE_PARTITION_ROWS = """
+            SELECT ROWIDTOCHAR(P.ROWID), P.PARTOBJ#, P.LOBJ#
+              FROM SYS.LOBCOMPPART$ AS OF SCN ? P
+             WHERE P.LOBJ# = ?
+            """;
+
+    static final String SYSTEM_LOB_FRAGMENT_ROWS = """
+            SELECT ROWIDTOCHAR(F.ROWID), F.FRAGOBJ#, F.PARENTOBJ#, F.TS#
+              FROM SYS.LOBFRAG$ AS OF SCN ? F
+             WHERE F.PARENTOBJ# = ?
+            """;
+
     static final String SYSTEM_CONSTRAINT_ROWS = """
             SELECT ROWIDTOCHAR(D.ROWID), D.CON#, D.OBJ#, D.TYPE#
               FROM SYS.CDEF$ AS OF SCN ? D
@@ -161,6 +202,33 @@ final class OracleDictionarySql {
                    NVL(C.SPARE1, 0)
               FROM SYS.CCOL$ AS OF SCN ? C
              WHERE C.OBJ# = ?
+            """;
+
+    static final String SYSTEM_TABLE_COMPOSITE_PARTITION_ROWS = """
+            SELECT ROWIDTOCHAR(P.ROWID), P.OBJ#, NVL(P.DATAOBJ#, 0), P.BO#
+              FROM SYS.TABCOMPART$ AS OF SCN ? P
+             WHERE P.BO# = ?
+             ORDER BY P.OBJ#
+            """;
+
+    static final String SYSTEM_TABLE_PARTITION_ROWS = """
+            SELECT ROWIDTOCHAR(P.ROWID), P.OBJ#, NVL(P.DATAOBJ#, 0), P.BO#
+              FROM SYS.TABPART$ AS OF SCN ? P
+             WHERE P.BO# = ?
+             ORDER BY P.OBJ#
+            """;
+
+    static final String SYSTEM_TABLE_SUBPARTITION_ROWS = """
+            SELECT ROWIDTOCHAR(P.ROWID), P.OBJ#, NVL(P.DATAOBJ#, 0), P.POBJ#
+              FROM SYS.TABSUBPART$ AS OF SCN ? P
+             WHERE P.POBJ# = ?
+             ORDER BY P.OBJ#
+            """;
+
+    static final String SYSTEM_TABLESPACE_ROWS = """
+            SELECT ROWIDTOCHAR(T.ROWID), T.TS#, T.NAME, T.BLOCKSIZE
+              FROM SYS.TS$ AS OF SCN ? T
+             WHERE T.TS# = ?
             """;
 
     private OracleDictionarySql() {
