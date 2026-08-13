@@ -135,7 +135,7 @@ JDBC 只负责数据库身份、日志位置、归档状态、容器信息和数
 ```yaml
 database:
   url: jdbc:oracle:thin:@//oracle:1521/FREE
-  username: C##REDO_REPLICATOR
+  username: REDO_REPLICATOR
   password: change-me
   redoPathMappings:
     - oracle: /opt/oracle/oradata

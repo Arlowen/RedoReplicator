@@ -1,0 +1,31 @@
+database:
+  url: jdbc:oracle:thin:@//oracle:1521/FREE
+  username: REDO_REPLICATOR
+  password: change-me
+  redoPathMappings:
+    - oracle: /opt/oracle/oradata
+      local: /oracle/oradata
+    - oracle: /opt/oracle/fast_recovery_area
+      local: /oracle/fra
+
+capture:
+  startScn:
+  includeTables:
+    - FREEPDB1.APP.ORDERS
+  excludeTables: []
+
+output:
+  directory: output
+  maxFileSizeMb: 256
+  checkpointHeartbeat: true
+
+state:
+  directory: data
+  transactionMemoryMb: 1024
+
+archive:
+  pollIntervalSeconds: 10
+  missingFileTimeoutSeconds: 300
+
+logging:
+  level: INFO

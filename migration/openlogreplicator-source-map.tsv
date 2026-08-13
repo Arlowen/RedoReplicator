@@ -1,6 +1,6 @@
 source_path	target_java_type	status	notes
-src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.RedoReplicator	pending	Translate application lifecycle
-src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.RedoReplicator	pending	Translate application lifecycle
+src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, startup preflight and single-process runtime lock are wired; capture lifecycle, signals and worker orchestration remain
+src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, startup preflight and single-process runtime lock are wired; capture lifecycle, signals and worker orchestration remain
 src/StreamClient.cpp	-	excluded	Network stream client is out of scope
 src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.Builder	pending	Translate native JSON construction
 src/builder/Builder.h	io.github.arlowen.redoreplicator.output.Builder	pending	Oracle NUMBER binary decoder translated; row value assembly and JSON construction remain
@@ -29,8 +29,8 @@ src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.common.LobData	pend
 src/common/LobData.h	io.github.arlowen.redoreplicator.redo.common.LobData	pending	Translate redo domain model
 src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
 src/common/LobKey.h	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
-src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill files, startup cleanup, commit replay and tail rollback implemented; runtime configuration, metrics and scale parity remain
-src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill files, startup cleanup, commit replay and tail rollback implemented; runtime configuration, metrics and scale parity remain
+src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill lifecycle and state.transactionMemoryMb runtime wiring implemented; metrics and scale parity remain
+src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill lifecycle and state.transactionMemoryMb runtime wiring implemented; metrics and scale parity remain
 src/common/OraProtoBuf.pb.cpp	-	excluded	Protobuf output is out of scope
 src/common/OraProtoBuf.pb.h	-	excluded	Protobuf output is out of scope
 src/common/RedoLogRecord.h	io.github.arlowen.redoreplicator.redo.common.RedoLogRecord	translated	Translated record model and field traversal cursor with parity tests
@@ -129,7 +129,7 @@ src/locales/CharacterSetZHT32TRIS.cpp	io.github.arlowen.redoreplicator.charset.C
 src/locales/CharacterSetZHT32TRIS.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
 src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Translate Oracle character set decoder
 src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Translate Oracle character set decoder
-src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Translate process entry point into Picocli
+src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Picocli help, version, strict YAML and validate entry point implemented; running capture and signal lifecycle remain
 src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.state.RuntimeState	pending	Replace checkpoint files with the H2 safe state row
 src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.state.RuntimeState	pending	Replace checkpoint files with the H2 safe state row
 src/metadata/Metadata.cpp	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
@@ -177,10 +177,10 @@ src/reader/Reader.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pe
 src/reader/Reader.h	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	File and block headers started; asynchronous filesystem lifecycle remains
 src/reader/ReaderFilesystem.cpp	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader
 src/reader/ReaderFilesystem.h	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader
-src/replicator/DatabaseConnection.cpp	io.github.arlowen.redoreplicator.source.OracleConnection	pending	Translate online discovery using JDBC and local redo files
-src/replicator/DatabaseConnection.h	io.github.arlowen.redoreplicator.source.OracleConnection	pending	Translate online discovery using JDBC and local redo files
-src/replicator/DatabaseEnvironment.cpp	io.github.arlowen.redoreplicator.source.OracleConnectionFactory	pending	Translate online discovery using JDBC and local redo files
-src/replicator/DatabaseEnvironment.h	io.github.arlowen.redoreplicator.source.OracleConnectionFactory	pending	Translate online discovery using JDBC and local redo files
+src/replicator/DatabaseConnection.cpp	io.github.arlowen.redoreplicator.source.OracleSourceValidator	pending	JDBC identity, logging, dictionary privilege and mapped redo/archive read preflight implemented; discovery polling remains
+src/replicator/DatabaseConnection.h	io.github.arlowen.redoreplicator.source.OracleSourceValidator	pending	JDBC identity, logging, dictionary privilege and mapped redo/archive read preflight implemented; discovery polling remains
+src/replicator/DatabaseEnvironment.cpp	io.github.arlowen.redoreplicator.source.OracleConnectionFactory	pending	Ordinary JDBC account connection factory implemented; reconnect and session lifecycle remain
+src/replicator/DatabaseEnvironment.h	io.github.arlowen.redoreplicator.source.OracleConnectionFactory	pending	Ordinary JDBC account connection factory implemented; reconnect and session lifecycle remain
 src/replicator/DatabaseStatement.cpp	io.github.arlowen.redoreplicator.source.OracleStatement	pending	Translate online discovery using JDBC and local redo files
 src/replicator/DatabaseStatement.h	io.github.arlowen.redoreplicator.source.OracleStatement	pending	Translate online discovery using JDBC and local redo files
 src/replicator/Replicator.cpp	io.github.arlowen.redoreplicator.source.Replicator	pending	Translate online discovery using JDBC and local redo files
