@@ -12,6 +12,7 @@ package io.github.arlowen.redoreplicator.redo.transaction;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
+import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 
 import java.io.ByteArrayOutputStream;
 
@@ -61,13 +62,21 @@ final class RedoColumnValueAccumulator {
     }
 
     RedoColumnValue finish() {
+        OracleColumnType valueType = column.type();
+        if (column.storedAsLob()) {
+            if (valueType == OracleColumnType.VARCHAR) {
+                valueType = OracleColumnType.CLOB;
+            } else if (valueType == OracleColumnType.RAW) {
+                valueType = OracleColumnType.BLOB;
+            }
+        }
         if (completeSet) {
             if (nullValue || complete.length == 0) {
                 return RedoColumnValue.nullValue(
-                        column.type(), column.charsetId());
+                        valueType, column.charsetId());
             }
             return RedoColumnValue.of(
-                    column.type(), column.charsetId(), complete);
+                    valueType, column.charsetId(), complete);
         }
         if (first == null || last == null) {
             throw invalid("fragmented value is incomplete");
@@ -81,9 +90,9 @@ final class RedoColumnValueAccumulator {
         byte[] data = output.toByteArray();
         if (data.length == 0) {
             return RedoColumnValue.nullValue(
-                    column.type(), column.charsetId());
+                    valueType, column.charsetId());
         }
-        return RedoColumnValue.of(column.type(), column.charsetId(), data);
+        return RedoColumnValue.of(valueType, column.charsetId(), data);
     }
 
     private byte[] setFragment(

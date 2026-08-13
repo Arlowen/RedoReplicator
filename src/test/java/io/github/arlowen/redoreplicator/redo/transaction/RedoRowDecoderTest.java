@@ -182,6 +182,27 @@ class RedoRowDecoderTest {
         assertEquals(expected, actual);
     }
 
+    @Test
+    void mapsStoredVarcharAndRawValuesToLobTypes() {
+        ColumnSchema varchar = new ColumnSchema(
+                1, -1, 1, 1, "TEXT_LOB", OracleColumnType.VARCHAR,
+                128, -1, -1, 873, 0, true, false, true,
+                false, false, false, false, false, false);
+        RedoColumnValueAccumulator varcharValue =
+                new RedoColumnValueAccumulator(varchar);
+        varcharValue.add(new byte[]{1}, false, 0);
+        assertEquals(OracleColumnType.CLOB, varcharValue.finish().type());
+
+        ColumnSchema raw = new ColumnSchema(
+                2, -1, 2, 2, "BINARY_LOB", OracleColumnType.RAW,
+                128, -1, -1, 0, 0, true, false, true,
+                false, false, false, false, false, false);
+        RedoColumnValueAccumulator rawValue =
+                new RedoColumnValueAccumulator(raw);
+        rawValue.add(new byte[]{1}, false, 0);
+        assertEquals(OracleColumnType.BLOB, rawValue.finish().type());
+    }
+
     private RedoLogRecord insertRedo(
             int fb, int nulls, byte[]... values) {
         byte[][] fields = new byte[values.length + 2][];

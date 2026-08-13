@@ -13,14 +13,18 @@ import io.github.arlowen.redoreplicator.redo.transaction.RedoColumnValue;
 import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.HexFormat;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,6 +67,62 @@ class OracleJsonValueDecoderTest {
                 new byte[]{(byte) 0xED, (byte) 0xA0, (byte) 0xBD,
                         (byte) 0xED, (byte) 0xB8, (byte) 0x80}))
                 .textValue());
+    }
+
+    @Test
+    void decodesInlineBlobAndClobLikeTheFixedBaseline() throws Exception {
+        Properties expected = new Properties();
+        try (InputStream input = getClass().getResourceAsStream(
+                "/fixtures/lob-locator/"
+                        + "openlogreplicator-6bc92bc1.properties")) {
+            assertNotNull(input);
+            expected.load(input);
+        }
+
+        OracleLobLocatorDecoder locatorDecoder =
+                new OracleLobLocatorDecoder();
+        Properties actual = new Properties();
+        actual.setProperty("fixed.ok", "true");
+        actual.setProperty("fixed.hex", HexFormat.of().formatHex(
+                locatorDecoder.decodeInline(fixedLobLocator(
+                        new byte[]{1, 2, 3}))));
+        byte[] textLocator = variableLobLocator(
+                "ABCD".getBytes(StandardCharsets.UTF_8));
+        actual.setProperty("variable.ok", "true");
+        actual.setProperty("variable.hex", HexFormat.of().formatHex(
+                locatorDecoder.decodeInline(textLocator)));
+        actual.setProperty("empty.ok", "true");
+        actual.setProperty("empty.hex", HexFormat.of().formatHex(
+                locatorDecoder.decodeInline(variableLobLocator(
+                        new byte[0]))));
+        assertEquals(expected, actual);
+
+        assertEquals("010203", decoder.decode(value(
+                OracleColumnType.BLOB,
+                fixedLobLocator(new byte[]{1, 2, 3}))).textValue());
+        assertEquals("ABCD", decoder.decode(value(
+                OracleColumnType.CLOB, textLocator)).textValue());
+        assertEquals("", decoder.decode(value(
+                OracleColumnType.CLOB,
+                variableLobLocator(new byte[0]))).textValue());
+    }
+
+    @Test
+    void stopsForExternalOrInvalidLobLocator() {
+        byte[] external = new byte[20];
+        RedoLogException externalError = assertThrows(
+                RedoLogException.class,
+                () -> decoder.decode(value(
+                        OracleColumnType.BLOB, external)));
+        assertEquals(50075, externalError.getErrorCode());
+
+        byte[] invalid = fixedLobLocator(new byte[]{1, 2, 3});
+        invalid[21]++;
+        RedoLogException invalidError = assertThrows(
+                RedoLogException.class,
+                () -> decoder.decode(value(
+                        OracleColumnType.CLOB, invalid)));
+        assertEquals(50075, invalidError.getErrorCode());
     }
 
     @Test
@@ -199,6 +259,32 @@ class OracleJsonValueDecoderTest {
     private static RedoColumnValue value(
             OracleColumnType type, byte[] bytes) {
         return RedoColumnValue.of(type, bytes);
+    }
+
+    private static byte[] fixedLobLocator(byte[] value) {
+        byte[] locator = new byte[36 + value.length];
+        locator[5] = 0x04;
+        putUnsignedShort(locator, 20, value.length + 16);
+        putUnsignedShort(locator, 22, 0x0100);
+        putUnsignedShort(locator, 28, value.length);
+        System.arraycopy(value, 0, locator, 36, value.length);
+        return locator;
+    }
+
+    private static byte[] variableLobLocator(byte[] value) {
+        byte[] locator = new byte[30 + value.length];
+        locator[5] = 0x04;
+        putUnsignedShort(locator, 20, value.length + 10);
+        putUnsignedShort(locator, 22, 0x0800);
+        locator[28] = (byte) value.length;
+        System.arraycopy(value, 0, locator, 30, value.length);
+        return locator;
+    }
+
+    private static void putUnsignedShort(
+            byte[] data, int offset, int value) {
+        data[offset] = (byte) (value >>> 8);
+        data[offset + 1] = (byte) value;
     }
 
     private static byte[] oracleDateTime(

@@ -232,6 +232,24 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
+    void emitsInlineBlobFromRedoThroughJson() throws Exception {
+        CommittedRedoTransaction transaction = transaction(
+                List.of(inlineLobInsertEntry()));
+
+        List<RedoJsonChange> changes = assembler.assemble(
+                transaction, catalog(lobTable()));
+        BuilderJson builder = new BuilderJson(
+                new OracleJsonValueDecoder(
+                        StandardCharsets.UTF_8, ZoneOffset.UTC),
+                "FREEPDB1", 0);
+        JsonNode message = new ObjectMapper().readTree(
+                builder.buildTransaction(transaction, changes).get(1));
+
+        assertEquals("010203", message.at(
+                "/payload/0/after/DATA").textValue());
+    }
+
+    @Test
     void skipsResolvedTablesOutsideTheConfiguredOutputFilter() {
         RedoJsonChangeAssembler filtered = new RedoJsonChangeAssembler(
                 ByteOrder.LITTLE_ENDIAN, StandardCharsets.UTF_8,
@@ -404,6 +422,31 @@ class RedoJsonChangeAssemblerTest {
                 kdo, 42, 3, ByteOrder.LITTLE_ENDIAN);
         RedoLogRecord redo = RedoOpCodeTestSupport.record(
                 0x0B02, 0, ktb, kdo, new byte[]{1, 2, 3});
+        new RedoOpCodeDispatcher(
+                ByteOrder.LITTLE_ENDIAN,
+                RedoLogRecord.REDO_VERSION_19_0).dispatch(redo);
+        redo.xid = XID;
+        redo.obj = OBJECT_ID;
+        redo.dataObj = DATA_OBJECT_ID;
+        return RedoTransactionEntry.pair(undo(), redo);
+    }
+
+    private static RedoTransactionEntry inlineLobInsertEntry() {
+        byte[] ktb = RedoOpCodeTestSupport.field(8);
+        ktb[0] = 0x06;
+        byte[] kdo = RedoOpCodeTestSupport.field(48);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                kdo, 0, 100, ByteOrder.LITTLE_ENDIAN);
+        kdo[10] = RedoLogRecord.OP_IRP;
+        kdo[16] = (byte) RedoLogRecord.FB_F;
+        kdo[18] = 1;
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 40, 3, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 42, 3, ByteOrder.LITTLE_ENDIAN);
+        RedoLogRecord redo = RedoOpCodeTestSupport.record(
+                0x0B02, 0, ktb, kdo,
+                fixedLobLocator(new byte[]{1, 2, 3}));
         new RedoOpCodeDispatcher(
                 ByteOrder.LITTLE_ENDIAN,
                 RedoLogRecord.REDO_VERSION_19_0).dispatch(redo);
@@ -649,6 +692,26 @@ class RedoJsonChangeAssemblerTest {
                         false, false, false, false,
                         false, false, false, false, false)),
                 List.of(), List.of());
+    }
+
+    private static TableSchema lobTable() {
+        return new TableSchema(
+                "FREEPDB1", "APP", "LOB_DATA",
+                OBJECT_ID, DATA_OBJECT_ID, 10, 0, 0,
+                List.of(column(1, "DATA", OracleColumnType.BLOB)),
+                List.of(), List.of());
+    }
+
+    private static byte[] fixedLobLocator(byte[] value) {
+        byte[] locator = new byte[36 + value.length];
+        locator[5] = 0x04;
+        locator[20] = (byte) ((value.length + 16) >>> 8);
+        locator[21] = (byte) (value.length + 16);
+        locator[22] = 0x01;
+        locator[28] = (byte) (value.length >>> 8);
+        locator[29] = (byte) value.length;
+        System.arraycopy(value, 0, locator, 36, value.length);
+        return locator;
     }
 
     private static ColumnSchema column(

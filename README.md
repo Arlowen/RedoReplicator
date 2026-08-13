@@ -21,9 +21,10 @@ position. Quick multi-row INSERT and DELETE are expanded in original slot order
 for both user JSON and SYS dictionary transactions. Text values retain their
 dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK and
 WE8MSWIN1252 use upstream-compatible decoders across user values, DDL and SYS
-dictionary changes, including NCHAR/NVARCHAR values. LOB
-reconstruction, the complete charset catalog and XDB dictionary families are
-not complete, so the project is not production-ready yet. As in the upstream
+dictionary changes, including NCHAR/NVARCHAR values. Inline BLOB/CLOB locators
+are decoded directly; transaction-page LOB reconstruction, the complete
+charset catalog and XDB dictionary families are not complete, so the project is
+not production-ready yet. As in the upstream
 Builder, Oracle compressed user rows are preserved losslessly as one RAW
 `COMPRESSED` field rather than presented as decoded logical columns.
 
@@ -62,7 +63,9 @@ that offset. User-table redo pairs can now be assembled into
 typed before/after column bytes with row identity, supplemental images,
 multi-piece value merging and primary-key placeholders. Compressed user-row
 payloads retain their complete bytes as the upstream `COMPRESSED` RAW field.
-Those typed bytes can now be converted to the fixed native JSON scalar forms for
+Inline BLOB/CLOB locators are converted to their complete binary or text value;
+locators that reference transaction pages stop capture until those pages can be
+proved and reconstructed. Other typed bytes can be converted to the fixed native JSON scalar forms for
 text, NUMBER, DATE/TIMESTAMP, RAW, binary floating point, intervals, UROWID and
 BOOLEAN. The fixed native JSON Builder emits separate begin, ordered DML/DDL
 and commit messages plus optional checkpoint heartbeats, always including the
