@@ -127,6 +127,13 @@ With capture stopped, `bin/backup.sh` creates a private ZIP under
 and a manifest with database identity and SHA-256 values. JSONL output and
 `data/tmp/` transaction spill are deliberately excluded.
 
+`bin/restore.sh <backup-file>` validates every packaged digest and both the
+manifest and H2 identity against the connected Oracle incarnation before it
+replaces anything. Existing H2, YAML and status files remain in a timestamped
+`data/backups/restore-safety-*` directory. Because JSONL is not packaged, the
+restored state keeps its safe redo SCN but starts at a new file number above all
+existing JSONL files; historical output is neither deleted nor overwritten.
+
 ## Compare JSONL output
 
 The stage 1 comparator checks JSONL line by line. JSON object key order and whitespace are ignored; array order, field types and values remain significant.

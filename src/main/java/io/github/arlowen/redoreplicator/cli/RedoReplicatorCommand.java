@@ -18,6 +18,7 @@ import io.github.arlowen.redoreplicator.source.OracleSourceValidation;
 import io.github.arlowen.redoreplicator.source.OracleSourceValidator;
 import io.github.arlowen.redoreplicator.state.StateDatabase;
 import io.github.arlowen.redoreplicator.state.StateBackupService;
+import io.github.arlowen.redoreplicator.state.StateRestoreService;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -42,6 +43,7 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
     private final OracleSourceValidator sourceValidator;
     private final OracleCaptureRunner captureRunner;
     private final StateBackupService backupService;
+    private final StateRestoreService restoreService;
 
     @Option(
             names = {"-f", "--file"},
@@ -65,6 +67,12 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
             description = "Back up stopped H2 state, YAML and runtime status, then exit")
     private boolean backup;
 
+    @Option(
+            names = "--restore",
+            paramLabel = "<backup-file>",
+            description = "Restore a stopped capture after Oracle identity validation")
+    private Path restoreFile;
+
     public RedoReplicatorCommand() {
         this(new ConfigurationLoader(), new OracleSourceValidator(),
                 new OracleCaptureRunner());
@@ -78,6 +86,7 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
         this.sourceValidator = sourceValidator;
         this.captureRunner = captureRunner;
         backupService = new StateBackupService();
+        restoreService = new StateRestoreService();
     }
 
     @Override
@@ -88,9 +97,19 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
             for (String warning : configuration.warnings()) {
                 System.err.println("WARNING: " + warning);
             }
-            if (backup && validateOnly) {
+            int maintenanceOperations = 0;
+            if (backup) {
+                maintenanceOperations++;
+            }
+            if (restoreFile != null) {
+                maintenanceOperations++;
+            }
+            if (validateOnly) {
+                maintenanceOperations++;
+            }
+            if (maintenanceOperations > 1) {
                 throw new ConfigurationException(
-                        30001, "--backup cannot be combined with --validate");
+                        30001, "--validate, --backup and --restore are mutually exclusive");
             }
             if (backup) {
                 Path backupFile = backupService.backup(configuration);
@@ -103,6 +122,14 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
             try (Connection connection = connectionFactory.open()) {
                 OracleSourceValidation source = sourceValidator.validate(
                         connection, configuration);
+                if (restoreFile != null) {
+                    Path safety = restoreService.restore(
+                            configuration, restoreFile,
+                            source.databaseContext().identity());
+                    System.out.println("Restore successful; previous files: "
+                            + safety);
+                    return 0;
+                }
                 if (validateOnly) {
                     System.out.println("Validation successful: Oracle "
                             + source.databaseContext().version() + ", "
