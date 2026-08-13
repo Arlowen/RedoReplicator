@@ -22,6 +22,9 @@ final class RedoLobData {
     private final Map<Long, NavigableMap<Integer, byte[]>> pages;
     private final NavigableMap<Long, Long> index;
     private int pageSize;
+    private long sizePages;
+    private int sizeRest;
+    private boolean sizeSet;
 
     RedoLobData(LobId lobId) {
         this.lobId = lobId;
@@ -48,6 +51,22 @@ final class RedoLobData {
             throw invalid(50004, "page number " + pageNumber
                     + " maps to both " + previous + " and " + page);
         }
+    }
+
+    void setSize(long newSizePages, int newSizeRest) {
+        sizePages = newSizePages;
+        sizeRest = newSizeRest;
+        sizeSet = true;
+    }
+
+    long sizePages() {
+        requireSize();
+        return sizePages;
+    }
+
+    int sizeRest() {
+        requireSize();
+        return sizeRest;
     }
 
     long indexedPage(long pageNumber) {
@@ -92,6 +111,12 @@ final class RedoLobData {
             throw invalid(50075, "LOB page size is unknown");
         }
         return pageSize;
+    }
+
+    private void requireSize() {
+        if (!sizeSet) {
+            throw invalid(50075, "LOB length is unknown");
+        }
     }
 
     private RedoLogException invalid(int code, String reason) {

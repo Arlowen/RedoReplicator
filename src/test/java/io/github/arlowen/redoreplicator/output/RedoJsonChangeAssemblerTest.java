@@ -301,6 +301,29 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
+    void reconstructsClassicOutOfRowLobThroughJson() throws Exception {
+        CommittedRedoTransaction transaction = transaction(List.of(
+                directLoaderLobPage(
+                        100, 0, new byte[]{1, 2, 3, 4}),
+                directLoaderLobPage(
+                        101, 1, new byte[]{5, 6, 7}),
+                classicLobIndexEntry(),
+                outOfRowLobInsertEntry()));
+
+        List<RedoJsonChange> changes = assembler.assemble(
+                transaction, catalog(lobTable()));
+        BuilderJson builder = new BuilderJson(
+                new OracleJsonValueDecoder(
+                        StandardCharsets.UTF_8, ZoneOffset.UTC),
+                "FREEPDB1", 0);
+        JsonNode message = new ObjectMapper().readTree(
+                builder.buildTransaction(transaction, changes).get(1));
+
+        assertEquals("01020304050607", message.at(
+                "/payload/0/after/DATA").textValue());
+    }
+
+    @Test
     void skipsResolvedTablesOutsideTheConfiguredOutputFilter() {
         RedoJsonChangeAssembler filtered = new RedoJsonChangeAssembler(
                 ByteOrder.LITTLE_ENDIAN, StandardCharsets.UTF_8,
@@ -483,42 +506,10 @@ class RedoJsonChangeAssemblerTest {
     }
 
     private static RedoTransactionEntry inlineLobInsertEntry() {
-        byte[] ktb = RedoOpCodeTestSupport.field(8);
-        ktb[0] = 0x06;
-        byte[] kdo = RedoOpCodeTestSupport.field(48);
-        RedoBinaryTestSupport.writeUnsignedInt(
-                kdo, 0, 100, ByteOrder.LITTLE_ENDIAN);
-        kdo[10] = RedoLogRecord.OP_IRP;
-        kdo[16] = (byte) RedoLogRecord.FB_F;
-        kdo[18] = 1;
-        RedoBinaryTestSupport.writeUnsignedShort(
-                kdo, 40, 3, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedShort(
-                kdo, 42, 3, ByteOrder.LITTLE_ENDIAN);
-        RedoLogRecord redo = RedoOpCodeTestSupport.record(
-                0x0B02, 0, ktb, kdo,
-                fixedLobLocator(new byte[]{1, 2, 3}));
-        new RedoOpCodeDispatcher(
-                ByteOrder.LITTLE_ENDIAN,
-                RedoLogRecord.REDO_VERSION_19_0).dispatch(redo);
-        redo.xid = XID;
-        redo.obj = OBJECT_ID;
-        redo.dataObj = DATA_OBJECT_ID;
-        return RedoTransactionEntry.pair(undo(), redo);
+        return lobInsertEntry(fixedLobLocator(new byte[]{1, 2, 3}));
     }
 
-    private static RedoTransactionEntry externalLobInsertEntry() {
-        byte[] locator = new byte[40];
-        locator[5] = 0x04;
-        System.arraycopy(LOB_ID.bytes(), 0, locator, 10, LobId.LENGTH);
-        locator[20] = 0;
-        locator[21] = 20;
-        locator[22] = 0x04;
-        locator[28] = 0;
-        locator[29] = 3;
-        RedoBinaryTestSupport.writeUnsignedInt(
-                locator, 36, 100, ByteOrder.BIG_ENDIAN);
-
+    private static RedoTransactionEntry lobInsertEntry(byte[] locator) {
         byte[] ktb = RedoOpCodeTestSupport.field(8);
         ktb[0] = 0x06;
         byte[] kdo = RedoOpCodeTestSupport.field(48);
@@ -542,18 +533,64 @@ class RedoJsonChangeAssemblerTest {
         return RedoTransactionEntry.pair(undo(), redo);
     }
 
+    private static RedoTransactionEntry externalLobInsertEntry() {
+        byte[] locator = new byte[40];
+        locator[5] = 0x04;
+        System.arraycopy(LOB_ID.bytes(), 0, locator, 10, LobId.LENGTH);
+        locator[20] = 0;
+        locator[21] = 20;
+        locator[22] = 0x04;
+        locator[28] = 0;
+        locator[29] = 3;
+        RedoBinaryTestSupport.writeUnsignedInt(
+                locator, 36, 100, ByteOrder.BIG_ENDIAN);
+        return lobInsertEntry(locator);
+    }
+
+    private static RedoTransactionEntry outOfRowLobInsertEntry() {
+        byte[] locator = new byte[20];
+        System.arraycopy(LOB_ID.bytes(), 0, locator, 10, LobId.LENGTH);
+        return lobInsertEntry(locator);
+    }
+
     private static RedoTransactionEntry directLoaderLobPage(byte[] payload) {
+        return directLoaderLobPage(100, 0, payload);
+    }
+
+    private static RedoTransactionEntry directLoaderLobPage(
+            long dba, long pageNumber, byte[] payload) {
         RedoLogRecord record = new RedoLogRecord();
         record.attachData(payload, 0, payload.length);
         record.opCode = 0x1301;
         record.xid = XID;
         record.dataObj = LOB_DATA_OBJECT_ID;
-        record.dba = 100;
+        record.dba = dba;
         record.lobId = LOB_ID;
-        record.lobPageNo = 0;
+        record.lobPageNo = pageNumber;
         record.lobData = 0;
         record.lobDataSize = payload.length;
         return RedoTransactionEntry.single(record);
+    }
+
+    private static RedoTransactionEntry classicLobIndexEntry() {
+        byte[] data = new byte[24];
+        RedoBinaryTestSupport.writeUnsignedInt(
+                data, 4, 1, ByteOrder.BIG_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                data, 8, 3, ByteOrder.BIG_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                data, 16, 100, ByteOrder.BIG_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                data, 20, 101, ByteOrder.BIG_ENDIAN);
+        RedoLogRecord record = redo(0x0A12);
+        record.attachData(data, 0, data.length);
+        record.lobId = LOB_ID;
+        record.lobPageNo = 0;
+        record.lobSizePages = 1;
+        record.lobSizeRest = 3;
+        record.indKeyData = 0;
+        record.indKeyDataSize = data.length;
+        return RedoTransactionEntry.pair(undo(), record);
     }
 
     private static RedoTransactionEntry multiInsertEntry() {

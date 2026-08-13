@@ -35,7 +35,10 @@ final class OracleLobLocatorDecoder {
         }
         LobId lobId = LobId.of(Arrays.copyOfRange(locator, 10, LOB_ID_END));
         if ((locator[5] & IN_ROW_FLAG) == 0) {
-            throw requiresTransactionPages();
+            if (context == null) {
+                throw requiresTransactionPages();
+            }
+            return context.readOutOfRow(lobId);
         }
         if (locator.length < 23) {
             throw invalid("in-row locator is shorter than its body header");

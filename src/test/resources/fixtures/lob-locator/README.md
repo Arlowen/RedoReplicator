@@ -11,4 +11,5 @@ scripts/baseline/run-lob-locator-probe.sh \
 ```
 
 The fixture covers both upstream inline locator encodings, an empty inline
-value and an in-index locator reconstructed from one direct-loader LOB page.
+value, an in-index locator reconstructed from one direct-loader LOB page and
+a classic out-of-row locator reconstructed from its indexed page and length.

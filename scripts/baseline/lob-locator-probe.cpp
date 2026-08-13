@@ -95,6 +95,9 @@ namespace {
             const LobId lobId(locator.data() + 10);
             lobCtx.addLob(ctx, lobId, 100, 0, allocation,
                           Xid::zero(), FileOffset(512));
+            if ((locator[5] & 0x04) == 0) {
+                lobCtx.setSize(lobId, 0, payload.size());
+            }
             const bool parsed = parseLob(
                     &lobCtx, locator.data(), locator.size(), 0, 100,
                     FileOffset(512), false, false);
@@ -182,6 +185,14 @@ namespace {
         write32Big(locator, 36, 100);
         return locator;
     }
+
+    std::vector<uint8_t> outOfRowLocator() {
+        std::vector<uint8_t> locator(20);
+        const uint8_t lobId[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
+        std::copy(std::begin(lobId), std::end(lobId),
+                  locator.begin() + 10);
+        return locator;
+    }
 }
 
 int main() {
@@ -196,5 +207,7 @@ int main() {
     builder.printInline("empty", variableLocator({}));
     builder.printExternal(
             "external", externalLocator(), {0x01, 0x02, 0x03});
+    builder.printExternal(
+            "outofrow", outOfRowLocator(), {0x01, 0x02, 0x03});
     return 0;
 }

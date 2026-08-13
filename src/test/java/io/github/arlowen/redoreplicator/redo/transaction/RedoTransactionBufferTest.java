@@ -297,6 +297,71 @@ class RedoTransactionBufferTest {
     }
 
     @Test
+    void derivesClassicLobIdentityBeforeAttachingOrphanedPages() {
+        LobId lobId = LobId.of(
+                new byte[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7});
+        RedoTransactionBuffer buffer = new RedoTransactionBuffer();
+        buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+        RedoLogRecord page = record(0x1301, Xid.zero(), 105);
+        page.attachData(new byte[]{1, 2, 3}, 0, 3);
+        page.dba = 200;
+        page.lobId = lobId;
+        page.lobDataSize = 3;
+        buffer.accept(List.of(page), position(105, 10, 768));
+
+        byte[] key = lobIndexKey(lobId, 0);
+        RedoLogRecord index = redo(0x0A02);
+        index.attachData(key, 0, key.length);
+        index.indKeySize = key.length;
+        assertTrue(buffer.appendPair(undo(XID_1, 0), index));
+
+        assertEquals(lobId, index.lobId);
+        assertEquals(0, buffer.orphanedLobCount());
+        CommittedRedoTransaction committed = buffer.commit(
+                commit(XID_1, 200, 0)).orElseThrow();
+        assertEquals(List.of(0x13010000, 0x05010A02),
+                committed.entries().stream()
+                        .map(RedoTransactionEntry::operationCode)
+                        .toList());
+    }
+
+    @Test
+    void routesClassicLobSubtransactionToItsParent() {
+        LobId lobId = LobId.of(
+                new byte[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7});
+        RedoTransactionBuffer buffer = new RedoTransactionBuffer();
+        buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+        buffer.begin(begin(XID_2, 101), position(101, 10, 768));
+
+        byte[] parentKey = lobIndexKey(lobId, 0);
+        RedoLogRecord parentIndex = redo(0x0A02);
+        parentIndex.attachData(parentKey, 0, parentKey.length);
+        parentIndex.indKeySize = parentKey.length;
+        buffer.appendPair(undo(XID_1, 0), parentIndex);
+
+        byte[] initKey = new byte[51];
+        initKey[1] = 0x01;
+        initKey[2] = 0x01;
+        initKey[35] = 10;
+        System.arraycopy(lobId.bytes(), 0, initKey, 36, LobId.LENGTH);
+        initKey[46] = 4;
+        RedoLogRecord subIndex = redo(0x0A08);
+        subIndex.attachData(initKey, 0, initKey.length);
+        subIndex.indKey = 1;
+        subIndex.indKeySize = 50;
+        buffer.appendPair(undo(XID_2, 0), subIndex);
+
+        assertEquals(XID_1, subIndex.xid);
+        assertTrue(buffer.commit(commit(XID_2, 190, 0)).isEmpty());
+        CommittedRedoTransaction committed = buffer.commit(
+                commit(XID_1, 200, 0)).orElseThrow();
+        assertEquals(List.of(0x05010A02, 0x05010A08),
+                committed.entries().stream()
+                        .map(RedoTransactionEntry::operationCode)
+                        .toList());
+    }
+
+    @Test
     void rollsBackSpilledTailAndDeletesFullRollbackSpill()
             throws Exception {
         try (RedoTransactionBuffer buffer = new RedoTransactionBuffer(
@@ -445,6 +510,18 @@ class RedoTransactionBufferTest {
         record.thread = 1;
         record.conId = 0;
         return record;
+    }
+
+    private static byte[] lobIndexKey(LobId lobId, long pageNumber) {
+        byte[] key = new byte[16];
+        key[0] = 10;
+        System.arraycopy(lobId.bytes(), 0, key, 1, LobId.LENGTH);
+        key[11] = 4;
+        key[12] = (byte) (pageNumber >>> 24);
+        key[13] = (byte) (pageNumber >>> 16);
+        key[14] = (byte) (pageNumber >>> 8);
+        key[15] = (byte) pageNumber;
+        return key;
     }
 
     private static RedoPosition position(

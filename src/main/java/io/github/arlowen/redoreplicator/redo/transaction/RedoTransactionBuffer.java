@@ -37,11 +37,13 @@ public final class RedoTransactionBuffer implements AutoCloseable {
     private final long memoryLimitBytes;
     private final Map<LobId, Map<Long, RedoLogRecord>> orphanedLobs;
     private final Map<LobId, TransactionSlotKey> lobOwners;
+    private final RedoLobIndexResolver lobIndexResolver;
 
     public RedoTransactionBuffer() {
         transactions = new LinkedHashMap<>();
         orphanedLobs = new LinkedHashMap<>();
         lobOwners = new LinkedHashMap<>();
+        lobIndexResolver = new RedoLobIndexResolver();
         spillManager = null;
         memoryLimitBytes = Long.MAX_VALUE;
     }
@@ -55,6 +57,7 @@ public final class RedoTransactionBuffer implements AutoCloseable {
         transactions = new LinkedHashMap<>();
         orphanedLobs = new LinkedHashMap<>();
         lobOwners = new LinkedHashMap<>();
+        lobIndexResolver = new RedoLobIndexResolver();
         spillManager = new TransactionSpillManager(spillDirectory);
         this.memoryLimitBytes = memoryLimitBytes;
     }
@@ -129,9 +132,23 @@ public final class RedoTransactionBuffer implements AutoCloseable {
             throw new IllegalArgumentException(
                     "A transaction pair must start with opcode 0x0501");
         }
+        boolean lobIndex = lobIndexResolver.resolve(undo, redo);
         RedoTransaction transaction = findExact(undo.xid, undo.conId);
         if (transaction == null) {
             return false;
+        }
+        if (lobIndex) {
+            TransactionSlotKey owner = lobOwners.get(redo.lobId);
+            if (owner != null) {
+                RedoTransaction parent = transactions.get(owner);
+                if (parent != null && !parent.xid().equals(undo.xid)) {
+                    undo.xid = parent.xid();
+                    redo.xid = parent.xid();
+                    undo.conId = owner.containerId();
+                    redo.conId = owner.containerId();
+                    transaction = parent;
+                }
+            }
         }
         propagateObjectIdentity(undo, redo);
         if (undo.bdba != 0 && redo.bdba != 0 && undo.bdba != redo.bdba) {
@@ -140,7 +157,8 @@ public final class RedoTransactionBuffer implements AutoCloseable {
                             + undo.xid);
         }
         if (redo.opCode != 0x0B04) {
-            registerLobOwner(transaction, undo.conId, redo);
+            registerLobOwner(
+                    transaction, undo.conId, redo, lobIndex);
             transaction.add(RedoTransactionEntry.pair(undo, redo));
             spillIfNeeded();
         }
@@ -400,9 +418,8 @@ public final class RedoTransactionBuffer implements AutoCloseable {
 
     private void registerLobOwner(
             RedoTransaction transaction, int containerId,
-            RedoLogRecord record) {
-        if (!isLobIndexOperation(record.opCode)
-                || record.lobId.equals(LobId.zero())) {
+            RedoLogRecord record, boolean lobIndex) {
+        if (!lobIndex) {
             return;
         }
         TransactionSlotKey owner = TransactionSlotKey.of(
@@ -481,11 +498,6 @@ public final class RedoTransactionBuffer implements AutoCloseable {
                 || (opCode & 0xFF00) == 0x0B00
                 || opCode == 0x0513 || opCode == 0x0514
                 || opCode == 0x1A02;
-    }
-
-    private static boolean isLobIndexOperation(int opCode) {
-        return opCode == 0x0A02 || opCode == 0x0A08
-                || opCode == 0x0A12 || opCode == 0x1A02;
     }
 
     private static boolean isRollbackRow(int opCode) {

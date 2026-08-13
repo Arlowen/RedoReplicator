@@ -35,6 +35,11 @@ public final class RedoLobContext {
         for (RedoTransactionEntry entry : entries) {
             if (entry.paired()) {
                 RedoLogRecord record = entry.second().orElseThrow();
+                if (record.opCode == 0x0A02
+                        || record.opCode == 0x0A08
+                        || record.opCode == 0x0A12) {
+                    context.addIndexRecord(record);
+                }
                 if (record.opCode == 0x1A02
                         && record.indKeyDataCode == 0x06
                         && !record.lobId.equals(LobId.zero())) {
@@ -63,12 +68,25 @@ public final class RedoLobContext {
         return context;
     }
 
+    public byte[] readOutOfRow(LobId lobId) {
+        RedoLobData lob = require(lobId);
+        long pageCount = lob.sizePages();
+        int sizeRest = lob.sizeRest();
+        if (pageCount == 0 && sizeRest == 0) {
+            return new byte[0];
+        }
+        return readIndexed(lobId, pageCount, sizeRest, List.of());
+    }
+
     public byte[] readIndexed(
             LobId lobId,
             long pageCount,
             int sizeRest,
             List<Long> explicitPages) {
         RedoLobData lob = require(lobId);
+        if (pageCount == 0 && sizeRest == 0) {
+            return new byte[0];
+        }
         long outputSize = Math.multiplyExact(
                 pageCount, lob.pageSize()) + sizeRest;
         if (outputSize > Integer.MAX_VALUE) {
@@ -122,6 +140,41 @@ public final class RedoLobContext {
         }
     }
 
+    private void addIndexRecord(RedoLogRecord record) {
+        if (record.lobId.equals(LobId.zero())) {
+            return;
+        }
+        RedoLobData lob = lobs.computeIfAbsent(
+                record.lobId, RedoLobData::new);
+        int start = 16;
+        long pageNumber = record.lobPageNo;
+        if (pageNumber > 0) {
+            start = 0;
+        }
+        if (record.indKeyDataSize > start) {
+            int pageBytes = record.indKeyDataSize - start;
+            if (pageBytes % 4 != 0
+                    || !hasRange(record, record.indKeyData + start,
+                    pageBytes)) {
+                throw invalid(record.lobId,
+                        "LOB index page list is malformed");
+            }
+            int position = start;
+            while (position < record.indKeyDataSize) {
+                long page = readUnsignedInt(
+                        record, record.indKeyData + position);
+                if (page > 0) {
+                    lob.setPage(pageNumber, page);
+                }
+                pageNumber++;
+                position += 4;
+            }
+        }
+        if (record.opCode == 0x0A12 && record.lobPageNo == 0) {
+            lob.setSize(record.lobSizePages, record.lobSizeRest);
+        }
+    }
+
     private int pageSize(
             long dataObjectId,
             SchemaCatalog schemaCatalog,
@@ -151,6 +204,21 @@ public final class RedoLobContext {
             throw invalid(lobId, "transaction contains no matching LOB data");
         }
         return lob;
+    }
+
+    private static long readUnsignedInt(
+            RedoLogRecord record, int position) {
+        int absolute = record.dataOffset() + position;
+        return (long) (record.data()[absolute] & 0xFF) << 24
+                | (long) (record.data()[absolute + 1] & 0xFF) << 16
+                | (long) (record.data()[absolute + 2] & 0xFF) << 8
+                | record.data()[absolute + 3] & 0xFFL;
+    }
+
+    private static boolean hasRange(
+            RedoLogRecord record, int position, int size) {
+        return position >= 0 && size >= 0
+                && position <= record.size - size;
     }
 
     private static RedoLogException invalid(LobId lobId, String reason) {

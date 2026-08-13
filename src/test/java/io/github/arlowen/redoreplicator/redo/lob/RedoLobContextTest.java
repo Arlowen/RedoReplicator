@@ -94,6 +94,75 @@ class RedoLobContextTest {
                 context.readIndexed(LOB_ID, 1, 0, List.of(100L)));
     }
 
+    @Test
+    void assemblesClassicLobIndexPagesAndLength() throws Exception {
+        byte[] indexData = new byte[20];
+        indexData[9] = 3;
+        writeUnsignedInt(indexData, 16, 100);
+        RedoLogRecord index = new RedoLogRecord();
+        index.attachData(indexData, 0, indexData.length);
+        index.opCode = 0x0A12;
+        index.lobId = LOB_ID;
+        index.lobPageNo = 0;
+        index.lobSizePages = 0;
+        index.lobSizeRest = 3;
+        index.indKeyData = 0;
+        index.indKeyDataSize = indexData.length;
+        RedoLogRecord undo = new RedoLogRecord();
+        undo.opCode = 0x0501;
+
+        RedoLobContext context = RedoLobContext.from(
+                List.of(
+                        RedoTransactionEntry.single(page(
+                                100, 0, new byte[]{1, 2, 3})),
+                        RedoTransactionEntry.pair(undo, index)),
+                catalog(), catalog());
+
+        byte[] value = context.readOutOfRow(LOB_ID);
+        assertArrayEquals(new byte[]{1, 2, 3}, value);
+
+        Properties expected = new Properties();
+        try (InputStream input = getClass().getResourceAsStream(
+                "/fixtures/lob-locator/"
+                        + "openlogreplicator-6bc92bc1.properties")) {
+            assertNotNull(input);
+            expected.load(input);
+        }
+        assertEquals("true", expected.getProperty("outofrow.ok"));
+        assertEquals(expected.getProperty("outofrow.hex"),
+                HexFormat.of().formatHex(value));
+    }
+
+    @Test
+    void preservesKnownEmptyOutOfRowLob() {
+        RedoLogRecord index = new RedoLogRecord();
+        index.attachData(new byte[10], 0, 10);
+        index.opCode = 0x0A12;
+        index.lobId = LOB_ID;
+        index.indKeyDataSize = 10;
+        RedoLogRecord undo = new RedoLogRecord();
+        undo.opCode = 0x0501;
+
+        RedoLobContext context = RedoLobContext.from(
+                List.of(RedoTransactionEntry.pair(undo, index)),
+                catalog(), catalog());
+
+        assertArrayEquals(new byte[0], context.readOutOfRow(LOB_ID));
+    }
+
+    @Test
+    void stopsWhenClassicLobLengthIsUnknown() {
+        RedoLobContext context = RedoLobContext.from(
+                List.of(RedoTransactionEntry.single(page(
+                        100, 0, new byte[]{1, 2, 3}))),
+                catalog(), catalog());
+
+        RedoLogException error = assertThrows(
+                RedoLogException.class,
+                () -> context.readOutOfRow(LOB_ID));
+        assertEquals(50075, error.getErrorCode());
+    }
+
     private static RedoLogRecord page(
             long dba, long pageNumber, byte[] payload) {
         RedoLogRecord record = new RedoLogRecord();
@@ -120,5 +189,13 @@ class RedoLobContextTest {
         SchemaCatalog catalog = new SchemaCatalog();
         catalog.add(table);
         return catalog;
+    }
+
+    private static void writeUnsignedInt(
+            byte[] data, int offset, long value) {
+        data[offset] = (byte) (value >>> 24);
+        data[offset + 1] = (byte) (value >>> 16);
+        data[offset + 2] = (byte) (value >>> 8);
+        data[offset + 3] = (byte) value;
     }
 }
