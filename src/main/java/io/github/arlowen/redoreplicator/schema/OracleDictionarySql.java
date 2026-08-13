@@ -1,0 +1,114 @@
+/*
+ * Java translation derived from OpenLogReplicator
+ * src/replicator/ReplicatorOnline.h dictionary queries.
+ *
+ * Copyright (C) 2018-2026 Adam Leszczynski (aleszczynski@bersler.com)
+ * Copyright (C) 2026 RedoReplicator contributors
+ *
+ * This file is part of RedoReplicator and is licensed under
+ * the GNU Affero General Public License version 3 or later.
+ */
+package io.github.arlowen.redoreplicator.schema;
+
+final class OracleDictionarySql {
+    static final String CONTAINER_NAME = """
+            SELECT NVL(SYS_CONTEXT('USERENV', 'CON_NAME'),
+                       SYS_CONTEXT('USERENV', 'DB_NAME'))
+              FROM DUAL
+            """;
+
+    static final String CHARACTER_SET = """
+            SELECT NLS_CHARSET_ID(PROPERTY_VALUE)
+              FROM DATABASE_PROPERTIES
+             WHERE PROPERTY_NAME = ?
+            """;
+
+    static final String TABLE = """
+            SELECT U.USER#, O.OBJ#, NVL(T.DATAOBJ#, 0), NVL(T.CLUCOLS, 0),
+                   MOD(NVL(O.FLAGS, 0), 18446744073709551616),
+                   MOD(NVL(T.FLAGS, 0), 18446744073709551616),
+                   MOD(NVL(T.PROPERTY, 0), 18446744073709551616),
+                   MOD(NVL(DS.FLAGS_STG, 0), 18446744073709551616)
+              FROM SYS.USER$ AS OF SCN ? U
+              JOIN SYS.OBJ$ AS OF SCN ? O ON O.OWNER# = U.USER#
+              JOIN SYS.TAB$ AS OF SCN ? T ON T.OBJ# = O.OBJ#
+              LEFT JOIN SYS.DEFERRED_STG$ AS OF SCN ? DS ON DS.OBJ# = O.OBJ#
+             WHERE U.NAME = ?
+               AND O.NAME = ?
+               AND O.TYPE# = 2
+               AND BITAND(MOD(O.FLAGS, 18446744073709551616), 128) = 0
+            """;
+
+    static final String COLUMNS = """
+            SELECT C.COL#, C.SEGCOL#, C.INTCOL#, C.NAME, C.TYPE#, C.LENGTH,
+                   NVL(C.PRECISION#, -1), NVL(C.SCALE, -1),
+                   NVL(C.CHARSETFORM, 0), NVL(C.CHARSETID, 0), C.NULL$,
+                   MOD(NVL(C.PROPERTY, 0), 18446744073709551616)
+              FROM SYS.COL$ AS OF SCN ? C
+             WHERE C.OBJ# = ?
+             ORDER BY C.SEGCOL#, C.INTCOL#, C.COL#
+            """;
+
+    static final String PRIMARY_KEY_MEMBERSHIP = """
+            SELECT C.INTCOL#, COUNT(*)
+              FROM SYS.CDEF$ AS OF SCN ? D
+              JOIN SYS.CCOL$ AS OF SCN ? C ON C.CON# = D.CON# AND C.OBJ# = D.OBJ#
+             WHERE D.OBJ# = ?
+               AND D.TYPE# = 2
+             GROUP BY C.INTCOL#
+            """;
+
+    static final String GUARD_SEGMENTS = """
+            SELECT E.COLNUM, NVL(E.GUARD_ID, -1)
+              FROM SYS.ECOL$ AS OF SCN ? E
+             WHERE E.TABOBJ# = ?
+            """;
+
+    static final String TABLE_PARTITIONS = """
+            SELECT TP.OBJ#, NVL(TP.DATAOBJ#, 0)
+              FROM SYS.TABPART$ AS OF SCN ? TP
+             WHERE TP.BO# = ?
+             UNION ALL
+            SELECT TSP.OBJ#, NVL(TSP.DATAOBJ#, 0)
+              FROM SYS.TABCOMPART$ AS OF SCN ? TCP
+              JOIN SYS.TABSUBPART$ AS OF SCN ? TSP ON TSP.POBJ# = TCP.OBJ#
+             WHERE TCP.BO# = ?
+            """;
+
+    static final String LOBS = """
+            SELECT L.OBJ#, NVL(O.DATAOBJ#, 0), L.LOBJ#, L.COL#, L.INTCOL#,
+                   NVL(TS.BLOCKSIZE, 0)
+              FROM SYS.LOB$ AS OF SCN ? L
+              JOIN SYS.OBJ$ AS OF SCN ? O ON O.OBJ# = L.LOBJ#
+              LEFT JOIN SYS.TS$ AS OF SCN ? TS ON TS.TS# = L.TS#
+             WHERE L.OBJ# = ?
+             ORDER BY L.INTCOL#
+            """;
+
+    static final String OBJECT_DATA_BY_NAME = """
+            SELECT NVL(O.DATAOBJ#, 0)
+              FROM SYS.OBJ$ AS OF SCN ? O
+             WHERE O.OWNER# = ?
+               AND O.NAME = ?
+               AND BITAND(MOD(O.FLAGS, 18446744073709551616), 128) = 0
+             ORDER BY O.OBJ#
+            """;
+
+    static final String LOB_PARTITIONS = """
+            SELECT NVL(O.DATAOBJ#, 0), NVL(TS.BLOCKSIZE, 0)
+              FROM SYS.LOBFRAG$ AS OF SCN ? LF
+              JOIN SYS.OBJ$ AS OF SCN ? O ON O.OBJ# = LF.FRAGOBJ#
+              LEFT JOIN SYS.TS$ AS OF SCN ? TS ON TS.TS# = LF.TS#
+             WHERE LF.PARENTOBJ# = ?
+             UNION ALL
+            SELECT NVL(O.DATAOBJ#, 0), NVL(TS.BLOCKSIZE, 0)
+              FROM SYS.LOBCOMPPART$ AS OF SCN ? LCP
+              JOIN SYS.LOBFRAG$ AS OF SCN ? LF ON LF.PARENTOBJ# = LCP.PARTOBJ#
+              JOIN SYS.OBJ$ AS OF SCN ? O ON O.OBJ# = LF.FRAGOBJ#
+              LEFT JOIN SYS.TS$ AS OF SCN ? TS ON TS.TS# = LF.TS#
+             WHERE LCP.LOBJ# = ?
+            """;
+
+    private OracleDictionarySql() {
+    }
+}

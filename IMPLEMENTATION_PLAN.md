@@ -488,9 +488,9 @@ Oracle 环境固定放置在：
 |---|---|
 | 19c ARM64 | `container-registry.oracle.com/database/enterprise:19.19.0.0@sha256:3843234f6fd1ed084b1dd7ad42eeeaa95ad13f12c790810cb368bb58f8ad42ba` |
 | 19c x86_64 | `container-registry.oracle.com/database/enterprise:19.3.0.0@sha256:2df7530ac81566f8659e13d41fda029e5c08a983147e5b372b173476a74ab62e` |
-| 26ai Free 双架构索引 | `container-registry.oracle.com/database/free:23.26.0.0@sha256:1a213af16c915ceb0ad275d397359da363330c6948956e610171935a5d01581a` |
-| 26ai Free x86_64 manifest | `sha256:57ef89afd4d84f24515ddb74dd381edda7bdd85088d03008990ef686caecd998` |
-| 26ai Free ARM64 manifest | `sha256:6da9cf1e8172f2d5b74440d0dd8663d227c72a275b64992fee5970d3188fb5de` |
+| 26ai Free 双架构索引 | `container-registry.oracle.com/database/free:23.26.1.0@sha256:f7e6cdba3d492bf8fe654303cf92e6c9adc4586e2b4527d7c3200bf96fb21f1b` |
+| 26ai Free x86_64 manifest | `sha256:51940ce2a4c9a085c9deb715713d68c579756e9bf09a0d7318c7e3e28f70ba1e` |
+| 26ai Free ARM64 manifest | `sha256:3373059fb47edc0053c297af756f4f0fbbb46179b5eec20f81713fd73a356ee2` |
 
 19c x86_64 在当前 ARM Mac 上使用 Docker 模拟执行。正确性必须测试四组组合；性能测试只在本机原生架构执行。
 

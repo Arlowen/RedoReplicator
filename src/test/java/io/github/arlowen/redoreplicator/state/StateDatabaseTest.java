@@ -10,6 +10,10 @@ import io.github.arlowen.redoreplicator.error.ConfigurationException;
 import io.github.arlowen.redoreplicator.redo.common.FileOffset;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
+import io.github.arlowen.redoreplicator.schema.ColumnSchema;
+import io.github.arlowen.redoreplicator.schema.OracleColumnType;
+import io.github.arlowen.redoreplicator.schema.TableSchema;
+import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -101,6 +105,25 @@ class StateDatabaseTest {
     }
 
     @Test
+    void persistsAndDecodesCompleteInitialTableSchema() throws Exception {
+        TableSchema schema = completeTableSchema();
+        TableSchemaJsonCodec codec = new TableSchemaJsonCodec();
+        TableSchemaVersion version = TableSchemaVersion.initial(
+                schema, Scn.of(100), codec);
+
+        try (StateDatabase database = StateDatabase.open(temporaryDirectory)) {
+            database.store().commitLwn(
+                    runtimeState(Scn.of(100), Optional.empty()), List.of(version));
+
+            TableSchemaVersion persisted = database.store().findSchemaAt(
+                    "FREEPDB1", "APP", "ORDERS", Scn.of(100)).orElseThrow();
+            assertEquals(schema, persisted.decode(codec));
+            assertEquals(SchemaSource.INITIAL, persisted.source());
+            assertFalse(persisted.dropTombstone());
+        }
+    }
+
+    @Test
     void rollsBackSchemaAndRuntimeStateTogether() throws Exception {
         RuntimeState firstState = runtimeState(Scn.of(100), Optional.empty());
         TableSchemaVersion schema = schemaVersion(100, 101, false, SchemaSource.INITIAL);
@@ -187,5 +210,16 @@ class StateDatabaseTest {
                 dropped ? "DROP TABLE APP.ORDERS" : "",
                 source,
                 dropped);
+    }
+
+    private static TableSchema completeTableSchema() {
+        ColumnSchema id = new ColumnSchema(
+                1, -1, 1, 1, "ID", OracleColumnType.NUMBER,
+                22, 10, 0, 0, 1, false, false, false,
+                false, false, false, false, false, false);
+        return new TableSchema(
+                "FREEPDB1", "APP", "ORDERS",
+                101, 102, 12, 0, 0,
+                List.of(id), List.of(), List.of());
     }
 }

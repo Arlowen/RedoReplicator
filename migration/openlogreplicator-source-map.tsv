@@ -16,12 +16,12 @@ src/common/ClockHW.cpp	io.github.arlowen.redoreplicator.runtime.SystemClock	tran
 src/common/ClockHW.h	io.github.arlowen.redoreplicator.runtime.SystemClock	translated	Translated JDK wall-clock implementation
 src/common/Ctx.cpp	io.github.arlowen.redoreplicator.runtime.RedoContext	pending	Translate redo domain model
 src/common/Ctx.h	io.github.arlowen.redoreplicator.runtime.RedoContext	pending	Translate redo domain model
-src/common/DbColumn.h	io.github.arlowen.redoreplicator.redo.common.DbColumn	pending	Translate redo domain model
+src/common/DbColumn.h	io.github.arlowen.redoreplicator.schema.ColumnSchema	pending	Column schema fields and property mapping translated; runtime value decoding remains
 src/common/DbIncarnation.h	io.github.arlowen.redoreplicator.redo.common.DbIncarnation	translated	Translated and parity-tested database incarnation identity
-src/common/DbLob.cpp	io.github.arlowen.redoreplicator.redo.common.DbLob	pending	Translate redo domain model
-src/common/DbLob.h	io.github.arlowen.redoreplicator.redo.common.DbLob	pending	Translate redo domain model
-src/common/DbTable.cpp	io.github.arlowen.redoreplicator.redo.common.DbTable	pending	Translate redo domain model
-src/common/DbTable.h	io.github.arlowen.redoreplicator.redo.common.DbTable	pending	Translate redo domain model
+src/common/DbLob.cpp	io.github.arlowen.redoreplicator.schema.LobSchema	pending	LOB identities indexes partitions and page sizes translated; redo LOB assembly remains
+src/common/DbLob.h	io.github.arlowen.redoreplicator.schema.LobSchema	pending	LOB identities indexes partitions and page sizes translated; redo LOB assembly remains
+src/common/DbTable.cpp	io.github.arlowen.redoreplicator.schema.TableSchema	pending	Table columns partitions and lookup translated; conditions and system-table behavior remain
+src/common/DbTable.h	io.github.arlowen.redoreplicator.schema.TableSchema	pending	Table columns partitions and lookup translated; conditions and system-table behavior remain
 src/common/Format.h	io.github.arlowen.redoreplicator.output.Format	pending	Translate redo domain model
 src/common/LobCtx.cpp	io.github.arlowen.redoreplicator.redo.common.LobCtx	pending	Translate redo domain model
 src/common/LobCtx.h	io.github.arlowen.redoreplicator.redo.common.LobCtx	pending	Translate redo domain model
@@ -135,8 +135,8 @@ src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.state.RuntimeState	pe
 src/metadata/Metadata.cpp	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/Metadata.h	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/RedoLog.h	io.github.arlowen.redoreplicator.schema.RedoLog	pending	Translate schema and redo metadata
-src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.Schema	pending	Translate schema and redo metadata
-src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.Schema	pending	Translate schema and redo metadata
+src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial Flashback dictionary assembly translated; system transaction and DDL mutation remain
+src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial Flashback dictionary assembly translated; system transaction and DDL mutation remain
 src/metadata/SchemaElement.h	io.github.arlowen.redoreplicator.schema.SchemaElement	pending	Translate schema and redo metadata
 src/metadata/Serializer.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
 src/metadata/Serializer.h	-	excluded	Checkpoint JSON serialization is replaced by H2
@@ -187,8 +187,8 @@ src/replicator/Replicator.cpp	io.github.arlowen.redoreplicator.source.Replicator
 src/replicator/Replicator.h	io.github.arlowen.redoreplicator.source.Replicator	pending	Translate online discovery using JDBC and local redo files
 src/replicator/ReplicatorBatch.cpp	-	excluded	Offline batch reader is out of scope
 src/replicator/ReplicatorBatch.h	-	excluded	Offline batch reader is out of scope
-src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.source.ReplicatorOnline	pending	Translate online discovery using JDBC and local redo files
-src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.source.ReplicatorOnline	pending	Translate online discovery using JDBC and local redo files
+src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.schema.OracleDictionaryReader	pending	Database identity and initial Flashback dictionary loading translated; redo discovery loop remains
+src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.schema.OracleDictionaryReader	pending	Database identity and initial Flashback dictionary loading translated; redo discovery loop remains
 src/state/State.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
 src/state/State.h	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
 src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2

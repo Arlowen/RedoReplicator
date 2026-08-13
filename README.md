@@ -2,7 +2,15 @@
 
 RedoReplicator is an in-progress JDK 17 translation of OpenLogReplicator's Oracle redo change data capture engine. The implementation target and acceptance gates are defined in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
-The project is currently implementing stage 2: redo block, LWN, record and vector parsing on top of the repeatable C++ baseline. It is not ready to capture Oracle redo yet.
+The project is currently implementing stage 3: initial Oracle dictionary loading,
+schema history and H2 recovery state on top of the stage 2 redo parser. It is not
+ready to capture Oracle redo yet.
+
+Oracle accounts are never created by the application or Docker Compose. Review
+and manually execute [sql/configure_database.sql](sql/configure_database.sql),
+then [sql/create_capture_user.sql](sql/create_capture_user.sql) in every PDB
+that will be tested. Place that ordinary account in the future YAML
+configuration.
 
 ## Build
 
