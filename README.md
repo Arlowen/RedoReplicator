@@ -105,11 +105,14 @@ java -jar target/redo-replicator-0.1.0-SNAPSHOT.jar \
 The default command performs the preflight and then starts continuous capture;
 `--validate` exits after preflight without opening runtime state. The release
 layout uses the same entry point through `bin/run.sh`; `bin/validate.sh` adds
-`--validate`. Runtime startup takes an OS file lock under `data/` before opening
-H2 or clearing stale transaction spill, so a second process cannot touch the
-same installation state. SIGTERM requests a stop at the next complete LWN
-boundary, after JSONL fsync and H2 commit. During source-tree development, the
-scripts can target the Maven artifact explicitly:
+`--validate`. `bin/start.sh`, `bin/stop.sh`, `bin/restart.sh` and `bin/status.sh`
+manage one background process and its installation-local PID. `stop.sh` sends
+SIGTERM and never escalates to `kill -9`; its default wait is 60 seconds.
+Runtime startup also takes an OS file lock under `data/` before opening H2 or
+clearing stale transaction spill, so a second process cannot touch the same
+installation state. SIGTERM requests a stop at the next complete LWN boundary,
+after JSONL fsync and H2 commit. During source-tree development, the scripts can
+target the Maven artifact explicitly:
 
 ```bash
 REDO_REPLICATOR_JAR="$PWD/target/redo-replicator-0.1.0-SNAPSHOT.jar" \
