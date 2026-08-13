@@ -33,8 +33,11 @@ online log members with their redo thread, sequence and SCN range. The planner
 selects an archive covering the configured start SCN for every active thread,
 prefers continuous archived sequences before online redo, polls temporarily
 missing files, and stops on a proven gap, timeout or database identity change.
-The filesystem block reader and capture lifecycle are not wired to this planner
-yet.
+A synchronous JDK `FileChannel` reader validates the selected file identity,
+header, block number, sequence and checksum, resumes at a block-aligned offset,
+distinguishes archive completion from online wait, and stops on truncation or
+online overwrite. Parser buffering and the capture lifecycle are not wired to
+the reader yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
