@@ -72,10 +72,14 @@ class RedoStreamParserTest {
             assertTrue(parser.parsedPosition().isEmpty());
             assertEquals(0, transactionBuffer.openTransactionCount());
 
-            assertTrue(parser.accept(reader.read(1)).isEmpty());
+            List<ParsedLwn> parsed = parser.accept(reader.read(1));
+            assertEquals(1, parsed.size());
             assertEquals(FileOffset.fromBlock(4, BLOCK_SIZE),
                     parser.parsedPosition().orElseThrow().offset());
             assertEquals(1, transactionBuffer.openTransactionCount());
+            assertEquals(FileOffset.fromBlock(2, BLOCK_SIZE),
+                    parsed.get(0).lowWatermarkPosition()
+                            .orElseThrow().offset());
 
             parser.accept(reader.read(1));
             assertTrue(parser.isFinished());
@@ -117,9 +121,14 @@ class RedoStreamParserTest {
                     firstVectors.stream()
                     .map(vector -> vector.opCode).toList());
 
-            List<CommittedRedoTransaction> committed = parser.accept(
+            List<ParsedLwn> parsed = parser.accept(
                     readBatch);
 
+            assertEquals(2, parsed.size());
+            assertTrue(parsed.get(0).committedTransactions().isEmpty());
+            assertTrue(parsed.get(0).lowWatermarkPosition().isEmpty());
+            List<CommittedRedoTransaction> committed =
+                    parsed.get(1).committedTransactions();
             assertEquals(1, committed.size());
             assertEquals(secondCommitScn,
                     committed.get(0).commitPosition().scn());
@@ -130,6 +139,7 @@ class RedoStreamParserTest {
                     parser.parsedPosition().orElseThrow().scn());
             assertEquals(FileOffset.fromBlock(4, BLOCK_SIZE),
                     parser.parsedPosition().orElseThrow().offset());
+            assertTrue(parsed.get(1).lowWatermarkPosition().isEmpty());
 
             assertTrue(parser.accept(reader.read(8)).isEmpty());
             assertTrue(parser.isFinished());
@@ -201,10 +211,9 @@ class RedoStreamParserTest {
 
     private static byte[] transactionLwn(
             Scn scn, int slot, long xidSequence) {
-        byte[] begin = vector(0x0502, beginField(slot, xidSequence));
-        byte[] ddl = vector(0x1801, ddlField(slot, xidSequence));
-        byte[] commit = vector(0x0504, commitField(slot, xidSequence));
-        return lwnRecord(scn, 1, begin, ddl, commit);
+        return RedoBinaryTestSupport.transactionLwn(
+                scn, 1, slot, xidSequence,
+                0x0502, 0x1801, 0x0504);
     }
 
     private static byte[] lwnRecord(
@@ -266,30 +275,6 @@ class RedoStreamParserTest {
                 field, 0, slot, ByteOrder.LITTLE_ENDIAN);
         RedoBinaryTestSupport.writeUnsignedInt(
                 field, 4, xidSequence, ByteOrder.LITTLE_ENDIAN);
-        return field;
-    }
-
-    private static byte[] commitField(int slot, long xidSequence) {
-        byte[] field = new byte[20];
-        RedoBinaryTestSupport.writeUnsignedShort(
-                field, 0, slot, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedInt(
-                field, 4, xidSequence, ByteOrder.LITTLE_ENDIAN);
-        return field;
-    }
-
-    private static byte[] ddlField(int slot, long xidSequence) {
-        byte[] field = new byte[18];
-        RedoBinaryTestSupport.writeUnsignedShort(
-                field, 4, 1, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedShort(
-                field, 6, slot, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedInt(
-                field, 8, xidSequence, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedShort(
-                field, 12, 4, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedShort(
-                field, 16, 4, ByteOrder.LITTLE_ENDIAN);
         return field;
     }
 

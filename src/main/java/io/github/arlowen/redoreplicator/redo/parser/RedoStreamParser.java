@@ -30,6 +30,7 @@ public final class RedoStreamParser {
     private final Scn captureStartScn;
     private final RedoLwnAssembler lwnAssembler;
     private final RedoParser redoParser;
+    private final RedoTransactionBuffer transactionBuffer;
     private final List<byte[]> pendingBlocks;
 
     private FileOffset expectedReaderOffset;
@@ -52,11 +53,12 @@ public final class RedoStreamParser {
         redoParser = new RedoParser(
                 fileHeader.byteOrder(), fileHeader.compatibleVersion(),
                 fileHeader.blockSize(), transactionBuffer);
+        this.transactionBuffer = transactionBuffer;
         pendingBlocks = new ArrayList<>();
         initializeOffset(startOffset);
     }
 
-    public List<CommittedRedoTransaction> accept(RedoReadBatch batch) {
+    public List<ParsedLwn> accept(RedoReadBatch batch) {
         Objects.requireNonNull(batch, "batch");
         if (finished) {
             throw new IllegalStateException("Redo stream is already finished");
@@ -73,7 +75,7 @@ public final class RedoStreamParser {
             expectedReaderOffset = expectedReaderOffset.plus(
                     (long) batch.blocks().size() * fileHeader.blockSize());
         }
-        List<CommittedRedoTransaction> committed = parseAvailableLwns();
+        List<ParsedLwn> parsed = parseAvailableLwns();
         if (batch.status() == RedoReadStatus.FINISHED) {
             if (!pendingBlocks.isEmpty()) {
                 throw new RedoLogException(50046,
@@ -82,7 +84,7 @@ public final class RedoStreamParser {
             }
             finished = true;
         }
-        return committed;
+        return parsed;
     }
 
     public Optional<RedoPosition> parsedPosition() {
@@ -93,8 +95,8 @@ public final class RedoStreamParser {
         return finished;
     }
 
-    private List<CommittedRedoTransaction> parseAvailableLwns() {
-        List<CommittedRedoTransaction> committed = new ArrayList<>();
+    private List<ParsedLwn> parseAvailableLwns() {
+        List<ParsedLwn> parsed = new ArrayList<>();
         while (!pendingBlocks.isEmpty()) {
             Optional<AssembledLwn> assembled = lwnAssembler.tryAssemble(
                     pendingBlocks,
@@ -109,6 +111,7 @@ public final class RedoStreamParser {
             List<CommittedRedoTransaction> lwnTransactions =
                     redoParser.process(
                             lwn, fileHeader.sequence(), fileHeader.thread());
+            List<CommittedRedoTransaction> committed = new ArrayList<>();
             for (CommittedRedoTransaction transaction : lwnTransactions) {
                 if (transaction.commitPosition().scn()
                         .compareTo(captureStartScn) >= 0) {
@@ -122,8 +125,11 @@ public final class RedoStreamParser {
                     lwn.scn(), fileHeader.thread(), fileHeader.sequence(),
                     FileOffset.fromBlock(
                             lwn.endBlock(), fileHeader.blockSize()));
+            parsed.add(new ParsedLwn(
+                    parsedPosition, committed,
+                    transactionBuffer.lowWatermark()));
         }
-        return List.copyOf(committed);
+        return List.copyOf(parsed);
     }
 
     private void initializeOffset(FileOffset startOffset) {

@@ -6,8 +6,8 @@
  */
 package io.github.arlowen.redoreplicator.redo;
 
-import io.github.arlowen.redoreplicator.redo.reader.RedoBlockHeaderParser;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
+import io.github.arlowen.redoreplicator.redo.reader.RedoBlockHeaderParser;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -108,6 +108,31 @@ public final class RedoBinaryTestSupport {
         return block;
     }
 
+    public static byte[] transactionLwn(
+            Scn scn,
+            long blockCount,
+            int slot,
+            long xidSequence,
+            int... opCodes) {
+        byte[][] vectors = new byte[opCodes.length][];
+        for (int index = 0; index < opCodes.length; index++) {
+            int opCode = opCodes[index];
+            byte[] field;
+            if (opCode == 0x0502) {
+                field = beginOrCommitField(32, slot, xidSequence);
+            } else if (opCode == 0x0504) {
+                field = beginOrCommitField(20, slot, xidSequence);
+            } else if (opCode == 0x1801) {
+                field = ddlField(slot, xidSequence);
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported test transaction opcode: " + opCode);
+            }
+            vectors[index] = vector(opCode, field);
+        }
+        return lwnRecord(scn, blockCount, vectors);
+    }
+
     public static byte[] extendedRecord(int recordSize) {
         byte[] data = new byte[512];
         int offset = 16;
@@ -194,6 +219,72 @@ public final class RedoBinaryTestSupport {
             data[offset + 2] = (byte) (value >>> 16);
             data[offset + 3] = (byte) (value >>> 24);
         }
+    }
+
+    private static byte[] lwnRecord(
+            Scn scn, long blockCount, byte[]... vectors) {
+        int size = 68;
+        for (byte[] vector : vectors) {
+            size += vector.length;
+        }
+        byte[] record = new byte[size];
+        writeUnsignedInt(record, 0, size, ByteOrder.LITTLE_ENDIAN);
+        record[4] = 0x05;
+        writeUnsignedShort(record, 6,
+                (int) (scn.rawValue() >>> 32), ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(record, 8,
+                scn.rawValue(), ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(record, 12, 1, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(record, 24, 1, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(record, 26, 1, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(record, 28, blockCount, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(record, 32, size, ByteOrder.LITTLE_ENDIAN);
+        writeScn(record, 40, scn.rawValue(), ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(record, 64, 989_619_936L,
+                ByteOrder.LITTLE_ENDIAN);
+        int offset = 68;
+        for (byte[] vector : vectors) {
+            System.arraycopy(vector, 0, record, offset, vector.length);
+            offset += vector.length;
+        }
+        return record;
+    }
+
+    private static byte[] vector(int opCode, byte[] field) {
+        int fieldListLength = 4;
+        int fieldPosition = 32 + ((fieldListLength + 2) & 0xFFFC);
+        byte[] vector = new byte[fieldPosition + align4(field.length)];
+        vector[0] = (byte) (opCode >>> 8);
+        vector[1] = (byte) opCode;
+        writeUnsignedShort(vector, 2, 17, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(vector, 32,
+                fieldListLength, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(vector, 34,
+                field.length, ByteOrder.LITTLE_ENDIAN);
+        System.arraycopy(field, 0, vector, fieldPosition, field.length);
+        return vector;
+    }
+
+    private static byte[] beginOrCommitField(
+            int size, int slot, long xidSequence) {
+        byte[] field = new byte[size];
+        writeUnsignedShort(field, 0, slot, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(field, 4, xidSequence, ByteOrder.LITTLE_ENDIAN);
+        return field;
+    }
+
+    private static byte[] ddlField(int slot, long xidSequence) {
+        byte[] field = new byte[18];
+        writeUnsignedShort(field, 4, 1, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(field, 6, slot, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(field, 8, xidSequence, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(field, 12, 4, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(field, 16, 4, ByteOrder.LITTLE_ENDIAN);
+        return field;
+    }
+
+    private static int align4(int size) {
+        return (size + 3) & 0xFFFC;
     }
 
     private static void rewriteChecksum(

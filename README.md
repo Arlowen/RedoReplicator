@@ -37,9 +37,12 @@ A synchronous JDK `FileChannel` reader validates the selected file identity,
 header, block number, sequence and checksum, resumes at a block-aligned offset,
 distinguishes archive completion from online wait, and stops on truncation or
 online overwrite. A streaming parser retains incomplete LWN blocks across read
-batches, advances only at a complete LWN boundary, preserves pre-start
-transaction state and filters output by commit SCN. Multi-thread scheduling,
-JSONL output and the capture lifecycle are not wired yet.
+batches, exposes each complete LWN with its safe position and low-watermark,
+preserves pre-start transaction state and filters output by commit SCN. A
+per-thread stream keeps open transactions across archive sequence switches,
+waits for online redo growth and advances to the exact next sequence only after
+the current file finishes. Multi-thread scheduling, JSONL output and the full
+capture lifecycle are not wired yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),

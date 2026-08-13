@@ -167,14 +167,14 @@ src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1301	
 src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1801	translated	Translated DDL XID, type, fragment sequence, payload fields, temporary-object filtering and object identity
 src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A02	translated	Translated KTB and KDLI LOB operation fields
 src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A06	translated	Translated KDLI before-image payload and record object identity
-src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Reader batches now retain cross-batch LWN state, advance complete LWN offsets, filter pre-start commits and route transactions; metadata, LOB and output integration remain
-src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Reader batches now retain cross-batch LWN state, advance complete LWN offsets, filter pre-start commits and route transactions; metadata, LOB and output integration remain
+src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Reader batches retain cross-batch LWN state and expose each complete LWN with safe position, low-watermark and filtered commits; metadata, LOB and output integration remain
+src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Reader batches retain cross-batch LWN state and expose each complete LWN with safe position, low-watermark and filtered commits; metadata, LOB and output integration remain
 src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	Entries, rollback matching, commit snapshots, row grouping and split-undo state implemented; LOB, multi-row and output flush remain
 src/parser/Transaction.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	Entries, rollback matching, commit snapshots, row grouping and split-undo state implemented; LOB, multi-row and output flush remain
 src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Slot lookup, interleaving, commit, rollback, low-watermark, file spill and multiblock undo merge implemented; orphaned LOB and runtime wiring remain
 src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Slot lookup, interleaving, commit, rollback, low-watermark, file spill and multiblock undo merge implemented; orphaned LOB and runtime wiring remain
-src/reader/Reader.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	Read-only channel, header/block validation, archive EOF, online wait, overwrite handling and streaming parser handoff translated; runtime lifecycle remains
-src/reader/Reader.h	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	Read-only channel, header/block validation, archive EOF, online wait, overwrite handling and streaming parser handoff translated; runtime lifecycle remains
+src/reader/Reader.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	Read-only channel, validation, archive EOF, online wait and per-thread continuous sequence handoff translated; global scheduling and diagnostics remain
+src/reader/Reader.h	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	Read-only channel, validation, archive EOF, online wait and per-thread continuous sequence handoff translated; global scheduling and diagnostics remain
 src/reader/ReaderFilesystem.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	JDK FileChannel positional reads and dynamic file-size refresh translated; filesystem diagnostics remain
 src/reader/ReaderFilesystem.h	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	JDK FileChannel positional reads and dynamic file-size refresh translated; filesystem diagnostics remain
 src/replicator/DatabaseConnection.cpp	io.github.arlowen.redoreplicator.source.OracleSourceValidator	pending	JDBC identity, logging, dictionary privilege, mapped file preflight and redo catalog polling implemented; reconnect lifecycle remains
@@ -183,12 +183,12 @@ src/replicator/DatabaseEnvironment.cpp	io.github.arlowen.redoreplicator.source.O
 src/replicator/DatabaseEnvironment.h	io.github.arlowen.redoreplicator.source.OracleConnectionFactory	pending	Ordinary JDBC account connection factory implemented; reconnect and session lifecycle remain
 src/replicator/DatabaseStatement.cpp	io.github.arlowen.redoreplicator.source.OracleStatement	pending	Translate online discovery using JDBC and local redo files
 src/replicator/DatabaseStatement.h	io.github.arlowen.redoreplicator.source.OracleStatement	pending	Translate online discovery using JDBC and local redo files
-src/replicator/Replicator.cpp	io.github.arlowen.redoreplicator.source.Replicator	pending	Translate online discovery using JDBC and local redo files
-src/replicator/Replicator.h	io.github.arlowen.redoreplicator.source.Replicator	pending	Translate online discovery using JDBC and local redo files
+src/replicator/Replicator.cpp	io.github.arlowen.redoreplicator.runtime.RedoThreadStream	pending	Per-thread archive switch, online wait and exact next-sequence processing translated; global lifecycle, output and state commits remain
+src/replicator/Replicator.h	io.github.arlowen.redoreplicator.runtime.RedoThreadStream	pending	Per-thread stream contract and sequence state translated; global lifecycle, output and state commits remain
 src/replicator/ReplicatorBatch.cpp	-	excluded	Offline batch reader is out of scope
 src/replicator/ReplicatorBatch.h	-	excluded	Offline batch reader is out of scope
-src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, Flashback dictionary loading, redo catalog discovery and strict sequence planning translated; capture loop remains
-src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, Flashback dictionary loading, redo catalog discovery and strict sequence planning translated; capture loop remains
+src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, catalog discovery, strict sequence planning and per-thread continuous consumption translated; global capture loop remains
+src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, catalog discovery, strict sequence planning and per-thread continuous consumption translated; global capture loop remains
 src/state/State.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
 src/state/State.h	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
 src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2

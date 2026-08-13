@@ -7,13 +7,19 @@
 package io.github.arlowen.redoreplicator.runtime;
 
 import io.github.arlowen.redoreplicator.config.ResolvedConfiguration;
+import io.github.arlowen.redoreplicator.redo.common.FileOffset;
+import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
 import io.github.arlowen.redoreplicator.source.OracleRedoCatalogPoller;
+import io.github.arlowen.redoreplicator.source.OracleRedoLog;
+import io.github.arlowen.redoreplicator.state.DatabaseIdentity;
 
 import java.sql.Connection;
 import java.util.Objects;
 
 public final class RedoRuntimeFactory {
+    private static final int DEFAULT_REDO_READ_BLOCKS = 128;
+
     public RedoTransactionBuffer openTransactionBuffer(
             ResolvedConfiguration configuration) {
         Objects.requireNonNull(configuration, "configuration");
@@ -28,5 +34,18 @@ public final class RedoRuntimeFactory {
         Objects.requireNonNull(configuration, "configuration");
         return new OracleRedoCatalogPoller(
                 connection, configuration, new SystemClock());
+    }
+
+    public RedoThreadStream openRedoThreadStream(
+            OracleRedoCatalogPoller catalogPoller,
+            OracleRedoLog startLog,
+            DatabaseIdentity databaseIdentity,
+            Scn captureStartScn,
+            FileOffset startOffset,
+            RedoTransactionBuffer transactionBuffer) {
+        return new RedoThreadStream(
+                catalogPoller, startLog, databaseIdentity,
+                captureStartScn, startOffset, transactionBuffer,
+                DEFAULT_REDO_READ_BLOCKS, true);
     }
 }
