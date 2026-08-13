@@ -90,8 +90,14 @@ final class RedoTransaction {
     }
 
     void rollbackPair(RedoLogRecord inverse) {
+        List<RedoTransactionEntry> lobEntries = new ArrayList<>();
         while (entryCount > 0) {
             RedoTransactionEntry last = lastEntry();
+            if (isLobDataOperation(last)) {
+                lobEntries.add(last);
+                removeLast();
+                continue;
+            }
             int lastRedoOpCode = 0;
             if (last.second().isPresent()) {
                 lastRedoOpCode = last.second().orElseThrow().opCode;
@@ -103,20 +109,29 @@ final class RedoTransaction {
             boolean matches = inverseMatches(lastRedoOpCode, inverse.opCode)
                     && last.first().obj == inverse.obj;
             if (!matches) {
+                restoreLobEntries(lobEntries);
                 throw new RedoLogException(50044,
                         "Partial rollback does not match buffered operation for "
                                 + xid);
             }
             removeLast();
+            restoreLobEntries(lobEntries);
             return;
         }
+        restoreLobEntries(lobEntries);
         throw new RedoLogException(50044,
                 "Partial rollback reached an empty transaction: " + xid);
     }
 
     void rollbackSingle(RedoLogRecord inverse) {
+        List<RedoTransactionEntry> lobEntries = new ArrayList<>();
         while (entryCount > 0) {
             RedoTransactionEntry last = lastEntry();
+            if (isLobDataOperation(last)) {
+                lobEntries.add(last);
+                removeLast();
+                continue;
+            }
             int lastRedoOpCode = 0;
             if (last.second().isPresent()) {
                 lastRedoOpCode = last.second().orElseThrow().opCode;
@@ -130,13 +145,16 @@ final class RedoTransaction {
                     || lastRedoOpCode == 0x0513
                     || lastRedoOpCode == 0x0514;
             if (!rollbackCandidate || last.first().obj != inverse.obj) {
+                restoreLobEntries(lobEntries);
                 throw new RedoLogException(50044,
                         "Single partial rollback does not match buffered operation for "
                                 + xid);
             }
             removeLast();
+            restoreLobEntries(lobEntries);
             return;
         }
+        restoreLobEntries(lobEntries);
         throw new RedoLogException(50044,
                 "Single partial rollback reached an empty transaction: " + xid);
     }
@@ -216,6 +234,20 @@ final class RedoTransaction {
             spillFile.removeLast();
         }
         entryCount--;
+    }
+
+    private void restoreLobEntries(List<RedoTransactionEntry> lobEntries) {
+        for (int index = lobEntries.size() - 1; index >= 0; index--) {
+            add(lobEntries.get(index));
+        }
+    }
+
+    private static boolean isLobDataOperation(RedoTransactionEntry entry) {
+        if (entry.paired()) {
+            return false;
+        }
+        int opCode = entry.first().opCode;
+        return opCode == 0x1301 || opCode == 0x1A06;
     }
 
     private static boolean isIndexOperation(int opCode) {

@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -68,6 +69,45 @@ namespace {
             }
             std::cout << '\n';
         }
+
+        void printExternal(const std::string& label,
+                           const std::vector<uint8_t>& locator,
+                           const std::vector<uint8_t>& payload) {
+            std::map<LobKey, uint8_t*> orphaned;
+            LobCtx lobCtx;
+            lobCtx.orphanedLobs = &orphaned;
+
+            const size_t allocationSize = sizeof(uint64_t)
+                    + sizeof(RedoLogRecord) + payload.size();
+            auto* allocation = new uint8_t[allocationSize]{};
+            *reinterpret_cast<uint64_t*>(allocation) = allocationSize;
+            auto* record = new (allocation + sizeof(uint64_t))
+                    RedoLogRecord{};
+            record->dataExt = allocation + sizeof(uint64_t)
+                    + sizeof(RedoLogRecord);
+            record->size = payload.size();
+            record->lobData = 0;
+            record->lobDataSize = payload.size();
+            record->lobPageNo = 0;
+            record->lobPageSize = 4;
+            std::copy(payload.begin(), payload.end(), record->dataExt);
+
+            const LobId lobId(locator.data() + 10);
+            lobCtx.addLob(ctx, lobId, 100, 0, allocation,
+                          Xid::zero(), FileOffset(512));
+            const bool parsed = parseLob(
+                    &lobCtx, locator.data(), locator.size(), 0, 100,
+                    FileOffset(512), false, false);
+            std::cout << label << ".ok=" << (parsed ? "true" : "false")
+                      << '\n';
+            std::cout << label << ".hex=" << std::hex << std::setfill('0');
+            for (uint64_t index = 0; index < valueSize; ++index) {
+                std::cout << std::setw(2)
+                          << static_cast<uint>(valueBuffer[index] & 0xFF);
+            }
+            std::cout << '\n';
+            lobCtx.purge();
+        }
     };
 
     Format format() {
@@ -100,6 +140,14 @@ namespace {
         data[offset + 1] = static_cast<uint8_t>(value);
     }
 
+    void write32Big(std::vector<uint8_t>& data, size_t offset,
+                    uint32_t value) {
+        data[offset] = static_cast<uint8_t>(value >> 24);
+        data[offset + 1] = static_cast<uint8_t>(value >> 16);
+        data[offset + 2] = static_cast<uint8_t>(value >> 8);
+        data[offset + 3] = static_cast<uint8_t>(value);
+    }
+
     std::vector<uint8_t> fixedLocator(
             const std::vector<uint8_t>& value) {
         std::vector<uint8_t> locator(36 + value.size());
@@ -121,6 +169,19 @@ namespace {
         std::copy(value.begin(), value.end(), locator.begin() + 30);
         return locator;
     }
+
+    std::vector<uint8_t> externalLocator() {
+        std::vector<uint8_t> locator(40);
+        locator[5] = 0x04;
+        const uint8_t lobId[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
+        std::copy(std::begin(lobId), std::end(lobId),
+                  locator.begin() + 10);
+        write16Big(locator, 20, 20);
+        write16Big(locator, 22, 0x0400);
+        write16Big(locator, 28, 3);
+        write32Big(locator, 36, 100);
+        return locator;
+    }
 }
 
 int main() {
@@ -133,5 +194,7 @@ int main() {
     builder.printInline("fixed", fixedLocator({0x01, 0x02, 0x03}));
     builder.printInline("variable", variableLocator({0x41, 0x42, 0x43, 0x44}));
     builder.printInline("empty", variableLocator({}));
+    builder.printExternal(
+            "external", externalLocator(), {0x01, 0x02, 0x03});
     return 0;
 }

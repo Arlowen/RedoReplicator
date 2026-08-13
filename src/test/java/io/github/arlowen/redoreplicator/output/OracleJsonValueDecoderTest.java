@@ -95,7 +95,18 @@ class OracleJsonValueDecoderTest {
         actual.setProperty("empty.hex", HexFormat.of().formatHex(
                 locatorDecoder.decodeInline(variableLobLocator(
                         new byte[0]))));
-        assertEquals(expected, actual);
+        assertEquals(expected.getProperty("fixed.ok"),
+                actual.getProperty("fixed.ok"));
+        assertEquals(expected.getProperty("fixed.hex"),
+                actual.getProperty("fixed.hex"));
+        assertEquals(expected.getProperty("variable.ok"),
+                actual.getProperty("variable.ok"));
+        assertEquals(expected.getProperty("variable.hex"),
+                actual.getProperty("variable.hex"));
+        assertEquals(expected.getProperty("empty.ok"),
+                actual.getProperty("empty.ok"));
+        assertEquals(expected.getProperty("empty.hex"),
+                actual.getProperty("empty.hex"));
 
         assertEquals("010203", decoder.decode(value(
                 OracleColumnType.BLOB,

@@ -9,6 +9,7 @@ package io.github.arlowen.redoreplicator.redo.transaction;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.Attribute;
 import io.github.arlowen.redoreplicator.redo.common.FileOffset;
+import io.github.arlowen.redoreplicator.redo.common.LobId;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.RedoTime;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
@@ -23,6 +24,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -86,6 +88,28 @@ class RedoTransactionBufferTest {
         assertEquals(1, committed.entries().size());
         assertEquals(0x0B02,
                 committed.entries().get(0).second().orElseThrow().opCode);
+    }
+
+    @Test
+    void keepsLobPagesWhileRollingBackThePrecedingRow() {
+        RedoTransactionBuffer buffer = new RedoTransactionBuffer();
+        buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+        buffer.appendPair(
+                undo(XID_1, RedoLogRecord.FB_L), redo(0x0B02));
+        RedoLogRecord page = record(0x1301, XID_1, 115);
+        page.attachData(new byte[]{1, 2, 3}, 0, 3);
+        buffer.appendSingle(page);
+
+        assertTrue(buffer.rollbackPair(
+                redo(0x0B03), rollback(XID_1, 0)));
+        CommittedRedoTransaction committed = buffer.commit(
+                commit(XID_1, 200, 0)).orElseThrow();
+
+        assertEquals(1, committed.entries().size());
+        assertEquals(0x13010000,
+                committed.entries().get(0).operationCode());
+        assertArrayEquals(new byte[]{1, 2, 3},
+                committed.entries().get(0).first().data());
     }
 
     @Test
@@ -233,6 +257,41 @@ class RedoTransactionBufferTest {
                     committed.entries().stream()
                             .map(entry -> entry.second().orElseThrow().opCode)
                             .toList());
+            assertEquals(0, spillFileCount());
+        }
+    }
+
+    @Test
+    void attachesOrphanedLobPagesToTheirSpilledParentTransaction()
+            throws Exception {
+        LobId lobId = LobId.of(
+                new byte[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7});
+        try (RedoTransactionBuffer buffer = new RedoTransactionBuffer(
+                temporaryDirectory, 1)) {
+            buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+            RedoLogRecord page = record(0x1301, Xid.zero(), 105);
+            page.attachData(new byte[]{1, 2, 3}, 0, 3);
+            page.dba = 200;
+            page.lobId = lobId;
+            page.lobData = 0;
+            page.lobDataSize = 3;
+            buffer.accept(List.of(page), position(105, 10, 768));
+            assertEquals(1, buffer.orphanedLobCount());
+
+            RedoLogRecord index = redo(0x1A02);
+            index.lobId = lobId;
+            buffer.appendPair(undo(XID_1, 0), index);
+
+            assertEquals(0, buffer.orphanedLobCount());
+            assertEquals(1, buffer.spilledTransactionCount());
+            CommittedRedoTransaction committed = buffer.commit(
+                    commit(XID_1, 200, 0)).orElseThrow();
+            assertEquals(List.of(0x13010000, 0x05011A02),
+                    committed.entries().stream()
+                            .map(RedoTransactionEntry::operationCode)
+                            .toList());
+            RedoLogRecord restored = committed.entries().get(0).first();
+            assertArrayEquals(new byte[]{1, 2, 3}, restored.data());
             assertEquals(0, spillFileCount());
         }
     }

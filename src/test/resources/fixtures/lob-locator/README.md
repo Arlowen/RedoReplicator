@@ -10,6 +10,5 @@ scripts/baseline/run-lob-locator-probe.sh \
   target/lob-locator.properties
 ```
 
-The fixture covers both upstream inline locator encodings and an empty inline
-value. Locator forms that reference transaction LOB pages are deliberately not
-represented as inline values.
+The fixture covers both upstream inline locator encodings, an empty inline
+value and an in-index locator reconstructed from one direct-loader LOB page.

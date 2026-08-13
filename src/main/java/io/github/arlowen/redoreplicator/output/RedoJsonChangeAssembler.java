@@ -17,6 +17,7 @@ import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.RedoRecordPair;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
+import io.github.arlowen.redoreplicator.redo.lob.RedoLobContext;
 import io.github.arlowen.redoreplicator.redo.transaction.CommittedRedoTransaction;
 import io.github.arlowen.redoreplicator.redo.transaction.DecodedRedoRow;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoColumnValue;
@@ -56,6 +57,7 @@ public final class RedoJsonChangeAssembler {
     private final SystemDictionaryRedoBridge systemDictionaryBridge;
     private final TableSchemaJsonCodec tableSchemaJsonCodec;
     private final Predicate<String> outputTableFilter;
+    private final RedoLobValueResolver lobValueResolver;
 
     public RedoJsonChangeAssembler(
             ByteOrder byteOrder, Charset databaseCharacterSet) {
@@ -81,6 +83,7 @@ public final class RedoJsonChangeAssembler {
         multiRowDecoder = new RedoMultiRowDecoder(byteOrder);
         systemDictionaryBridge = new SystemDictionaryRedoBridge(byteOrder);
         tableSchemaJsonCodec = new TableSchemaJsonCodec();
+        lobValueResolver = new RedoLobValueResolver();
         this.databaseCharacterSet = Objects.requireNonNull(
                 databaseCharacterSet, "databaseCharacterSet");
         this.outputTableFilter = Objects.requireNonNull(
@@ -162,10 +165,13 @@ public final class RedoJsonChangeAssembler {
         RedoRowGroupAssembler rowAssembler = new RedoRowGroupAssembler();
         RedoDdlAssembler ddlAssembler = new RedoDdlAssembler(
                 databaseCharacterSet);
+        RedoLobContext lobContext = RedoLobContext.from(
+                transaction.entries(), schemaCatalog,
+                transactionSchemaCatalog);
         for (RedoTransactionEntry entry : transaction.entries()) {
             appendEntry(transaction, schemaCatalog, previousSchemaCatalog,
                     transactionSchemaCatalog, rowAssembler, ddlAssembler,
-                    changes, entry, skipSystemRows);
+                    lobContext, changes, entry, skipSystemRows);
         }
         rowAssembler.finish(transaction.xid());
         ddlAssembler.finish();
@@ -179,6 +185,7 @@ public final class RedoJsonChangeAssembler {
             SchemaCatalog transactionSchemaCatalog,
             RedoRowGroupAssembler rowAssembler,
             RedoDdlAssembler ddlAssembler,
+            RedoLobContext lobContext,
             List<RedoJsonChange> changes,
             RedoTransactionEntry entry,
             boolean skipSystemRows) {
@@ -187,7 +194,7 @@ public final class RedoJsonChangeAssembler {
         }
         int operation = entry.operationCode();
         if (isRowOperation(operation)) {
-            appendRow(schemaCatalog, rowAssembler, changes, entry,
+            appendRow(schemaCatalog, rowAssembler, lobContext, changes, entry,
                     skipSystemRows);
             return;
         }
@@ -198,7 +205,7 @@ public final class RedoJsonChangeAssembler {
                                 + entry.first().fileOffset);
             }
             appendMultiRows(
-                    schemaCatalog, changes, entry, skipSystemRows);
+                    schemaCatalog, lobContext, changes, entry, skipSystemRows);
             return;
         }
         if (operation == 0x18010000) {
@@ -226,6 +233,7 @@ public final class RedoJsonChangeAssembler {
 
     private void appendMultiRows(
             SchemaCatalog schemaCatalog,
+            RedoLobContext lobContext,
             List<RedoJsonChange> changes,
             RedoTransactionEntry entry,
             boolean skipSystemRows) {
@@ -246,13 +254,15 @@ public final class RedoJsonChangeAssembler {
         }
         for (DecodedRedoRow row : multiRowDecoder.decode(
                 table, entry.first(), redo)) {
-            changes.add(new RedoJsonDmlChange(row));
+            changes.add(new RedoJsonDmlChange(
+                    lobValueResolver.resolve(row, lobContext)));
         }
     }
 
     private void appendRow(
             SchemaCatalog schemaCatalog,
             RedoRowGroupAssembler rowAssembler,
+            RedoLobContext lobContext,
             List<RedoJsonChange> changes,
             RedoTransactionEntry entry,
             boolean skipSystemRows) {
@@ -276,8 +286,9 @@ public final class RedoJsonChangeAssembler {
         if (!outputTableFilter.test(table.qualifiedName())) {
             return;
         }
+        DecodedRedoRow row = rowDecoder.decode(table, group);
         changes.add(new RedoJsonDmlChange(
-                rowDecoder.decode(table, group)));
+                lobValueResolver.resolve(row, lobContext)));
     }
 
     private List<SystemDictionaryRedoChange> decodeSystemChanges(

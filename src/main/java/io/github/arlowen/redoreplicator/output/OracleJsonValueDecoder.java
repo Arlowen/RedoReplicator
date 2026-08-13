@@ -92,10 +92,9 @@ public final class OracleJsonValueDecoder {
             case INTERVAL_DAY_TO_SECOND -> intervalDayToSecond(data);
             case UROWID -> rowId(data);
             case BOOLEAN -> oracleBoolean(data);
-            case CLOB -> TextNode.valueOf(text(
-                    value, lobLocatorDecoder.decodeInline(data)));
+            case CLOB -> TextNode.valueOf(text(value, lobData(value, data)));
             case BLOB -> TextNode.valueOf(HexFormat.of().withUpperCase()
-                    .formatHex(lobLocatorDecoder.decodeInline(data)));
+                    .formatHex(lobData(value, data)));
             case XMLTYPE -> throw new RedoLogException(
                     50075, "LOB value requires transaction LOB reconstruction");
             case NONE, LONG, LONG_RAW, JSON -> UNKNOWN;
@@ -108,6 +107,13 @@ public final class OracleJsonValueDecoder {
             characterSet = locales.require(value.charsetId());
         }
         return characterSet.decode(data);
+    }
+
+    private byte[] lobData(RedoColumnValue value, byte[] data) {
+        if (value.reconstructedLob()) {
+            return data;
+        }
+        return lobLocatorDecoder.decodeInline(data);
     }
 
     private JsonNode timestamp(byte[] data, ZoneId zoneId) {

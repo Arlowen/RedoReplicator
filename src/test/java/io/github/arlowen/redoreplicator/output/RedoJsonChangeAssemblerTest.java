@@ -14,6 +14,7 @@ import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.RedoBinaryTestSupport;
 import io.github.arlowen.redoreplicator.redo.common.FileOffset;
 import io.github.arlowen.redoreplicator.redo.common.IntX;
+import io.github.arlowen.redoreplicator.redo.common.LobId;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.RedoTime;
 import io.github.arlowen.redoreplicator.redo.common.RowId;
@@ -21,10 +22,13 @@ import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
 import io.github.arlowen.redoreplicator.redo.transaction.CommittedRedoTransaction;
+import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
 import io.github.arlowen.redoreplicator.redo.parser.RedoOpCodeDispatcher;
 import io.github.arlowen.redoreplicator.redo.parser.RedoOpCodeTestSupport;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
+import io.github.arlowen.redoreplicator.schema.LobPartition;
+import io.github.arlowen.redoreplicator.schema.LobSchema;
 import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
 import io.github.arlowen.redoreplicator.schema.SysCol;
@@ -57,6 +61,9 @@ class RedoJsonChangeAssemblerTest {
     private static final long SYS_DATA_OBJECT_ID = 55;
     private static final long SYS_OBJ_TABLE_OBJECT_ID = 45;
     private static final long SYS_OBJ_TABLE_DATA_OBJECT_ID = 56;
+    private static final long LOB_DATA_OBJECT_ID = 66;
+    private static final LobId LOB_ID = LobId.of(
+            new byte[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7});
 
     private final RedoJsonChangeAssembler assembler =
             new RedoJsonChangeAssembler(
@@ -235,6 +242,50 @@ class RedoJsonChangeAssemblerTest {
     void emitsInlineBlobFromRedoThroughJson() throws Exception {
         CommittedRedoTransaction transaction = transaction(
                 List.of(inlineLobInsertEntry()));
+
+        List<RedoJsonChange> changes = assembler.assemble(
+                transaction, catalog(lobTable()));
+        BuilderJson builder = new BuilderJson(
+                new OracleJsonValueDecoder(
+                        StandardCharsets.UTF_8, ZoneOffset.UTC),
+                "FREEPDB1", 0);
+        JsonNode message = new ObjectMapper().readTree(
+                builder.buildTransaction(transaction, changes).get(1));
+
+        assertEquals("010203", message.at(
+                "/payload/0/after/DATA").textValue());
+    }
+
+    @Test
+    void reconstructsDirectLoaderLobPageThroughJson() throws Exception {
+        CommittedRedoTransaction transaction;
+        try (RedoTransactionBuffer buffer = new RedoTransactionBuffer()) {
+            RedoLogRecord begin = new RedoLogRecord();
+            begin.opCode = 0x0502;
+            begin.xid = XID;
+            begin.scn = Scn.of(100);
+            begin.sequence = Seq.of(7);
+            buffer.begin(begin, position(100, 512));
+
+            RedoLogRecord page = directLoaderLobPage(
+                    new byte[]{1, 2, 3}).first();
+            page.xid = Xid.zero();
+            buffer.accept(List.of(page), position(110, 768));
+            RedoLogRecord index = new RedoLogRecord();
+            index.opCode = 0x1A02;
+            index.lobId = LOB_ID;
+            buffer.appendPair(undo(), index);
+            RedoTransactionEntry row = externalLobInsertEntry();
+            buffer.appendPair(row.first(), row.second().orElseThrow());
+
+            RedoLogRecord commit = new RedoLogRecord();
+            commit.opCode = 0x0504;
+            commit.xid = XID;
+            commit.scn = Scn.of(200);
+            commit.sequence = Seq.of(7);
+            commit.fileOffset = FileOffset.of(2048);
+            transaction = buffer.commit(commit).orElseThrow();
+        }
 
         List<RedoJsonChange> changes = assembler.assemble(
                 transaction, catalog(lobTable()));
@@ -454,6 +505,55 @@ class RedoJsonChangeAssemblerTest {
         redo.obj = OBJECT_ID;
         redo.dataObj = DATA_OBJECT_ID;
         return RedoTransactionEntry.pair(undo(), redo);
+    }
+
+    private static RedoTransactionEntry externalLobInsertEntry() {
+        byte[] locator = new byte[40];
+        locator[5] = 0x04;
+        System.arraycopy(LOB_ID.bytes(), 0, locator, 10, LobId.LENGTH);
+        locator[20] = 0;
+        locator[21] = 20;
+        locator[22] = 0x04;
+        locator[28] = 0;
+        locator[29] = 3;
+        RedoBinaryTestSupport.writeUnsignedInt(
+                locator, 36, 100, ByteOrder.BIG_ENDIAN);
+
+        byte[] ktb = RedoOpCodeTestSupport.field(8);
+        ktb[0] = 0x06;
+        byte[] kdo = RedoOpCodeTestSupport.field(48);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                kdo, 0, 100, ByteOrder.LITTLE_ENDIAN);
+        kdo[10] = RedoLogRecord.OP_IRP;
+        kdo[16] = (byte) RedoLogRecord.FB_F;
+        kdo[18] = 1;
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 40, 3, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 42, 3, ByteOrder.LITTLE_ENDIAN);
+        RedoLogRecord redo = RedoOpCodeTestSupport.record(
+                0x0B02, 0, ktb, kdo, locator);
+        new RedoOpCodeDispatcher(
+                ByteOrder.LITTLE_ENDIAN,
+                RedoLogRecord.REDO_VERSION_19_0).dispatch(redo);
+        redo.xid = XID;
+        redo.obj = OBJECT_ID;
+        redo.dataObj = DATA_OBJECT_ID;
+        return RedoTransactionEntry.pair(undo(), redo);
+    }
+
+    private static RedoTransactionEntry directLoaderLobPage(byte[] payload) {
+        RedoLogRecord record = new RedoLogRecord();
+        record.attachData(payload, 0, payload.length);
+        record.opCode = 0x1301;
+        record.xid = XID;
+        record.dataObj = LOB_DATA_OBJECT_ID;
+        record.dba = 100;
+        record.lobId = LOB_ID;
+        record.lobPageNo = 0;
+        record.lobData = 0;
+        record.lobDataSize = payload.length;
+        return RedoTransactionEntry.single(record);
     }
 
     private static RedoTransactionEntry multiInsertEntry() {
@@ -695,11 +795,15 @@ class RedoJsonChangeAssemblerTest {
     }
 
     private static TableSchema lobTable() {
+        LobSchema lob = new LobSchema(
+                OBJECT_ID, LOB_DATA_OBJECT_ID, 77, 1, 1,
+                List.of(), List.of(new LobPartition(
+                        LOB_DATA_OBJECT_ID, 4)));
         return new TableSchema(
                 "FREEPDB1", "APP", "LOB_DATA",
                 OBJECT_ID, DATA_OBJECT_ID, 10, 0, 0,
                 List.of(column(1, "DATA", OracleColumnType.BLOB)),
-                List.of(), List.of());
+                List.of(lob), List.of());
     }
 
     private static byte[] fixedLobLocator(byte[] value) {

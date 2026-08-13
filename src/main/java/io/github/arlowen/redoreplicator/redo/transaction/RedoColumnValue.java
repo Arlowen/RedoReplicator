@@ -16,14 +16,16 @@ public final class RedoColumnValue {
     private final long charsetId;
     private final byte[] data;
     private final boolean nullValue;
+    private final boolean reconstructedLob;
 
     private RedoColumnValue(
             OracleColumnType type, long charsetId, byte[] data,
-            boolean nullValue) {
+            boolean nullValue, boolean reconstructedLob) {
         this.type = Objects.requireNonNull(type, "type");
         this.charsetId = charsetId;
         this.data = data.clone();
         this.nullValue = nullValue;
+        this.reconstructedLob = reconstructedLob;
     }
 
     public static RedoColumnValue of(
@@ -38,7 +40,7 @@ public final class RedoColumnValue {
             throw new IllegalArgumentException(
                     "A non-null redo column value requires data");
         }
-        return new RedoColumnValue(type, charsetId, data, false);
+        return new RedoColumnValue(type, charsetId, data, false, false);
     }
 
     public static RedoColumnValue nullValue(OracleColumnType type) {
@@ -47,7 +49,19 @@ public final class RedoColumnValue {
 
     public static RedoColumnValue nullValue(
             OracleColumnType type, long charsetId) {
-        return new RedoColumnValue(type, charsetId, new byte[0], true);
+        return new RedoColumnValue(
+                type, charsetId, new byte[0], true, false);
+    }
+
+    public static RedoColumnValue reconstructedLob(
+            OracleColumnType type, long charsetId, byte[] data) {
+        Objects.requireNonNull(data, "data");
+        if (type != OracleColumnType.CLOB
+                && type != OracleColumnType.BLOB) {
+            throw new IllegalArgumentException(
+                    "A reconstructed LOB must be CLOB or BLOB");
+        }
+        return new RedoColumnValue(type, charsetId, data, false, true);
     }
 
     public OracleColumnType type() {
@@ -66,6 +80,10 @@ public final class RedoColumnValue {
         return nullValue;
     }
 
+    public boolean reconstructedLob() {
+        return reconstructedLob;
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) {
@@ -75,6 +93,7 @@ public final class RedoColumnValue {
             return false;
         }
         return nullValue == value.nullValue
+                && reconstructedLob == value.reconstructedLob
                 && charsetId == value.charsetId
                 && type == value.type
                 && Arrays.equals(data, value.data);
@@ -85,6 +104,7 @@ public final class RedoColumnValue {
         int result = type.hashCode();
         result = 31 * result + Long.hashCode(charsetId);
         result = 31 * result + Arrays.hashCode(data);
-        return 31 * result + Boolean.hashCode(nullValue);
+        result = 31 * result + Boolean.hashCode(nullValue);
+        return 31 * result + Boolean.hashCode(reconstructedLob);
     }
 }

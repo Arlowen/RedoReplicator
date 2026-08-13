@@ -12,6 +12,7 @@ package io.github.arlowen.redoreplicator.redo.transaction;
 
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.Attribute;
+import io.github.arlowen.redoreplicator.redo.common.LobId;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
@@ -34,9 +35,13 @@ public final class RedoTransactionBuffer implements AutoCloseable {
     private final Map<TransactionSlotKey, RedoTransaction> transactions;
     private final TransactionSpillManager spillManager;
     private final long memoryLimitBytes;
+    private final Map<LobId, Map<Long, RedoLogRecord>> orphanedLobs;
+    private final Map<LobId, TransactionSlotKey> lobOwners;
 
     public RedoTransactionBuffer() {
         transactions = new LinkedHashMap<>();
+        orphanedLobs = new LinkedHashMap<>();
+        lobOwners = new LinkedHashMap<>();
         spillManager = null;
         memoryLimitBytes = Long.MAX_VALUE;
     }
@@ -48,6 +53,8 @@ public final class RedoTransactionBuffer implements AutoCloseable {
                     "Transaction memory limit must be positive");
         }
         transactions = new LinkedHashMap<>();
+        orphanedLobs = new LinkedHashMap<>();
+        lobOwners = new LinkedHashMap<>();
         spillManager = new TransactionSpillManager(spillDirectory);
         this.memoryLimitBytes = memoryLimitBytes;
     }
@@ -87,8 +94,9 @@ public final class RedoTransactionBuffer implements AutoCloseable {
             } else if (isPartialRollback(record.opCode)) {
                 rollbackSingle(record);
             } else if (record.opCode == 0x1301
-                    || record.opCode == 0x1801
                     || record.opCode == 0x1A06) {
+                appendLob(record);
+            } else if (record.opCode == 0x1801) {
                 appendSingle(record);
             }
             index++;
@@ -132,6 +140,7 @@ public final class RedoTransactionBuffer implements AutoCloseable {
                             + undo.xid);
         }
         if (redo.opCode != 0x0B04) {
+            registerLobOwner(transaction, undo.conId, redo);
             transaction.add(RedoTransactionEntry.pair(undo, redo));
             spillIfNeeded();
         }
@@ -261,6 +270,7 @@ public final class RedoTransactionBuffer implements AutoCloseable {
         }
         if ((record.flg & FLG_ROLLBACK_COMMIT) != 0) {
             transactions.remove(key);
+            removeLobOwners(key);
             transaction.discard();
             return Optional.empty();
         }
@@ -270,6 +280,7 @@ public final class RedoTransactionBuffer implements AutoCloseable {
                             + record.xid);
         }
         transactions.remove(key);
+        removeLobOwners(key);
         if (transaction.entryCount() == 0) {
             transaction.discard();
             return Optional.empty();
@@ -327,11 +338,21 @@ public final class RedoTransactionBuffer implements AutoCloseable {
         return count;
     }
 
+    public int orphanedLobCount() {
+        int count = 0;
+        for (Map<Long, RedoLogRecord> records : orphanedLobs.values()) {
+            count += records.size();
+        }
+        return count;
+    }
+
     public void clear() {
         for (RedoTransaction transaction : transactions.values()) {
             transaction.discard();
         }
         transactions.clear();
+        orphanedLobs.clear();
+        lobOwners.clear();
     }
 
     @Override
@@ -352,6 +373,54 @@ public final class RedoTransactionBuffer implements AutoCloseable {
             throw conflict(xid, transaction.xid());
         }
         return transaction;
+    }
+
+    private boolean appendLob(RedoLogRecord record) {
+        if (!record.xid.isEmpty()) {
+            return appendSingle(record);
+        }
+        TransactionSlotKey owner = lobOwners.get(record.lobId);
+        if (owner == null) {
+            orphanedLobs.computeIfAbsent(
+                            record.lobId, ignored -> new LinkedHashMap<>())
+                    .putIfAbsent(record.dba, record);
+            return false;
+        }
+        RedoTransaction transaction = transactions.get(owner);
+        if (transaction == null) {
+            lobOwners.remove(record.lobId);
+            return false;
+        }
+        record.xid = transaction.xid();
+        record.conId = owner.containerId();
+        transaction.add(RedoTransactionEntry.single(record));
+        spillIfNeeded();
+        return true;
+    }
+
+    private void registerLobOwner(
+            RedoTransaction transaction, int containerId,
+            RedoLogRecord record) {
+        if (!isLobIndexOperation(record.opCode)
+                || record.lobId.equals(LobId.zero())) {
+            return;
+        }
+        TransactionSlotKey owner = TransactionSlotKey.of(
+                containerId, transaction.xid());
+        lobOwners.put(record.lobId, owner);
+        Map<Long, RedoLogRecord> orphans = orphanedLobs.remove(record.lobId);
+        if (orphans == null) {
+            return;
+        }
+        for (RedoLogRecord orphan : orphans.values()) {
+            orphan.xid = transaction.xid();
+            orphan.conId = owner.containerId();
+            transaction.add(RedoTransactionEntry.single(orphan));
+        }
+    }
+
+    private void removeLobOwners(TransactionSlotKey owner) {
+        lobOwners.entrySet().removeIf(entry -> entry.getValue().equals(owner));
     }
 
     private RedoTransaction findForRollback(RedoLogRecord rollback) {
@@ -412,6 +481,11 @@ public final class RedoTransactionBuffer implements AutoCloseable {
                 || (opCode & 0xFF00) == 0x0B00
                 || opCode == 0x0513 || opCode == 0x0514
                 || opCode == 0x1A02;
+    }
+
+    private static boolean isLobIndexOperation(int opCode) {
+        return opCode == 0x0A02 || opCode == 0x0A08
+                || opCode == 0x0A12 || opCode == 0x1A02;
     }
 
     private static boolean isRollbackRow(int opCode) {

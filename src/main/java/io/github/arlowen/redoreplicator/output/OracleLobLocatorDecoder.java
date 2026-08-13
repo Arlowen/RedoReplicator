@@ -11,8 +11,12 @@
 package io.github.arlowen.redoreplicator.output;
 
 import io.github.arlowen.redoreplicator.error.RedoLogException;
+import io.github.arlowen.redoreplicator.redo.common.LobId;
+import io.github.arlowen.redoreplicator.redo.lob.RedoLobContext;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 final class OracleLobLocatorDecoder {
     private static final int LOB_ID_END = 20;
@@ -22,9 +26,14 @@ final class OracleLobLocatorDecoder {
     private static final int INLINE_DATA_FLAG = 0x0800;
 
     byte[] decodeInline(byte[] locator) {
+        return decode(locator, null);
+    }
+
+    byte[] decode(byte[] locator, RedoLobContext context) {
         if (locator.length < LOB_ID_END) {
             throw invalid("locator is shorter than the LOB header");
         }
+        LobId lobId = LobId.of(Arrays.copyOfRange(locator, 10, LOB_ID_END));
         if ((locator[5] & IN_ROW_FLAG) == 0) {
             throw requiresTransactionPages();
         }
@@ -38,12 +47,39 @@ final class OracleLobLocatorDecoder {
         }
         int flags = readUnsignedShort(locator, 22);
         if ((flags & IN_INDEX_FLAG) != 0) {
-            throw requiresTransactionPages();
+            return decodeIndexed(locator, lobId, context);
         }
         if ((flags & IN_VALUE_FLAG) != 0) {
             return decodeFixedInline(locator, bodySize);
         }
         return decodeVariableInline(locator, bodySize, flags);
+    }
+
+    private static byte[] decodeIndexed(
+            byte[] locator, LobId lobId, RedoLobContext context) {
+        if (context == null) {
+            throw requiresTransactionPages();
+        }
+        if (locator.length < 36 || (locator.length - 36) % 4 != 0) {
+            throw invalid("in-index locator page list is malformed");
+        }
+        long pageCount = readUnsignedInt(locator, 24);
+        int sizeRest = readUnsignedShort(locator, 28);
+        long totalPages = pageCount;
+        if (sizeRest > 0) {
+            totalPages++;
+        }
+        int explicitCount = (locator.length - 36) / 4;
+        if (explicitCount > totalPages) {
+            throw invalid("in-index locator contains excess page references");
+        }
+        List<Long> pages = new ArrayList<>(explicitCount);
+        int position = 36;
+        while (position < locator.length) {
+            pages.add(readUnsignedInt(locator, position));
+            position += 4;
+        }
+        return context.readIndexed(lobId, pageCount, sizeRest, pages);
     }
 
     private static byte[] decodeFixedInline(byte[] locator, int bodySize) {
