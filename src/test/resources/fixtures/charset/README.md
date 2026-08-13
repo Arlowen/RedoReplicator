@@ -24,3 +24,6 @@ ASCII maps. The adjacent `eight.<id>.name` values also fix every Oracle
 registration identity.
 The `sixteen.<id>` values fix all eight generic 16-bit identities, every
 single-byte truncated input and all 65,536 possible byte pairs per identity.
+The `east.<id>` values fix all six Japanese EUC/SJIS identities and KO16KSCCS,
+including every single byte and byte pair. The Japanese EUC identities also
+cover the complete 94 by 94 valid three-byte rectangle beginning with `8F`.

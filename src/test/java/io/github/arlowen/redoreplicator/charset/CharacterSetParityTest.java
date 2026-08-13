@@ -93,6 +93,28 @@ class CharacterSetParityTest {
                 actual.setProperty(key, bytePairMapDigest(id));
             }
         }
+        String eastAsianPrefix = "east.";
+        for (String key : expected.stringPropertyNames()) {
+            if (!key.startsWith(eastAsianPrefix)) {
+                continue;
+            }
+            int propertySeparator = key.indexOf(
+                    '.', eastAsianPrefix.length());
+            long id = Long.parseLong(key.substring(
+                    eastAsianPrefix.length(), propertySeparator));
+            if (key.endsWith(".name")) {
+                actual.setProperty(key, locales.require(id).name());
+            }
+            if (key.endsWith(".single_fnv1a64")) {
+                actual.setProperty(key, singleByteMapDigest(id));
+            }
+            if (key.endsWith(".pair_fnv1a64")) {
+                actual.setProperty(key, bytePairMapDigest(id));
+            }
+            if (key.endsWith(".triple_fnv1a64")) {
+                actual.setProperty(key, japaneseEucTripleMapDigest(id));
+            }
+        }
 
         assertEquals(expected, actual);
     }
@@ -210,6 +232,25 @@ class CharacterSetParityTest {
                         hash ^= (codePoint >> shift) & 0xFF;
                         hash *= 0x100000001B3L;
                     }
+                }
+            }
+        }
+        return String.format("%016x", hash);
+    }
+
+    private String japaneseEucTripleMapDigest(long id) {
+        long hash = 0xCBF29CE484222325L;
+        CharacterSet characterSet = locales.require(id);
+        byte[] encoded = new byte[3];
+        encoded[0] = (byte) 0x8F;
+        for (int byte2 = 0xA1; byte2 <= 0xFE; byte2++) {
+            encoded[1] = (byte) byte2;
+            for (int byte3 = 0xA1; byte3 <= 0xFE; byte3++) {
+                encoded[2] = (byte) byte3;
+                int codePoint = characterSet.decode(encoded).codePointAt(0);
+                for (int shift = 24; shift >= 0; shift -= 8) {
+                    hash ^= (codePoint >> shift) & 0xFF;
+                    hash *= 0x100000001B3L;
                 }
             }
         }

@@ -1,6 +1,6 @@
 /*
- * Java translation derived from OpenLogReplicator CharacterSet16bit in
- * src/locales/CharacterSet16bit.{h,cpp}.
+ * Java translation derived from OpenLogReplicator CharacterSetJA16SJIS in
+ * src/locales/CharacterSetJA16SJIS.{h,cpp}.
  *
  * Copyright (C) 2018-2026 Adam Leszczynski (aleszczynski@bersler.com)
  * Copyright (C) 2026 RedoReplicator contributors
@@ -12,22 +12,16 @@ package io.github.arlowen.redoreplicator.charset;
 
 import java.util.Objects;
 
-public class CharacterSet16bit extends CharacterSet {
-    private final int[] unicodeMap;
-    private final int byte1Min;
-    private final int byte1Max;
-    private final int byte2Min;
-    private final int byte2Max;
+public class CharacterSetJA16SJIS extends CharacterSet16bit {
+    private static final int BYTE1_MIN = 0x81;
+    private static final int BYTE1_MAX = 0xFC;
+    private static final int BYTE2_MIN = 0x40;
+    private static final int BYTE2_MAX = 0xFC;
 
-    protected CharacterSet16bit(
-            long id, String name, int byte1Min, int byte1Max,
-            int byte2Min, int byte2Max, String encodedMap) {
-        super(id, name);
-        this.byte1Min = byte1Min;
-        this.byte1Max = byte1Max;
-        this.byte2Min = byte2Min;
-        this.byte2Max = byte2Max;
-        unicodeMap = CharacterSetMap.decode(encodedMap);
+    protected CharacterSetJA16SJIS(
+            long id, String name, String encodedMap) {
+        super(id, name, BYTE1_MIN, BYTE1_MAX,
+                BYTE2_MIN, BYTE2_MAX, encodedMap);
     }
 
     @Override
@@ -41,25 +35,23 @@ public class CharacterSet16bit extends CharacterSet {
                 result.appendCodePoint(byte1);
                 continue;
             }
+            if (byte1 >= 0xA1 && byte1 <= 0xDF) {
+                result.appendCodePoint(byte1 + 0xFF61 - 0xA1);
+                continue;
+            }
             if (offset == data.length) {
                 result.appendCodePoint(UNKNOWN_CHARACTER);
                 continue;
             }
 
             int byte2 = data[offset++] & 0xFF;
-            if (byte1 < byte1Min || byte1 > byte1Max
-                    || byte2 < byte2Min || byte2 > byte2Max) {
+            if (byte1 < BYTE1_MIN || byte1 > BYTE1_MAX
+                    || byte2 < BYTE2_MIN || byte2 > BYTE2_MAX) {
                 result.appendCodePoint(UNKNOWN_CHARACTER);
                 continue;
             }
             result.appendCodePoint(readMap(byte1, byte2));
         }
         return result.toString();
-    }
-
-    protected int readMap(int byte1, int byte2) {
-        int rowWidth = byte2Max - byte2Min + 1;
-        return unicodeMap[(byte1 - byte1Min) * rowWidth
-                + byte2 - byte2Min];
     }
 }

@@ -107,6 +107,27 @@ namespace {
         }
         return hash;
     }
+
+    uint64_t japaneseEucTripleMapDigest(
+            const CharacterSet* characterSet, const Ctx* ctx) {
+        uint64_t hash = 14695981039346656037ULL;
+        for (uint64_t byte2 = 0xA1; byte2 <= 0xFE; ++byte2) {
+            for (uint64_t byte3 = 0xA1; byte3 <= 0xFE; ++byte3) {
+                const uint8_t encoded[]{0x8F,
+                                        static_cast<uint8_t>(byte2),
+                                        static_cast<uint8_t>(byte3)};
+                const uint8_t* current = encoded;
+                uint64_t remaining = 3;
+                const typeUnicode codePoint = characterSet->decode(
+                        ctx, Xid(), current, remaining);
+                for (int shift = 24; shift >= 0; shift -= 8) {
+                    hash ^= (codePoint >> shift) & 0xFF;
+                    hash *= 1099511628211ULL;
+                }
+            }
+        }
+        return hash;
+    }
 }
 
 int main(int argc, char** argv) {
@@ -194,6 +215,28 @@ int main(int argc, char** argv) {
                   << ".pair_fnv1a64=" << std::hex << std::setfill('0')
                   << std::setw(16) << bytePairMapDigest(
                           characterSet, &ctx) << '\n';
+    }
+
+    const uint64_t eastAsianIds[]{830, 831, 832, 834, 837, 838, 845};
+    for (const uint64_t id : eastAsianIds) {
+        const CharacterSet* characterSet = locales.characterMap.at(id);
+        std::cout << "east." << std::dec << id << ".name="
+                  << characterSet->name << '\n';
+        std::cout << "east." << std::dec << id
+                  << ".single_fnv1a64=" << std::hex << std::setfill('0')
+                  << std::setw(16) << singleByteMapDigest(
+                          characterSet, &ctx) << '\n';
+        std::cout << "east." << std::dec << id
+                  << ".pair_fnv1a64=" << std::hex << std::setfill('0')
+                  << std::setw(16) << bytePairMapDigest(
+                          characterSet, &ctx) << '\n';
+        if (id == 830 || id == 831 || id == 837) {
+            std::cout << "east." << std::dec << id
+                      << ".triple_fnv1a64=" << std::hex
+                      << std::setfill('0') << std::setw(16)
+                      << japaneseEucTripleMapDigest(
+                              characterSet, &ctx) << '\n';
+        }
     }
     return 0;
 }

@@ -13,20 +13,11 @@ package io.github.arlowen.redoreplicator.charset;
 import java.util.Objects;
 
 public final class CharacterSet8bit extends CharacterSet {
-    private static final int CHARACTER_COUNT = 256;
-    private static final int HEX_DIGITS_PER_CHARACTER = 4;
-
     private final int[] unicodeMap;
 
     CharacterSet8bit(long id, String name, String encodedMap) {
         super(id, name);
-        unicodeMap = new int[CHARACTER_COUNT];
-        for (int index = 0; index < unicodeMap.length; index++) {
-            int start = index * HEX_DIGITS_PER_CHARACTER;
-            unicodeMap[index] = Integer.parseInt(
-                    encodedMap, start,
-                    start + HEX_DIGITS_PER_CHARACTER, 16);
-        }
+        unicodeMap = CharacterSetMap.decode(encodedMap);
     }
 
     @Override

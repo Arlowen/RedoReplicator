@@ -28,6 +28,7 @@ public final class Locales {
         register7BitCharacterSets();
         register8BitCharacterSets();
         register16BitCharacterSets();
+        registerJapaneseAndKoreanCharacterSets();
         register(new CharacterSetAL32UTF8());
         register(new CharacterSetUTF8());
         register(new CharacterSetAL16UTF16());
@@ -157,5 +158,52 @@ public final class Locales {
             throw new IllegalStateException(
                     "Failed to load Oracle 16-bit character-set catalog", e);
         }
+    }
+
+    private void registerJapaneseAndKoreanCharacterSets() {
+        Map<String, String> maps = loadCharacterSetMaps(
+                "oracle-east-asian-catalog.tsv");
+        String eucMap2 = maps.get("JA16EUC_2b");
+        String eucMap3 = maps.get("JA16EUC_3b");
+        String sjisMap = maps.get("JA16SJIS_2b");
+        register(new CharacterSetJA16EUC(
+                830, "JA16EUC", eucMap2, eucMap3));
+        register(new CharacterSetJA16EUC(
+                831, "JA16EUCYEN", eucMap2, eucMap3));
+        register(new CharacterSetJA16SJIS(
+                832, "JA16SJIS", sjisMap));
+        register(new CharacterSetJA16SJIS(
+                834, "JA16SJISYEN", sjisMap));
+        register(new CharacterSetJA16EUCTILDE(
+                837, eucMap2, eucMap3));
+        register(new CharacterSetJA16SJISTILDE(838, sjisMap));
+        register(new CharacterSetKO16KSCCS(
+                845, maps.get("KO16KSCCS_2b")));
+    }
+
+    private Map<String, String> loadCharacterSetMaps(String resourceName) {
+        InputStream input = Locales.class.getResourceAsStream(resourceName);
+        if (input == null) {
+            throw new IllegalStateException(
+                    "Oracle character-set map resource is missing: "
+                            + resourceName);
+        }
+        Map<String, String> maps = new HashMap<>();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank() || line.startsWith("#")) {
+                    continue;
+                }
+                String[] fields = line.split("\\t", 2);
+                maps.put(fields[0], fields[1]);
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Failed to load Oracle character-set maps: "
+                            + resourceName, e);
+        }
+        return maps;
     }
 }
