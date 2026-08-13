@@ -16,6 +16,9 @@ import com.fasterxml.jackson.databind.node.DoubleNode;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
+import io.github.arlowen.redoreplicator.charset.CharacterSetJdk;
+import io.github.arlowen.redoreplicator.charset.Locales;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.RowId;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoColumnValue;
@@ -39,14 +42,27 @@ public final class OracleJsonValueDecoder {
             BigInteger.valueOf(1_000_000_000L);
     private static final TextNode UNKNOWN = TextNode.valueOf("?");
 
-    private final Charset databaseCharacterSet;
+    private final CharacterSet defaultCharacterSet;
+    private final Locales locales;
     private final ZoneId databaseTimeZone;
     private final OracleNumberDecoder numberDecoder;
 
     public OracleJsonValueDecoder(
             Charset databaseCharacterSet, ZoneId databaseTimeZone) {
-        this.databaseCharacterSet = Objects.requireNonNull(
-                databaseCharacterSet, "databaseCharacterSet");
+        Objects.requireNonNull(databaseCharacterSet, "databaseCharacterSet");
+        defaultCharacterSet = new CharacterSetJdk(
+                0, databaseCharacterSet.name(), databaseCharacterSet);
+        locales = new Locales();
+        this.databaseTimeZone = Objects.requireNonNull(
+                databaseTimeZone, "databaseTimeZone");
+        numberDecoder = new OracleNumberDecoder();
+    }
+
+    public OracleJsonValueDecoder(
+            Locales locales, long databaseCharacterSetId,
+            ZoneId databaseTimeZone) {
+        this.locales = Objects.requireNonNull(locales, "locales");
+        defaultCharacterSet = locales.require(databaseCharacterSetId);
         this.databaseTimeZone = Objects.requireNonNull(
                 databaseTimeZone, "databaseTimeZone");
         numberDecoder = new OracleNumberDecoder();
@@ -59,8 +75,7 @@ public final class OracleJsonValueDecoder {
         }
         byte[] data = value.data();
         return switch (value.type()) {
-            case VARCHAR, CHAR -> TextNode.valueOf(
-                    new String(data, databaseCharacterSet));
+            case VARCHAR, CHAR -> TextNode.valueOf(text(value, data));
             case NUMBER -> DecimalNode.valueOf(numberDecoder.decode(data));
             case DATE, TIMESTAMP -> timestamp(data, ZoneOffset.UTC);
             case TIMESTAMP_WITH_LOCAL_TIME_ZONE -> timestamp(
@@ -78,6 +93,14 @@ public final class OracleJsonValueDecoder {
                     50075, "LOB value requires transaction LOB reconstruction");
             case NONE, LONG, LONG_RAW, JSON -> UNKNOWN;
         };
+    }
+
+    private String text(RedoColumnValue value, byte[] data) {
+        CharacterSet characterSet = defaultCharacterSet;
+        if (value.charsetId() != 0) {
+            characterSet = locales.require(value.charsetId());
+        }
+        return characterSet.decode(data);
     }
 
     private JsonNode timestamp(byte[] data, ZoneId zoneId) {

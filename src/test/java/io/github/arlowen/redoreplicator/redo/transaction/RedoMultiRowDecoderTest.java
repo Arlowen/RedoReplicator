@@ -66,6 +66,8 @@ class RedoMultiRowDecoderTest {
                 rows.get(0).after().get("ID").data());
         assertArrayEquals("FIRST".getBytes(StandardCharsets.UTF_8),
                 rows.get(0).after().get("NAME").data());
+        assertEquals(873,
+                rows.get(0).after().get("NAME").charsetId());
         assertArrayEquals(secondId,
                 rows.get(1).after().get("ID").data());
         assertEquals(List.of("ID"),
@@ -298,9 +300,13 @@ class RedoMultiRowDecoderTest {
             String name,
             OracleColumnType type,
             int primaryKeyMembership) {
+        long charsetId = 0;
+        if (type == OracleColumnType.VARCHAR) {
+            charsetId = 873;
+        }
         return new ColumnSchema(
                 segmentColumn, -1, segmentColumn, segmentColumn,
-                name, type, 400, -1, -1, 0,
+                name, type, 400, -1, -1, charsetId,
                 primaryKeyMembership, true, false, false,
                 false, false, false, false, false, false);
     }

@@ -160,10 +160,12 @@ public final class RedoMultiRowDecoder {
                         rowRecord.data(), absoluteRow + position,
                         absoluteRow + position + length);
                 values.put(column.name(),
-                        RedoColumnValue.of(column.type(), data));
+                        RedoColumnValue.of(
+                                column.type(), column.charsetId(), data));
             } else if (column.primaryKeyMembership() > 0) {
                 values.put(column.name(),
-                        RedoColumnValue.nullValue(column.type()));
+                        RedoColumnValue.nullValue(
+                                column.type(), column.charsetId()));
             }
             position += length;
         }

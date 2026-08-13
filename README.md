@@ -18,9 +18,12 @@ now supplies the spill limit. The default CLI command opens H2, initializes the
 selected-table and SYS dictionaries at the replay SCN, discovers redo
 continuously and commits each complete LWN through JSONL fsync and the H2 safe
 position. Quick multi-row INSERT and DELETE are expanded in original slot order
-for both user JSON and SYS dictionary transactions. LOB reconstruction, the
-complete charset catalog, compressed rows and XDB dictionary families are not
-complete, so the project is not production-ready yet.
+for both user JSON and SYS dictionary transactions. Text values retain their
+dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8 and AL16UTF16 use direct
+upstream-compatible decoders, including NCHAR/NVARCHAR values. LOB
+reconstruction, the complete charset catalog, compressed rows and XDB
+dictionary families are not complete, so the project is not production-ready
+yet.
 
 Strict YAML loading and the Picocli startup preflight are available. The loader
 rejects unknown or duplicate keys, invalid table regular expressions, duplicate

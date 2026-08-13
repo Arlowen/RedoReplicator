@@ -150,7 +150,8 @@ public final class OracleCaptureRunner {
             Clock clock = Clock.systemUTC();
             BuilderJson builder = new BuilderJson(
                     new OracleJsonValueDecoder(
-                            properties.databaseCharacterSet(),
+                            properties.locales(),
+                            properties.databaseCharacterSetId(),
                             properties.databaseTimeZone()),
                     source.databaseContext().containerName(),
                     hostTimezoneSeconds);

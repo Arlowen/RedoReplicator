@@ -6,6 +6,8 @@
  */
 package io.github.arlowen.redoreplicator.source;
 
+import io.github.arlowen.redoreplicator.charset.Locales;
+
 import java.nio.charset.Charset;
 import java.time.ZoneId;
 import java.util.Objects;
@@ -14,9 +16,11 @@ public record OracleRuntimeProperties(
         long databaseCharacterSetId,
         long nationalCharacterSetId,
         Charset databaseCharacterSet,
+        Locales locales,
         ZoneId databaseTimeZone) {
     public OracleRuntimeProperties {
         Objects.requireNonNull(databaseCharacterSet, "databaseCharacterSet");
+        Objects.requireNonNull(locales, "locales");
         Objects.requireNonNull(databaseTimeZone, "databaseTimeZone");
     }
 }

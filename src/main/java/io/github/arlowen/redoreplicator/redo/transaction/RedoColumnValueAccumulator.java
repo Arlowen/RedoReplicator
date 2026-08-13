@@ -63,9 +63,11 @@ final class RedoColumnValueAccumulator {
     RedoColumnValue finish() {
         if (completeSet) {
             if (nullValue || complete.length == 0) {
-                return RedoColumnValue.nullValue(column.type());
+                return RedoColumnValue.nullValue(
+                        column.type(), column.charsetId());
             }
-            return RedoColumnValue.of(column.type(), complete);
+            return RedoColumnValue.of(
+                    column.type(), column.charsetId(), complete);
         }
         if (first == null || last == null) {
             throw invalid("fragmented value is incomplete");
@@ -78,9 +80,10 @@ final class RedoColumnValueAccumulator {
         output.writeBytes(last);
         byte[] data = output.toByteArray();
         if (data.length == 0) {
-            return RedoColumnValue.nullValue(column.type());
+            return RedoColumnValue.nullValue(
+                    column.type(), column.charsetId());
         }
-        return RedoColumnValue.of(column.type(), data);
+        return RedoColumnValue.of(column.type(), column.charsetId(), data);
     }
 
     private byte[] setFragment(

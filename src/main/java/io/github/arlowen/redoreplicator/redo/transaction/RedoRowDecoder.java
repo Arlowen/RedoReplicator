@@ -226,11 +226,13 @@ public final class RedoRowDecoder {
             }
             if (beforeValue == null) {
                 before.put(column,
-                        RedoColumnValue.nullValue(schema.type()));
+                        RedoColumnValue.nullValue(
+                                schema.type(), schema.charsetId()));
             }
             if (afterValue == null) {
                 after.put(column,
-                        RedoColumnValue.nullValue(schema.type()));
+                        RedoColumnValue.nullValue(
+                                schema.type(), schema.charsetId()));
             }
         }
     }
@@ -248,7 +250,8 @@ public final class RedoRowDecoder {
         for (int index : table.primaryKeyColumnIndexes()) {
             ColumnSchema column = table.columns().get(index);
             values.putIfAbsent(index,
-                    RedoColumnValue.nullValue(column.type()));
+                    RedoColumnValue.nullValue(
+                            column.type(), column.charsetId()));
         }
     }
 

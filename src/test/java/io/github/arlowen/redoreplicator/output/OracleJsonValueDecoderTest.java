@@ -7,6 +7,7 @@
 package io.github.arlowen.redoreplicator.output;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.github.arlowen.redoreplicator.charset.Locales;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoColumnValue;
 import io.github.arlowen.redoreplicator.schema.OracleColumnType;
@@ -47,6 +48,21 @@ class OracleJsonValueDecoderTest {
                 OracleColumnType.BOOLEAN, new byte[]{1})).intValue());
         assertEquals("?", decoder.decode(value(
                 OracleColumnType.BOOLEAN, new byte[]{2})).textValue());
+    }
+
+    @Test
+    void decodesTextWithTheColumnCharacterSet() {
+        OracleJsonValueDecoder localeDecoder = new OracleJsonValueDecoder(
+                new Locales(), 873, ZoneId.of("Asia/Shanghai"));
+
+        assertEquals("中文", localeDecoder.decode(RedoColumnValue.of(
+                OracleColumnType.VARCHAR, 2000,
+                new byte[]{0x4E, 0x2D, 0x65, (byte) 0x87})).textValue());
+        assertEquals("😀", localeDecoder.decode(RedoColumnValue.of(
+                OracleColumnType.CHAR, 871,
+                new byte[]{(byte) 0xED, (byte) 0xA0, (byte) 0xBD,
+                        (byte) 0xED, (byte) 0xB8, (byte) 0x80}))
+                .textValue());
     }
 
     @Test

@@ -10,6 +10,7 @@
  */
 package io.github.arlowen.redoreplicator.source;
 
+import io.github.arlowen.redoreplicator.charset.Locales;
 import io.github.arlowen.redoreplicator.error.ConfigurationException;
 
 import java.nio.charset.Charset;
@@ -35,6 +36,9 @@ public final class OracleRuntimePropertiesReader {
                 connection, "NLS_CHARACTERSET");
         OracleCharacterSet national = readCharacterSet(
                 connection, "NLS_NCHAR_CHARACTERSET");
+        Locales locales = new Locales();
+        validateCharacterSet(locales, database);
+        validateCharacterSet(locales, national);
         Charset charset;
         if (database.name().equals("AL32UTF8")) {
             charset = StandardCharsets.UTF_8;
@@ -48,8 +52,17 @@ public final class OracleRuntimePropertiesReader {
                             + database.name());
         }
         return new OracleRuntimeProperties(
-                database.id(), national.id(), charset,
+                database.id(), national.id(), charset, locales,
                 readDatabaseTimeZone(connection));
+    }
+
+    private static void validateCharacterSet(
+            Locales locales, OracleCharacterSet characterSet) {
+        try {
+            locales.require(characterSet.id(), characterSet.name());
+        } catch (IllegalArgumentException e) {
+            throw new ConfigurationException(10002, e.getMessage());
+        }
     }
 
     private static OracleCharacterSet readCharacterSet(

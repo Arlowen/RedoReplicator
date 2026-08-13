@@ -60,6 +60,7 @@ class RedoRowDecoderTest {
                 row.after().keySet().stream().toList());
         assertArrayEquals(id, row.after().get("ID").data());
         assertArrayEquals(name, row.after().get("NAME").data());
+        assertEquals(873, row.after().get("NAME").charsetId());
     }
 
     @Test
@@ -77,6 +78,7 @@ class RedoRowDecoderTest {
         assertEquals(List.of("NAME"),
                 row.before().keySet().stream().toList());
         assertTrue(row.before().get("NAME").nullValue());
+        assertEquals(873, row.before().get("NAME").charsetId());
         assertArrayEquals(name, row.after().get("NAME").data());
     }
 
@@ -249,9 +251,13 @@ class RedoRowDecoderTest {
             String name,
             OracleColumnType type,
             int primaryKeyMembership) {
+        long charsetId = 0;
+        if (type == OracleColumnType.VARCHAR) {
+            charsetId = 873;
+        }
         return new ColumnSchema(
                 segmentColumn, -1, segmentColumn, segmentColumn,
-                name, type, 128, -1, -1, 0,
+                name, type, 128, -1, -1, charsetId,
                 primaryKeyMembership, true, false, false,
                 false, false, false, false, false, false);
     }
