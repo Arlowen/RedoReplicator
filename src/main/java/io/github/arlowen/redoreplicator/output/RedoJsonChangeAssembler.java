@@ -53,6 +53,7 @@ import java.util.function.Predicate;
 public final class RedoJsonChangeAssembler {
     private final RedoRowDecoder rowDecoder;
     private final RedoMultiRowDecoder multiRowDecoder;
+    private final ByteOrder byteOrder;
     private final CharacterSet databaseCharacterSet;
     private final SystemDictionaryRedoBridge systemDictionaryBridge;
     private final TableSchemaJsonCodec tableSchemaJsonCodec;
@@ -78,8 +79,8 @@ public final class RedoJsonChangeAssembler {
             ByteOrder byteOrder,
             CharacterSet databaseCharacterSet,
             Predicate<String> outputTableFilter) {
-        rowDecoder = new RedoRowDecoder(Objects.requireNonNull(
-                byteOrder, "byteOrder"));
+        this.byteOrder = Objects.requireNonNull(byteOrder, "byteOrder");
+        rowDecoder = new RedoRowDecoder(byteOrder);
         multiRowDecoder = new RedoMultiRowDecoder(byteOrder);
         systemDictionaryBridge = new SystemDictionaryRedoBridge(byteOrder);
         tableSchemaJsonCodec = new TableSchemaJsonCodec();
@@ -167,7 +168,7 @@ public final class RedoJsonChangeAssembler {
                 databaseCharacterSet);
         RedoLobContext lobContext = RedoLobContext.from(
                 transaction.entries(), schemaCatalog,
-                transactionSchemaCatalog);
+                transactionSchemaCatalog, byteOrder);
         for (RedoTransactionEntry entry : transaction.entries()) {
             appendEntry(transaction, schemaCatalog, previousSchemaCatalog,
                     transactionSchemaCatalog, rowAssembler, ddlAssembler,

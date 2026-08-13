@@ -26,6 +26,7 @@ import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
 import io.github.arlowen.redoreplicator.redo.parser.RedoOpCodeDispatcher;
 import io.github.arlowen.redoreplicator.redo.parser.RedoOpCodeTestSupport;
+import io.github.arlowen.redoreplicator.redo.parser.RedoKdliDecoder;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
 import io.github.arlowen.redoreplicator.schema.LobPartition;
 import io.github.arlowen.redoreplicator.schema.LobSchema;
@@ -42,14 +43,17 @@ import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -324,6 +328,47 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
+    void reconstructsTwelvePlusLobLocatorStylesThroughJson()
+            throws Exception {
+        CommittedRedoTransaction transaction = transaction(List.of(
+                directLoaderLobPage(new byte[]{1, 2, 3}),
+                lobListEntry(),
+                lobInsertEntry(styleOneLobLocator()),
+                lobInsertEntry(styleTwoLobLocator()),
+                lobInsertEntry(legacyExtentLobLocator())));
+
+        List<RedoJsonChange> changes = assembler.assemble(
+                transaction, catalog(lobTable()));
+        BuilderJson builder = new BuilderJson(
+                new OracleJsonValueDecoder(
+                        StandardCharsets.UTF_8, ZoneOffset.UTC),
+                "FREEPDB1", 0);
+        List<byte[]> messages = builder.buildTransaction(
+                transaction, changes);
+        ObjectMapper objectMapper = new ObjectMapper();
+        Properties expected = new Properties();
+        try (InputStream input = getClass().getResourceAsStream(
+                "/fixtures/lob-locator/"
+                        + "openlogreplicator-6bc92bc1.properties")) {
+            assertNotNull(input);
+            expected.load(input);
+        }
+
+        assertEquals("true", expected.getProperty("style1.ok"));
+        assertEquals(expected.getProperty("style1.hex"),
+                objectMapper.readTree(messages.get(1)).at(
+                        "/payload/0/after/DATA").textValue());
+        assertEquals("true", expected.getProperty("style2.ok"));
+        assertEquals(expected.getProperty("style2.hex"),
+                objectMapper.readTree(messages.get(2)).at(
+                        "/payload/0/after/DATA").textValue());
+        assertEquals("true", expected.getProperty("legacy.ok"));
+        assertEquals(expected.getProperty("legacy.hex"),
+                objectMapper.readTree(messages.get(3)).at(
+                        "/payload/0/after/DATA").textValue());
+    }
+
+    @Test
     void skipsResolvedTablesOutsideTheConfiguredOutputFilter() {
         RedoJsonChangeAssembler filtered = new RedoJsonChangeAssembler(
                 ByteOrder.LITTLE_ENDIAN, StandardCharsets.UTF_8,
@@ -591,6 +636,63 @@ class RedoJsonChangeAssemblerTest {
         record.indKeyData = 0;
         record.indKeyDataSize = data.length;
         return RedoTransactionEntry.pair(undo(), record);
+    }
+
+    private static RedoTransactionEntry lobListEntry() {
+        byte[] data = new byte[16];
+        data[0] = RedoKdliDecoder.CODE_LMAP;
+        RedoBinaryTestSupport.writeUnsignedInt(
+                data, 4, 1, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                data, 10, 1, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                data, 12, 100, ByteOrder.LITTLE_ENDIAN);
+        RedoLogRecord record = redo(0x1A02);
+        record.attachData(data, 0, data.length);
+        record.dba = 200;
+        record.lobId = LOB_ID;
+        record.indKeyDataCode = RedoKdliDecoder.CODE_LMAP;
+        record.indKeyDataSize = data.length;
+        return RedoTransactionEntry.pair(undo(), record);
+    }
+
+    private static byte[] styleOneLobLocator() {
+        byte[] locator = variablePagedLobLocator(37, 0x20);
+        locator[30] = 0;
+        locator[31] = 0;
+        RedoBinaryTestSupport.writeUnsignedInt(
+                locator, 32, 100, ByteOrder.BIG_ENDIAN);
+        locator[36] = 1;
+        return locator;
+    }
+
+    private static byte[] styleTwoLobLocator() {
+        byte[] locator = variablePagedLobLocator(34, 0x40);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                locator, 30, 200, ByteOrder.BIG_ENDIAN);
+        return locator;
+    }
+
+    private static byte[] legacyExtentLobLocator() {
+        byte[] locator = styleOneLobLocator();
+        locator[22] = 0;
+        locator[23] = 0;
+        locator[26] = 0;
+        return locator;
+    }
+
+    private static byte[] variablePagedLobLocator(
+            int size, int style) {
+        byte[] locator = new byte[size];
+        locator[5] = 0x04;
+        System.arraycopy(LOB_ID.bytes(), 0, locator, 10, LobId.LENGTH);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                locator, 20, size - 20, ByteOrder.BIG_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                locator, 22, 0x4000, ByteOrder.BIG_ENDIAN);
+        locator[26] = (byte) style;
+        locator[28] = 3;
+        return locator;
     }
 
     private static RedoTransactionEntry multiInsertEntry() {

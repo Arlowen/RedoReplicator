@@ -25,9 +25,9 @@ dictionary changes, including NCHAR/NVARCHAR values. Inline BLOB/CLOB locators
 are decoded directly. In-index and classic out-of-row locators reconstruct
 direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
 including orphan pages later bound to a parent transaction and transactions
-spilled to disk. Remaining KDLI list-map locator forms, the complete charset
-catalog and XDB dictionary families are not complete, so the project is not
-production-ready yet. As in the upstream
+spilled to disk. KDLI list-map chains and their incremental updates are also
+reconstructed. The complete charset catalog and XDB dictionary families are not
+complete, so the project is not production-ready yet. As in the upstream
 Builder, Oracle compressed user rows are preserved losslessly as one RAW
 `COMPRESSED` field rather than presented as decoded logical columns.
 
@@ -69,14 +69,15 @@ payloads retain their complete bytes as the upstream `COMPRESSED` RAW field.
 Inline BLOB/CLOB locators are converted to their complete binary or text value;
 in-index and classic out-of-row locators use verified transaction page indexes,
 page counts and tail lengths, and stop capture if any referenced page or byte
-range is missing. Unsupported KDLI list-map forms also stop instead of emitting
-an incomplete value. Other typed bytes can
+range is missing. The 12+ style-1 extent, style-2 KDLI list-page and legacy
+extent locator forms are reconstructed with byte-complete length checks. Other
+typed bytes can
 be converted to the fixed native JSON scalar forms for
 text, NUMBER, DATE/TIMESTAMP, RAW, binary floating point, intervals, UROWID and
 BOOLEAN. The fixed native JSON Builder emits separate begin, ordered DML/DDL
 and commit messages plus optional checkpoint heartbeats, always including the
-database name, and its byte messages are covered through JSONL fsync. KDLI
-list-map LOB reconstruction remains incomplete. Committed user transactions
+database name, and its byte messages are covered through JSONL fsync. Committed
+user transactions
 can now retain DML/DDL order from their redo entries, assemble supplemental row
 pieces, aggregate numbered DDL fragments and feed the Builder directly. Their
 table catalog is loaded from the latest live H2 schema versions at the requested

@@ -106,6 +106,25 @@ final class RedoLobData {
         return output.toByteArray();
     }
 
+    byte[] readPage(long page) {
+        NavigableMap<Integer, byte[]> fragments = pages.get(page);
+        if (fragments == null) {
+            throw invalid(50075, "missing LOB page " + page);
+        }
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        int expectedOffset = 0;
+        for (Map.Entry<Integer, byte[]> entry : fragments.entrySet()) {
+            if (entry.getKey() != expectedOffset) {
+                throw invalid(50075, "LOB page " + page
+                        + " has a gap at offset " + expectedOffset);
+            }
+            byte[] fragment = entry.getValue();
+            output.writeBytes(fragment);
+            expectedOffset += fragment.length;
+        }
+        return output.toByteArray();
+    }
+
     int pageSize() {
         if (pageSize == 0) {
             throw invalid(50075, "LOB page size is unknown");

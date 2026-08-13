@@ -98,6 +98,13 @@ namespace {
             if ((locator[5] & 0x04) == 0) {
                 lobCtx.setSize(lobId, 0, payload.size());
             }
+            if (locator.size() > 26 && (locator[26] & 0xF0) == 0x40) {
+                std::vector<uint8_t> list(16);
+                ctx->write32(list.data() + 4, 1);
+                ctx->write16(list.data() + 10, 1);
+                ctx->write32(list.data() + 12, 100);
+                lobCtx.setList(200, list.data(), list.size());
+            }
             const bool parsed = parseLob(
                     &lobCtx, locator.data(), locator.size(), 0, 100,
                     FileOffset(512), false, false);
@@ -193,6 +200,42 @@ namespace {
                   locator.begin() + 10);
         return locator;
     }
+
+    std::vector<uint8_t> styleOneLocator() {
+        std::vector<uint8_t> locator(37);
+        locator[5] = 0x04;
+        const uint8_t lobId[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
+        std::copy(std::begin(lobId), std::end(lobId),
+                  locator.begin() + 10);
+        write16Big(locator, 20, 17);
+        write16Big(locator, 22, 0x4000);
+        locator[26] = 0x20;
+        locator[28] = 3;
+        write32Big(locator, 32, 100);
+        locator[36] = 1;
+        return locator;
+    }
+
+    std::vector<uint8_t> styleTwoLocator() {
+        std::vector<uint8_t> locator(34);
+        locator[5] = 0x04;
+        const uint8_t lobId[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
+        std::copy(std::begin(lobId), std::end(lobId),
+                  locator.begin() + 10);
+        write16Big(locator, 20, 14);
+        write16Big(locator, 22, 0x4000);
+        locator[26] = 0x40;
+        locator[28] = 3;
+        write32Big(locator, 30, 200);
+        return locator;
+    }
+
+    std::vector<uint8_t> legacyExtentLocator() {
+        std::vector<uint8_t> locator = styleOneLocator();
+        write16Big(locator, 22, 0);
+        locator[26] = 0;
+        return locator;
+    }
 }
 
 int main() {
@@ -209,5 +252,11 @@ int main() {
             "external", externalLocator(), {0x01, 0x02, 0x03});
     builder.printExternal(
             "outofrow", outOfRowLocator(), {0x01, 0x02, 0x03});
+    builder.printExternal(
+            "style1", styleOneLocator(), {0x01, 0x02, 0x03});
+    builder.printExternal(
+            "style2", styleTwoLocator(), {0x01, 0x02, 0x03});
+    builder.printExternal(
+            "legacy", legacyExtentLocator(), {0x01, 0x02, 0x03});
     return 0;
 }

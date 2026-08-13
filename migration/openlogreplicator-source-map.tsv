@@ -2,8 +2,8 @@ source_path	target_java_type	status	notes
 src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status, backup/restore and stopped-state rewind are wired
 src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status, backup/restore and stopped-state rewind are wired
 src/StreamClient.cpp	-	excluded	Network stream client is out of scope
-src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.RedoJsonChangeAssembler	pending	Ordered row routing, quick multi-row DML, compressed RAW, DDL, typed values and direct-page classic LOB assembly translated; remaining KDLI list-map forms remain
-src/builder/Builder.h	io.github.arlowen.redoreplicator.output.OracleJsonValueDecoder	pending	Oracle inline BLOB/CLOB, direct-page in-index and classic out-of-row locators plus typed scalar and Unicode conversion translated; remaining charset catalog and KDLI list-map forms remain
+src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.RedoJsonChangeAssembler	pending	Ordered rows, quick multi-row DML, compressed RAW, DDL, typed values and all upstream LOB locator families translated; remaining Builder character and system families remain
+src/builder/Builder.h	io.github.arlowen.redoreplicator.output.OracleJsonValueDecoder	pending	Oracle inline, in-index, classic out-of-row, 12+ style-1/style-2 and legacy LOB locators plus typed scalars translated; remaining charset catalog remains
 src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	translated	Fixed message=0 begin, ordered DML and DDL, commit and checkpoint JSON messages translated with native scalar formatting
 src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	translated	Fixed numeric SCN and timestamp headers, classic XID, schema, before and after payloads translated; db is always included by project contract
 src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope
@@ -23,8 +23,8 @@ src/common/DbLob.h	io.github.arlowen.redoreplicator.schema.LobSchema	pending	LOB
 src/common/DbTable.cpp	io.github.arlowen.redoreplicator.schema.TableSchema	pending	Table columns partitions and lookup translated; conditions and system-table behavior remain
 src/common/DbTable.h	io.github.arlowen.redoreplicator.schema.TableSchema	pending	Table columns partitions and lookup translated; conditions and system-table behavior remain
 src/common/Format.h	io.github.arlowen.redoreplicator.output.Format	pending	Translate redo domain model
-src/common/LobCtx.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	pending	Direct-loader pages, KDLI fill fragments, classic page indexes, lengths and strict reads translated; KDLI list maps remain
-src/common/LobCtx.h	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	pending	Transaction LOB identity and verified in-index and classic out-of-row reconstruction translated; KDLI list maps remain
+src/common/LobCtx.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	translated	Orphan binding, page fragments, classic indexes, lengths, KDLI list replacement, append and page-chain ordering translated with fixed Builder parity
+src/common/LobCtx.h	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	translated	LOB data, page-index and list-page lifecycle translated with strict missing-page, cycle and byte-length failures
 src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobData	translated	Ordered fragments, page index, page size and full-page plus tail-length metadata translated with strict byte-complete reads
 src/common/LobData.h	io.github.arlowen.redoreplicator.redo.lob.RedoLobData	translated	LOB data map, page-number index, page size, full-page count and tail size translated
 src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
@@ -167,10 +167,10 @@ src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1301	
 src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1801	translated	Translated DDL XID, type, fragment sequence, payload fields, temporary-object filtering and object identity
 src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A02	translated	Translated KTB and KDLI LOB operation fields
 src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A06	translated	Translated KDLI before-image payload and record object identity
-src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Cross-batch LWN commits, quick multi-row, compressed RAW, direct LOB pages and classic 0A index derivation feed JSONL and H2; KDLI list paths remain
-src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Reader batches retain cross-batch LWN and classic LOB transaction state through commit; KDLI list paths remain
-src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	Entries, rollback, ordered output and classic indexed LOB reconstruction implemented; KDLI list-map handling remains
-src/parser/Transaction.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	Committed entry order, row state, system routing and classic indexed LOB context implemented; KDLI list-map handling remains
+src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Cross-batch LWN commits, quick multi-row, compressed RAW and complete direct, classic-index and KDLI-list LOB state feed JSONL and H2; remaining parser lifecycle remains
+src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Reader batches retain cross-batch LWN and complete translated LOB transaction state through commit; remaining parser lifecycle remains
+src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	Entries, rollback, ordered output and complete upstream LOB locator reconstruction implemented; remaining transaction diagnostics and scale parity remain
+src/parser/Transaction.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	Committed entry order, row state, system routing and complete translated LOB context implemented; remaining transaction diagnostics and scale parity remain
 src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Slot lookup, rollback, spill, orphan LOB attachment, 0A02/0A08/0A12 identity derivation and parent routing implemented; remaining parser lifecycle remains
 src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Transaction and orphan LOB lifecycle including classic index derivation, spill and commit cleanup implemented; remaining parser lifecycle remains
 src/reader/Reader.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	Read-only channel, validation, archive EOF, online wait and per-thread continuous sequence handoff translated; global scheduling and diagnostics remain

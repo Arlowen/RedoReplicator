@@ -23,15 +23,15 @@ public final class RedoKdliDecoder {
     private static final int CODE_INFO = 0x01;
     private static final int CODE_LOAD_DATA = 0x04;
     private static final int CODE_ZERO = 0x05;
-    private static final int CODE_FILL = 0x06;
-    private static final int CODE_LMAP = 0x07;
+    public static final int CODE_FILL = 0x06;
+    public static final int CODE_LMAP = 0x07;
     private static final int CODE_LMAPX = 0x08;
     private static final int CODE_SUPPLEMENTAL_LOG = 0x09;
     private static final int CODE_FPLOAD = 0x0B;
     private static final int CODE_LOAD_LHB = 0x0C;
-    private static final int CODE_ALMAP = 0x0D;
-    private static final int CODE_LOAD_ITREE = 0x0F;
-    private static final int CODE_IMAP = 0x10;
+    public static final int CODE_ALMAP = 0x0D;
+    public static final int CODE_LOAD_ITREE = 0x0F;
+    public static final int CODE_IMAP = 0x10;
 
     private final RedoByteReader byteReader;
 

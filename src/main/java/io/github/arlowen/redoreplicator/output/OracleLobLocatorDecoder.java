@@ -13,6 +13,7 @@ package io.github.arlowen.redoreplicator.output;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.LobId;
 import io.github.arlowen.redoreplicator.redo.lob.RedoLobContext;
+import io.github.arlowen.redoreplicator.redo.lob.RedoLobExtent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +25,10 @@ final class OracleLobLocatorDecoder {
     private static final int IN_INDEX_FLAG = 0x0400;
     private static final int IN_VALUE_FLAG = 0x0100;
     private static final int INLINE_DATA_FLAG = 0x0800;
+    private static final int TWELVE_PLUS_FLAG = 0x4000;
+    private static final int STYLE_MASK = 0xF0;
+    private static final int STYLE_ONE = 0x20;
+    private static final int STYLE_TWO = 0x40;
 
     byte[] decodeInline(byte[] locator) {
         return decode(locator, null);
@@ -55,7 +60,8 @@ final class OracleLobLocatorDecoder {
         if ((flags & IN_VALUE_FLAG) != 0) {
             return decodeFixedInline(locator, bodySize);
         }
-        return decodeVariableInline(locator, bodySize, flags);
+        return decodeVariable(
+                locator, bodySize, flags, lobId, context);
     }
 
     private static byte[] decodeIndexed(
@@ -100,8 +106,9 @@ final class OracleLobLocatorDecoder {
         return Arrays.copyOfRange(locator, valueOffset, locator.length);
     }
 
-    private static byte[] decodeVariableInline(
-            byte[] locator, int bodySize, int flags) {
+    private static byte[] decodeVariable(
+            byte[] locator, int bodySize, int flags,
+            LobId lobId, RedoLobContext context) {
         if (bodySize < 10 || locator.length < 30) {
             throw invalid("variable in-value locator is too short");
         }
@@ -134,13 +141,76 @@ final class OracleLobLocatorDecoder {
             return new byte[0];
         }
         if ((flags & INLINE_DATA_FLAG) == 0) {
-            throw requiresTransactionPages();
+            if (context == null) {
+                throw requiresTransactionPages();
+            }
+            int style = locator[26] & STYLE_MASK;
+            if ((flags & TWELVE_PLUS_FLAG) != 0) {
+                if (style == STYLE_ONE) {
+                    return decodeExtents(
+                            locator, valueOffset, valueSize,
+                            lobId, context, false);
+                }
+                if (style == STYLE_TWO) {
+                    if (valueOffset + 4 != locator.length) {
+                        throw invalid(
+                                "style-2 LOB list reference is malformed");
+                    }
+                    long listPage = readUnsignedInt(locator, valueOffset);
+                    return context.readList(lobId, valueSize, listPage);
+                }
+                throw invalid("12+ LOB locator has an unknown style");
+            }
+            return decodeExtents(
+                    locator, valueOffset, valueSize,
+                    lobId, context, true);
         }
         if (valueSize > Integer.MAX_VALUE) {
             throw invalid("inline LOB value is too large");
         }
         requireExactPayload(locator, valueOffset, (int) valueSize);
         return Arrays.copyOfRange(locator, valueOffset, locator.length);
+    }
+
+    private static byte[] decodeExtents(
+            byte[] locator, int valueOffset, long valueSize,
+            LobId lobId, RedoLobContext context,
+            boolean strictCountFlags) {
+        requireBytes(locator, valueOffset, 1);
+        int extentCount = (locator[valueOffset] & 0xFF) + 1;
+        valueOffset++;
+        List<RedoLobExtent> extents = new ArrayList<>(extentCount);
+        for (int index = 0; index < extentCount; index++) {
+            requireBytes(locator, valueOffset, 5);
+            int flags = locator[valueOffset] & 0xFF;
+            valueOffset++;
+            long firstPage = readUnsignedInt(locator, valueOffset);
+            valueOffset += 4;
+
+            int pageCount;
+            if (strictCountFlags) {
+                int countCode = flags & STYLE_MASK;
+                if (countCode == 0) {
+                    requireBytes(locator, valueOffset, 1);
+                    pageCount = locator[valueOffset] & 0xFF;
+                    valueOffset++;
+                } else if (countCode == STYLE_ONE) {
+                    pageCount = readUnsignedShort(locator, valueOffset);
+                    valueOffset += 2;
+                } else {
+                    throw invalid("LOB extent has an unknown page-count size");
+                }
+            } else if ((flags & STYLE_ONE) == 0) {
+                requireBytes(locator, valueOffset, 1);
+                pageCount = locator[valueOffset] & 0xFF;
+                valueOffset++;
+            } else {
+                pageCount = readUnsignedShort(locator, valueOffset);
+                valueOffset += 2;
+            }
+            extents.add(new RedoLobExtent(firstPage, pageCount));
+        }
+        return context.readExtents(lobId, valueSize, extents);
     }
 
     private static void requireExactPayload(

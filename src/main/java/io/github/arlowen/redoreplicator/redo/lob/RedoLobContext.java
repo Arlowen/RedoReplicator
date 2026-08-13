@@ -12,26 +12,40 @@ package io.github.arlowen.redoreplicator.redo.lob;
 
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.LobId;
+import io.github.arlowen.redoreplicator.redo.common.RedoByteReader;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
+import io.github.arlowen.redoreplicator.redo.parser.RedoKdliDecoder;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
 import io.github.arlowen.redoreplicator.schema.LobSchema;
 import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public final class RedoLobContext {
     private final Map<LobId, RedoLobData> lobs = new LinkedHashMap<>();
+    private final Map<Long, RedoLobListPage> listPages =
+            new LinkedHashMap<>();
+    private final RedoByteReader byteReader;
+
+    private RedoLobContext(ByteOrder byteOrder) {
+        byteReader = new RedoByteReader(byteOrder);
+    }
 
     public static RedoLobContext from(
             List<RedoTransactionEntry> entries,
             SchemaCatalog schemaCatalog,
-            SchemaCatalog transactionSchemaCatalog) {
-        RedoLobContext context = new RedoLobContext();
+            SchemaCatalog transactionSchemaCatalog,
+            ByteOrder byteOrder) {
+        RedoLobContext context = new RedoLobContext(byteOrder);
         for (RedoTransactionEntry entry : entries) {
             if (entry.paired()) {
                 RedoLogRecord record = entry.second().orElseThrow();
@@ -39,6 +53,9 @@ public final class RedoLobContext {
                         || record.opCode == 0x0A08
                         || record.opCode == 0x0A12) {
                     context.addIndexRecord(record);
+                }
+                if (record.opCode == 0x1A02) {
+                    context.addListRecord(record);
                 }
                 if (record.opCode == 0x1A02
                         && record.indKeyDataCode == 0x06
@@ -66,6 +83,52 @@ public final class RedoLobContext {
             }
         }
         return context;
+    }
+
+    public byte[] readExtents(
+            LobId lobId, long size, List<RedoLobExtent> extents) {
+        RedoLobData lob = require(lobId);
+        if (size > Integer.MAX_VALUE) {
+            throw invalid(lobId, "LOB output exceeds the Java array limit");
+        }
+        ByteArrayOutputStream output = new ByteArrayOutputStream((int) size);
+        for (RedoLobExtent extent : extents) {
+            long page = extent.firstPage();
+            for (int index = 0; index < extent.pageCount(); index++) {
+                byte[] data = lob.readPage(page);
+                if (output.size() > size - data.length) {
+                    throw invalid(lobId,
+                            "LOB page data exceeds the locator length");
+                }
+                output.writeBytes(data);
+                page++;
+            }
+        }
+        if (output.size() != size) {
+            throw invalid(lobId, "LOB output contains " + output.size()
+                    + " bytes, expected " + size);
+        }
+        return output.toByteArray();
+    }
+
+    public byte[] readList(LobId lobId, long size, long firstListPage) {
+        List<RedoLobExtent> extents = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        long listPage = firstListPage;
+        while (listPage != 0) {
+            if (!visited.add(listPage)) {
+                throw invalid(lobId,
+                        "LOB list page chain contains a cycle at " + listPage);
+            }
+            RedoLobListPage page = listPages.get(listPage);
+            if (page == null) {
+                throw invalid(lobId,
+                        "missing LOB list page " + listPage);
+            }
+            extents.addAll(page.extents());
+            listPage = page.nextPage();
+        }
+        return readExtents(lobId, size, extents);
     }
 
     public byte[] readOutOfRow(LobId lobId) {
@@ -161,7 +224,7 @@ public final class RedoLobContext {
             }
             int position = start;
             while (position < record.indKeyDataSize) {
-                long page = readUnsignedInt(
+                long page = readBigEndianUnsignedInt(
                         record, record.indKeyData + position);
                 if (page > 0) {
                     lob.setPage(pageNumber, page);
@@ -172,6 +235,86 @@ public final class RedoLobContext {
         }
         if (record.opCode == 0x0A12 && record.lobPageNo == 0) {
             lob.setSize(record.lobSizePages, record.lobSizeRest);
+        }
+    }
+
+    private void addListRecord(RedoLogRecord record) {
+        if (record.dba0 != 0) {
+            orderList(record.dba, record.dba0);
+            if (record.dba1 != 0) {
+                orderList(record.dba0, record.dba1);
+                if (record.dba2 != 0) {
+                    orderList(record.dba1, record.dba2);
+                    if (record.dba3 != 0) {
+                        orderList(record.dba2, record.dba3);
+                    }
+                }
+            }
+        }
+        if (record.indKeyDataCode == RedoKdliDecoder.CODE_LMAP
+                || record.indKeyDataCode
+                == RedoKdliDecoder.CODE_LOAD_ITREE) {
+            setList(record);
+        } else if (record.indKeyDataCode == RedoKdliDecoder.CODE_IMAP
+                || record.indKeyDataCode == RedoKdliDecoder.CODE_ALMAP) {
+            appendList(record);
+        }
+    }
+
+    private void orderList(long page, long nextPage) {
+        listPages.computeIfAbsent(page, ignored -> new RedoLobListPage())
+                .setNextPage(nextPage);
+    }
+
+    private void setList(RedoLogRecord record) {
+        requireListRange(record, 0, 8);
+        long count = readUnsignedInt(record, 4);
+        List<RedoLobExtent> extents = readExtents(record, 8, count);
+        listPages.computeIfAbsent(
+                        record.dba, ignored -> new RedoLobListPage())
+                .replace(extents);
+    }
+
+    private void appendList(RedoLogRecord record) {
+        requireListRange(record, 0, 12);
+        long count = readUnsignedInt(record, 4);
+        long startIndex = readUnsignedInt(record, 8);
+        if (startIndex > Integer.MAX_VALUE - count) {
+            throw invalid(record.lobId,
+                    "LOB list entry index exceeds the Java list limit");
+        }
+        List<RedoLobExtent> extents = readExtents(record, 12, count);
+        listPages.computeIfAbsent(
+                        record.dba, ignored -> new RedoLobListPage())
+                .append((int) startIndex, extents);
+    }
+
+    private List<RedoLobExtent> readExtents(
+            RedoLogRecord record, int start, long count) {
+        if (count > (record.indKeyDataSize - start) / 8
+                || !hasRange(record, record.indKeyData + start,
+                (int) count * 8)) {
+            throw invalid(record.lobId,
+                    "LOB list entries extend past the redo field");
+        }
+        List<RedoLobExtent> extents = new ArrayList<>((int) count);
+        int position = start;
+        for (long index = 0; index < count; index++) {
+            int pageCount = readUnsignedShort(record, position + 2);
+            long firstPage = readUnsignedInt(record, position + 4);
+            extents.add(new RedoLobExtent(firstPage, pageCount));
+            position += 8;
+        }
+        return extents;
+    }
+
+    private void requireListRange(
+            RedoLogRecord record, int position, int size) {
+        if (record.indKeyDataSize < position + size
+                || !hasRange(record,
+                record.indKeyData + position, size)) {
+            throw invalid(record.lobId,
+                    "LOB list field is malformed");
         }
     }
 
@@ -206,7 +349,21 @@ public final class RedoLobContext {
         return lob;
     }
 
-    private static long readUnsignedInt(
+    private int readUnsignedShort(
+            RedoLogRecord record, int position) {
+        int absolute = record.dataOffset()
+                + record.indKeyData + position;
+        return byteReader.readUnsignedShort(record.data(), absolute);
+    }
+
+    private long readUnsignedInt(
+            RedoLogRecord record, int position) {
+        int absolute = record.dataOffset()
+                + record.indKeyData + position;
+        return byteReader.readUnsignedInt(record.data(), absolute);
+    }
+
+    private static long readBigEndianUnsignedInt(
             RedoLogRecord record, int position) {
         int absolute = record.dataOffset() + position;
         return (long) (record.data()[absolute] & 0xFF) << 24

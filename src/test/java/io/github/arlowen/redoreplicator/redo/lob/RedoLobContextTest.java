@@ -9,6 +9,7 @@ package io.github.arlowen.redoreplicator.redo.lob;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.LobId;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
+import io.github.arlowen.redoreplicator.redo.parser.RedoKdliDecoder;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
 import io.github.arlowen.redoreplicator.schema.LobPartition;
 import io.github.arlowen.redoreplicator.schema.LobSchema;
@@ -17,6 +18,7 @@ import io.github.arlowen.redoreplicator.schema.TableSchema;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
+import java.nio.ByteOrder;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Properties;
@@ -39,7 +41,7 @@ class RedoLobContextTest {
                                 100, 0, new byte[]{1, 2, 3, 4})),
                         RedoTransactionEntry.single(page(
                                 101, 1, new byte[]{5, 6, 7}))),
-                catalog(), catalog());
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
 
         assertEquals(1, context.lobCount());
         byte[] value = context.readIndexed(
@@ -64,7 +66,7 @@ class RedoLobContextTest {
         RedoLobContext context = RedoLobContext.from(
                 List.of(RedoTransactionEntry.single(page(
                         100, 0, new byte[]{1, 2, 3, 4}))),
-                catalog(), catalog());
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
 
         RedoLogException error = assertThrows(
                 RedoLogException.class,
@@ -88,7 +90,7 @@ class RedoLobContextTest {
                 List.of(
                         RedoTransactionEntry.single(first),
                         RedoTransactionEntry.pair(undo, fill)),
-                catalog(), catalog());
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
 
         assertArrayEquals(new byte[]{1, 2, 3, 4},
                 context.readIndexed(LOB_ID, 1, 0, List.of(100L)));
@@ -116,7 +118,7 @@ class RedoLobContextTest {
                         RedoTransactionEntry.single(page(
                                 100, 0, new byte[]{1, 2, 3})),
                         RedoTransactionEntry.pair(undo, index)),
-                catalog(), catalog());
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
 
         byte[] value = context.readOutOfRow(LOB_ID);
         assertArrayEquals(new byte[]{1, 2, 3}, value);
@@ -145,7 +147,7 @@ class RedoLobContextTest {
 
         RedoLobContext context = RedoLobContext.from(
                 List.of(RedoTransactionEntry.pair(undo, index)),
-                catalog(), catalog());
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
 
         assertArrayEquals(new byte[0], context.readOutOfRow(LOB_ID));
     }
@@ -155,11 +157,78 @@ class RedoLobContextTest {
         RedoLobContext context = RedoLobContext.from(
                 List.of(RedoTransactionEntry.single(page(
                         100, 0, new byte[]{1, 2, 3}))),
-                catalog(), catalog());
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
 
         RedoLogException error = assertThrows(
                 RedoLogException.class,
                 () -> context.readOutOfRow(LOB_ID));
+        assertEquals(50075, error.getErrorCode());
+    }
+
+    @Test
+    void followsAndAppendsKdliListPages() {
+        RedoLogRecord firstList = listRecord(
+                RedoKdliDecoder.CODE_LMAP, 200, 0, 100, 1);
+        firstList.dba0 = 201;
+        RedoLogRecord secondList = listRecord(
+                RedoKdliDecoder.CODE_ALMAP, 201, 0, 101, 1);
+        RedoLogRecord undo = new RedoLogRecord();
+        undo.opCode = 0x0501;
+
+        RedoLobContext context = RedoLobContext.from(
+                List.of(
+                        RedoTransactionEntry.single(page(
+                                100, 0, new byte[]{1, 2})),
+                        RedoTransactionEntry.single(page(
+                                101, 1, new byte[]{3, 4})),
+                        RedoTransactionEntry.pair(undo, firstList),
+                        RedoTransactionEntry.pair(undo, secondList)),
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
+
+        assertArrayEquals(new byte[]{1, 2, 3, 4},
+                context.readList(LOB_ID, 4, 200));
+    }
+
+    @Test
+    void appendsKdliEntriesAfterAnExistingList() {
+        RedoLogRecord initial = listRecord(
+                RedoKdliDecoder.CODE_LMAP, 200, 0, 100, 1);
+        RedoLogRecord appended = listRecord(
+                RedoKdliDecoder.CODE_ALMAP, 200, 1, 101, 1);
+        RedoLogRecord undo = new RedoLogRecord();
+        undo.opCode = 0x0501;
+
+        RedoLobContext context = RedoLobContext.from(
+                List.of(
+                        RedoTransactionEntry.single(page(
+                                100, 0, new byte[]{1, 2})),
+                        RedoTransactionEntry.single(page(
+                                101, 1, new byte[]{3, 4})),
+                        RedoTransactionEntry.pair(undo, initial),
+                        RedoTransactionEntry.pair(undo, appended)),
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
+
+        assertArrayEquals(new byte[]{1, 2, 3, 4},
+                context.readList(LOB_ID, 4, 200));
+    }
+
+    @Test
+    void stopsOnAKdliListPageCycle() {
+        RedoLogRecord list = listRecord(
+                RedoKdliDecoder.CODE_LMAP, 200, 0, 100, 1);
+        list.dba0 = 200;
+        RedoLogRecord undo = new RedoLogRecord();
+        undo.opCode = 0x0501;
+        RedoLobContext context = RedoLobContext.from(
+                List.of(
+                        RedoTransactionEntry.single(page(
+                                100, 0, new byte[]{1, 2})),
+                        RedoTransactionEntry.pair(undo, list)),
+                catalog(), catalog(), ByteOrder.LITTLE_ENDIAN);
+
+        RedoLogException error = assertThrows(
+                RedoLogException.class,
+                () -> context.readList(LOB_ID, 2, 200));
         assertEquals(50075, error.getErrorCode());
     }
 
@@ -191,11 +260,51 @@ class RedoLobContextTest {
         return catalog;
     }
 
+    private static RedoLogRecord listRecord(
+            int code, long dba, int startIndex,
+            long firstPage, int pageCount) {
+        int entryOffset = 8;
+        if (code == RedoKdliDecoder.CODE_ALMAP
+                || code == RedoKdliDecoder.CODE_IMAP) {
+            entryOffset = 12;
+        }
+        byte[] data = new byte[entryOffset + 8];
+        data[0] = (byte) code;
+        writeLittleEndianInt(data, 4, 1);
+        if (entryOffset == 12) {
+            writeLittleEndianInt(data, 8, startIndex);
+        }
+        writeLittleEndianShort(data, entryOffset + 2, pageCount);
+        writeLittleEndianInt(data, entryOffset + 4, firstPage);
+        RedoLogRecord record = new RedoLogRecord();
+        record.attachData(data, 0, data.length);
+        record.opCode = 0x1A02;
+        record.dba = dba;
+        record.lobId = LOB_ID;
+        record.indKeyDataCode = code;
+        record.indKeyDataSize = data.length;
+        return record;
+    }
+
     private static void writeUnsignedInt(
             byte[] data, int offset, long value) {
         data[offset] = (byte) (value >>> 24);
         data[offset + 1] = (byte) (value >>> 16);
         data[offset + 2] = (byte) (value >>> 8);
         data[offset + 3] = (byte) value;
+    }
+
+    private static void writeLittleEndianInt(
+            byte[] data, int offset, long value) {
+        data[offset] = (byte) value;
+        data[offset + 1] = (byte) (value >>> 8);
+        data[offset + 2] = (byte) (value >>> 16);
+        data[offset + 3] = (byte) (value >>> 24);
+    }
+
+    private static void writeLittleEndianShort(
+            byte[] data, int offset, int value) {
+        data[offset] = (byte) value;
+        data[offset + 1] = (byte) (value >>> 8);
     }
 }
