@@ -45,7 +45,7 @@ class StateDatabaseTest {
         RuntimeState expected = runtimeState(Scn.of(100), Optional.of(position(90)));
 
         try (StateDatabase database = StateDatabase.open(temporaryDirectory)) {
-            assertEquals(1, database.schemaVersion());
+            assertEquals(2, database.schemaVersion());
             assertFalse(database.lastBackup().isPresent());
             database.store().commitLwn(expected, List.of());
         }
@@ -189,7 +189,7 @@ class StateDatabaseTest {
         }
 
         try (StateDatabase database = StateDatabase.open(temporaryDirectory)) {
-            assertEquals(1, database.schemaVersion());
+            assertEquals(2, database.schemaVersion());
             assertTrue(database.lastBackup().isPresent());
             assertTrue(Files.exists(database.lastBackup().orElseThrow()));
         }
@@ -208,7 +208,7 @@ class StateDatabaseTest {
                     + "checksum CHAR(64) NOT NULL,"
                     + "applied_at TIMESTAMP WITH TIME ZONE NOT NULL)");
             statement.executeUpdate("INSERT INTO schema_migration VALUES"
-                    + " (2, 'future', '0000000000000000000000000000000000000000000000000000000000000000',"
+                    + " (3, 'future', '0000000000000000000000000000000000000000000000000000000000000000',"
                     + " CURRENT_TIMESTAMP)");
         }
 

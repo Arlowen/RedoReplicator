@@ -19,8 +19,16 @@ import io.github.arlowen.redoreplicator.redo.transaction.RedoRowDecoder;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoRowGroupAssembler;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
 import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
+import io.github.arlowen.redoreplicator.schema.SystemDictionaryRedoBridge;
+import io.github.arlowen.redoreplicator.schema.SystemDictionaryRedoChange;
+import io.github.arlowen.redoreplicator.schema.SystemDictionaryTable;
+import io.github.arlowen.redoreplicator.schema.SystemTransactionCommit;
+import io.github.arlowen.redoreplicator.schema.SystemTransactionManager;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
+import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
+import io.github.arlowen.redoreplicator.state.TableSchemaVersion;
 
+import java.io.IOException;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -31,11 +39,15 @@ import java.util.Optional;
 public final class RedoJsonChangeAssembler {
     private final RedoRowDecoder rowDecoder;
     private final Charset databaseCharacterSet;
+    private final SystemDictionaryRedoBridge systemDictionaryBridge;
+    private final TableSchemaJsonCodec tableSchemaJsonCodec;
 
     public RedoJsonChangeAssembler(
             ByteOrder byteOrder, Charset databaseCharacterSet) {
         rowDecoder = new RedoRowDecoder(Objects.requireNonNull(
                 byteOrder, "byteOrder"));
+        systemDictionaryBridge = new SystemDictionaryRedoBridge(byteOrder);
+        tableSchemaJsonCodec = new TableSchemaJsonCodec();
         this.databaseCharacterSet = Objects.requireNonNull(
                 databaseCharacterSet, "databaseCharacterSet");
     }
@@ -54,13 +66,71 @@ public final class RedoJsonChangeAssembler {
         Objects.requireNonNull(schemaCatalog, "schemaCatalog");
         Objects.requireNonNull(
                 previousSchemaCatalog, "previousSchemaCatalog");
+        return assembleOutput(transaction, schemaCatalog,
+                previousSchemaCatalog, schemaCatalog, false);
+    }
+
+    public AssembledRedoTransaction assembleCommitted(
+            CommittedRedoTransaction transaction,
+            SchemaCatalog schemaCatalog,
+            SchemaCatalog previousSchemaCatalog,
+            SystemTransactionManager systemTransactionManager)
+            throws IOException {
+        Objects.requireNonNull(systemTransactionManager,
+                "systemTransactionManager");
+        List<SystemDictionaryRedoChange> systemChanges =
+                decodeSystemChanges(transaction, schemaCatalog);
+        if (systemChanges.isEmpty()) {
+            List<RedoJsonChange> changes = assemble(
+                    transaction, schemaCatalog, previousSchemaCatalog);
+            return new AssembledRedoTransaction(changes, List.of());
+        }
+
+        SystemTransactionCommit commit;
+        try {
+            for (SystemDictionaryRedoChange change : systemChanges) {
+                systemTransactionManager.apply(
+                        transaction.xid(), change.change());
+            }
+            commit = systemTransactionManager.commit(
+                    transaction.xid(), transaction.commitPosition().scn());
+        } catch (IOException | RuntimeException e) {
+            systemTransactionManager.rollback(transaction.xid());
+            throw e;
+        }
+
+        SchemaCatalog transactionSchemaCatalog = new SchemaCatalog();
+        for (TableSchemaVersion version : commit.schemaVersions()) {
+            if (!version.dropTombstone()) {
+                transactionSchemaCatalog.add(
+                        version.decode(tableSchemaJsonCodec));
+            }
+        }
+        List<RedoJsonChange> changes = assembleOutput(
+                transaction, schemaCatalog, previousSchemaCatalog,
+                transactionSchemaCatalog, true);
+        return new AssembledRedoTransaction(
+                changes, commit.schemaVersions());
+    }
+
+    private List<RedoJsonChange> assembleOutput(
+            CommittedRedoTransaction transaction,
+            SchemaCatalog schemaCatalog,
+            SchemaCatalog previousSchemaCatalog,
+            SchemaCatalog transactionSchemaCatalog,
+            boolean skipSystemRows) {
+        Objects.requireNonNull(transaction, "transaction");
+        Objects.requireNonNull(schemaCatalog, "schemaCatalog");
+        Objects.requireNonNull(
+                previousSchemaCatalog, "previousSchemaCatalog");
         List<RedoJsonChange> changes = new ArrayList<>();
         RedoRowGroupAssembler rowAssembler = new RedoRowGroupAssembler();
         RedoDdlAssembler ddlAssembler = new RedoDdlAssembler(
                 databaseCharacterSet);
         for (RedoTransactionEntry entry : transaction.entries()) {
             appendEntry(transaction, schemaCatalog, previousSchemaCatalog,
-                    rowAssembler, ddlAssembler, changes, entry);
+                    transactionSchemaCatalog, rowAssembler, ddlAssembler,
+                    changes, entry, skipSystemRows);
         }
         rowAssembler.finish(transaction.xid());
         ddlAssembler.finish();
@@ -71,16 +141,19 @@ public final class RedoJsonChangeAssembler {
             CommittedRedoTransaction transaction,
             SchemaCatalog schemaCatalog,
             SchemaCatalog previousSchemaCatalog,
+            SchemaCatalog transactionSchemaCatalog,
             RedoRowGroupAssembler rowAssembler,
             RedoDdlAssembler ddlAssembler,
             List<RedoJsonChange> changes,
-            RedoTransactionEntry entry) {
+            RedoTransactionEntry entry,
+            boolean skipSystemRows) {
         if (skipClusterOrPartitionMove(entry)) {
             return;
         }
         int operation = entry.operationCode();
         if (isRowOperation(operation)) {
-            appendRow(schemaCatalog, rowAssembler, changes, entry);
+            appendRow(schemaCatalog, rowAssembler, changes, entry,
+                    skipSystemRows);
             return;
         }
         if (operation == 0x05010B0B || operation == 0x05010B0C) {
@@ -96,7 +169,8 @@ public final class RedoJsonChangeAssembler {
             }
             ddlAssembler.accept(
                     entry.first(), transaction.commitPosition().scn(),
-                    schemaCatalog, previousSchemaCatalog)
+                    transactionSchemaCatalog, schemaCatalog,
+                    previousSchemaCatalog)
                     .ifPresent(changes::add);
             return;
         }
@@ -112,7 +186,8 @@ public final class RedoJsonChangeAssembler {
             SchemaCatalog schemaCatalog,
             RedoRowGroupAssembler rowAssembler,
             List<RedoJsonChange> changes,
-            RedoTransactionEntry entry) {
+            RedoTransactionEntry entry,
+            boolean skipSystemRows) {
         RedoLogRecord redo = entry.second().orElseThrow();
         Optional<List<RedoRecordPair>> complete = rowAssembler.accept(
                 entry.first(), redo);
@@ -122,6 +197,9 @@ public final class RedoJsonChangeAssembler {
         List<RedoRecordPair> group = complete.orElseThrow();
         TableSchema table = resolveTable(group, schemaCatalog);
         if ("SYS".equals(table.owner())) {
+            if (skipSystemRows) {
+                return;
+            }
             throw new DataException(50071,
                     "System dictionary redo for "
                             + table.qualifiedName()
@@ -129,6 +207,61 @@ public final class RedoJsonChangeAssembler {
         }
         changes.add(new RedoJsonDmlChange(
                 rowDecoder.decode(table, group)));
+    }
+
+    private List<SystemDictionaryRedoChange> decodeSystemChanges(
+            CommittedRedoTransaction transaction,
+            SchemaCatalog schemaCatalog) {
+        List<SystemDictionaryRedoChange> changes = new ArrayList<>();
+        RedoRowGroupAssembler rowAssembler = new RedoRowGroupAssembler();
+        boolean userRows = false;
+        for (RedoTransactionEntry entry : transaction.entries()) {
+            if (skipClusterOrPartitionMove(entry)) {
+                continue;
+            }
+            int operation = entry.operationCode();
+            if (isRowOperation(operation)) {
+                RedoLogRecord redo = entry.second().orElseThrow();
+                Optional<List<RedoRecordPair>> complete = rowAssembler.accept(
+                        entry.first(), redo);
+                if (complete.isEmpty()) {
+                    continue;
+                }
+                List<RedoRecordPair> group = complete.orElseThrow();
+                TableSchema table = resolveTable(group, schemaCatalog);
+                if (!"SYS".equals(table.owner())) {
+                    userRows = true;
+                    continue;
+                }
+                SystemDictionaryTable dictionaryTable =
+                        SystemDictionaryTable.findByTableName(table.name())
+                                .orElseThrow(() -> new DataException(50071,
+                                        "SYS redo table is not translated: "
+                                                + table.qualifiedName()));
+                changes.add(systemDictionaryBridge.decode(
+                        dictionaryTable, table, group));
+                continue;
+            }
+            if (operation == 0x05010B0B || operation == 0x05010B0C) {
+                throw new RedoLogException(50057,
+                        "Multi-row DML is not translated at offset "
+                                + entry.first().fileOffset);
+            }
+            if (!isNonOutputOperation(operation)
+                    && operation != 0x18010000) {
+                throw new RedoLogException(50057,
+                        "Unknown committed operation 0x"
+                                + Integer.toHexString(operation)
+                                + " at offset " + entry.first().fileOffset);
+            }
+        }
+        rowAssembler.finish(transaction.xid());
+        if (!changes.isEmpty() && userRows) {
+            throw new DataException(50071,
+                    "A committed transaction mixes SYS dictionary and user rows: "
+                            + transaction.xid());
+        }
+        return List.copyOf(changes);
     }
 
     private static TableSchema resolveTable(

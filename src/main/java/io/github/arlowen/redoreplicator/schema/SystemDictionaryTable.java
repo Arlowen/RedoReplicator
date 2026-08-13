@@ -6,6 +6,8 @@
  */
 package io.github.arlowen.redoreplicator.schema;
 
+import java.util.Optional;
+
 public enum SystemDictionaryTable {
     USER("SYS.USER$"),
     OBJECT("SYS.OBJ$"),
@@ -35,5 +37,15 @@ public enum SystemDictionaryTable {
 
     public String tableName() {
         return qualifiedName.substring(qualifiedName.indexOf('.') + 1);
+    }
+
+    public static Optional<SystemDictionaryTable> findByTableName(
+            String tableName) {
+        for (SystemDictionaryTable table : values()) {
+            if (table.tableName().equals(tableName)) {
+                return Optional.of(table);
+            }
+        }
+        return Optional.empty();
     }
 }

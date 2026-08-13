@@ -126,7 +126,7 @@ public final class RedoStreamParser {
                     FileOffset.fromBlock(
                             lwn.endBlock(), fileHeader.blockSize()));
             parsed.add(new ParsedLwn(
-                    parsedPosition, committed,
+                    parsedPosition, lwn.timestamp(), committed,
                     transactionBuffer.lowWatermark()));
         }
         return List.copyOf(parsed);

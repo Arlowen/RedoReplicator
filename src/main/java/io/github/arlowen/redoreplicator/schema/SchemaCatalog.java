@@ -10,16 +10,62 @@
 package io.github.arlowen.redoreplicator.schema;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 public final class SchemaCatalog {
+    private final Map<String, TableSchema> tablesByName = new LinkedHashMap<>();
     private final Map<Long, TableSchema> tablesByObject = new LinkedHashMap<>();
     private final Map<Long, TableSchema> tablesByDataObject = new LinkedHashMap<>();
     private final Map<Long, LobSchema> lobsByDataObject = new LinkedHashMap<>();
     private final Map<Long, LobSchema> lobIndexesByDataObject = new LinkedHashMap<>();
 
     public void add(TableSchema table) {
+        TableSchema previous = tablesByName.putIfAbsent(
+                table.qualifiedName(), table);
+        if (previous != null) {
+            if (!previous.equals(table)) {
+                throw new IllegalArgumentException(
+                        "Duplicate table schema " + table.qualifiedName());
+            }
+            return;
+        }
+        index(table);
+    }
+
+    public void replace(TableSchema table) {
+        tablesByName.put(table.qualifiedName(), table);
+        rebuildIndexes();
+    }
+
+    public void remove(String container, String owner, String table) {
+        tablesByName.entrySet().removeIf(entry -> {
+            TableSchema schema = entry.getValue();
+            return schema.container().equals(container)
+                    && schema.owner().equals(owner)
+                    && schema.name().equals(table);
+        });
+        rebuildIndexes();
+    }
+
+    public void addAll(SchemaCatalog catalog) {
+        for (TableSchema table : catalog.tables()) {
+            add(table);
+        }
+    }
+
+    public SchemaCatalog copy() {
+        SchemaCatalog copy = new SchemaCatalog();
+        copy.addAll(this);
+        return copy;
+    }
+
+    public List<TableSchema> tables() {
+        return List.copyOf(tablesByName.values());
+    }
+
+    private void index(TableSchema table) {
         putUnique(tablesByObject, table.objectId(), table, "object");
         putUnique(tablesByDataObject, table.dataObjectId(), table, "data object");
         for (TablePartition partition : table.partitions()) {
@@ -45,6 +91,16 @@ public final class SchemaCatalog {
         }
     }
 
+    private void rebuildIndexes() {
+        tablesByObject.clear();
+        tablesByDataObject.clear();
+        lobsByDataObject.clear();
+        lobIndexesByDataObject.clear();
+        for (TableSchema table : tablesByName.values()) {
+            index(table);
+        }
+    }
+
     public Optional<TableSchema> findByObjectId(long objectId) {
         return Optional.ofNullable(tablesByObject.get(objectId));
     }
@@ -62,7 +118,7 @@ public final class SchemaCatalog {
     }
 
     public int tableCount() {
-        return (int) tablesByObject.values().stream().distinct().count();
+        return tablesByName.size();
     }
 
     private static void putUnique(Map<Long, TableSchema> lookup, long key,

@@ -40,6 +40,7 @@ final class RedoDdlAssembler {
     Optional<RedoJsonDdlChange> accept(
             RedoLogRecord record,
             Scn commitScn,
+            SchemaCatalog transactionSchemaCatalog,
             SchemaCatalog schemaCatalog,
             SchemaCatalog previousSchemaCatalog) {
         int sequence = record.ddlSequence;
@@ -66,7 +67,7 @@ final class RedoDdlAssembler {
             throw invalid(record, "completed DDL contains no SQL text");
         }
         RedoJsonDdlChange change = complete(
-                record, commitScn, schemaCatalog,
+                record, commitScn, transactionSchemaCatalog, schemaCatalog,
                 previousSchemaCatalog);
         reset();
         return Optional.of(change);
@@ -119,10 +120,14 @@ final class RedoDdlAssembler {
     private RedoJsonDdlChange complete(
             RedoLogRecord record,
             Scn commitScn,
+            SchemaCatalog transactionSchemaCatalog,
             SchemaCatalog schemaCatalog,
             SchemaCatalog previousSchemaCatalog) {
-        Optional<TableSchema> resolved = schemaCatalog.findByObjectId(
+        Optional<TableSchema> resolved = transactionSchemaCatalog.findByObjectId(
                 objectId);
+        if (resolved.isEmpty()) {
+            resolved = schemaCatalog.findByObjectId(objectId);
+        }
         if (resolved.isEmpty()) {
             resolved = previousSchemaCatalog.findByObjectId(objectId);
         }

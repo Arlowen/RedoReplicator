@@ -11,8 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.FileOffset;
+import io.github.arlowen.redoreplicator.redo.common.IntX;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.RedoTime;
+import io.github.arlowen.redoreplicator.redo.common.RowId;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
@@ -21,7 +23,14 @@ import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
 import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
+import io.github.arlowen.redoreplicator.schema.SysCol;
+import io.github.arlowen.redoreplicator.schema.SysObj;
+import io.github.arlowen.redoreplicator.schema.SysTab;
+import io.github.arlowen.redoreplicator.schema.SysUser;
+import io.github.arlowen.redoreplicator.schema.SystemDictionaryState;
+import io.github.arlowen.redoreplicator.schema.SystemTransactionManager;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
+import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +48,10 @@ class RedoJsonChangeAssemblerTest {
     private static final Xid XID = Xid.of(1, 2, 3);
     private static final long OBJECT_ID = 22;
     private static final long DATA_OBJECT_ID = 33;
+    private static final long SYS_OBJECT_ID = 44;
+    private static final long SYS_DATA_OBJECT_ID = 55;
+    private static final long SYS_OBJ_TABLE_OBJECT_ID = 45;
+    private static final long SYS_OBJ_TABLE_DATA_OBJECT_ID = 56;
 
     private final RedoJsonChangeAssembler assembler =
             new RedoJsonChangeAssembler(
@@ -147,8 +160,110 @@ class RedoJsonChangeAssemblerTest {
         assertEquals(50057, incompleteDdl.getErrorCode());
     }
 
+    @Test
+    void routesCommittedSystemRowsWithoutWritingUserJson() throws Exception {
+        RowId rowId = RowId.of(SYS_DATA_OBJECT_ID, 100, 3);
+        SystemTransactionManager manager = systemManager(
+                SystemDictionaryState.of(List.of(
+                        new SysUser(rowId, 12, "APP", IntX.zero()))));
+
+        AssembledRedoTransaction assembled = assembler.assembleCommitted(
+                transaction(List.of(systemDeleteEntry())),
+                catalog(systemTable()), catalog(systemTable()), manager);
+
+        assertTrue(assembled.jsonChanges().isEmpty());
+        assertTrue(assembled.schemaVersions().isEmpty());
+        assertTrue(manager.dictionaryState().users().isEmpty());
+        assertEquals(0, manager.openTransactionCount());
+    }
+
+    @Test
+    void rejectsTransactionsMixingSystemAndUserRowsBeforeApplyingSchema() {
+        SysUser user = new SysUser(
+                RowId.of(SYS_DATA_OBJECT_ID, 100, 3),
+                12, "APP", IntX.zero());
+        SystemTransactionManager manager = systemManager(
+                SystemDictionaryState.of(List.of(user)));
+        SchemaCatalog catalog = catalog(table("APP"));
+        catalog.add(systemTable());
+
+        DataException error = assertThrows(DataException.class,
+                () -> assembler.assembleCommitted(
+                        transaction(List.of(
+                                insertEntry(), systemDeleteEntry())),
+                        catalog, catalog, manager));
+
+        assertEquals(50071, error.getErrorCode());
+        assertEquals(List.of(user), manager.dictionaryState().users());
+        assertEquals(0, manager.openTransactionCount());
+    }
+
+    @Test
+    void emitsDdlAndDropTombstoneForSystemDictionaryCommit() throws Exception {
+        SystemDictionaryState state = SystemDictionaryState.of(List.of(
+                new SysUser(RowId.of(70, 10, 1), 12, "APP", IntX.zero()),
+                new SysObj(
+                        RowId.of(SYS_OBJ_TABLE_DATA_OBJECT_ID, 100, 3),
+                        12, OBJECT_ID, DATA_OBJECT_ID,
+                        SysObj.TYPE_TABLE, "USERS", IntX.zero()),
+                new SysTab(
+                        RowId.of(71, 10, 2),
+                        OBJECT_ID, DATA_OBJECT_ID, 0, 0,
+                        IntX.zero(), IntX.zero()),
+                new SysCol(
+                        RowId.of(72, 10, 3),
+                        OBJECT_ID, 1, 1, 1, "ID",
+                        OracleColumnType.NUMBER.code(), 22,
+                        0, 0, 0, 0, 0, IntX.zero())));
+        SystemTransactionManager manager = systemManager(state);
+        SchemaCatalog catalog = catalog(table("APP"));
+        catalog.add(systemObjectTable());
+        RedoLogRecord ddl = singleRecordDdl(
+                "APP", "DROP TABLE APP.USERS");
+        ddl.ddlType = 12;
+
+        AssembledRedoTransaction assembled = assembler.assembleCommitted(
+                transaction(List.of(
+                        systemObjectDeleteEntry(),
+                        RedoTransactionEntry.single(ddl))),
+                catalog, catalog, manager);
+
+        assertEquals(1, assembled.jsonChanges().size());
+        RedoJsonDdlChange change =
+                (RedoJsonDdlChange) assembled.jsonChanges().get(0);
+        assertEquals("DROP TABLE APP.USERS", change.change().ddlText());
+        assertEquals(1, assembled.schemaVersions().size());
+        assertTrue(assembled.schemaVersions().get(0).dropTombstone());
+        assertEquals(OBJECT_ID,
+                assembled.schemaVersions().get(0).objectId());
+    }
+
     private static RedoTransactionEntry insertEntry() {
         return RedoTransactionEntry.pair(undo(), redo(0x0B02));
+    }
+
+    private static RedoTransactionEntry systemDeleteEntry() {
+        RedoLogRecord undo = undo();
+        undo.obj = SYS_OBJECT_ID;
+        undo.dataObj = SYS_DATA_OBJECT_ID;
+        undo.suppLogBdba = 100;
+        undo.suppLogSlot = 3;
+        RedoLogRecord redo = redo(0x0B03);
+        redo.obj = SYS_OBJECT_ID;
+        redo.dataObj = SYS_DATA_OBJECT_ID;
+        return RedoTransactionEntry.pair(undo, redo);
+    }
+
+    private static RedoTransactionEntry systemObjectDeleteEntry() {
+        RedoLogRecord undo = undo();
+        undo.obj = SYS_OBJ_TABLE_OBJECT_ID;
+        undo.dataObj = SYS_OBJ_TABLE_DATA_OBJECT_ID;
+        undo.suppLogBdba = 100;
+        undo.suppLogSlot = 3;
+        RedoLogRecord redo = redo(0x0B03);
+        redo.obj = SYS_OBJ_TABLE_OBJECT_ID;
+        redo.dataObj = SYS_OBJ_TABLE_DATA_OBJECT_ID;
+        return RedoTransactionEntry.pair(undo, redo);
     }
 
     private static RedoLogRecord undo() {
@@ -228,6 +343,27 @@ class RedoJsonChangeAssemblerTest {
         SchemaCatalog catalog = new SchemaCatalog();
         catalog.add(table);
         return catalog;
+    }
+
+    private static SystemTransactionManager systemManager(
+            SystemDictionaryState state) {
+        return new SystemTransactionManager(
+                state, "FREEPDB1", 873, 2000,
+                StandardCharsets.UTF_8, new TableSchemaJsonCodec());
+    }
+
+    private static TableSchema systemTable() {
+        return new TableSchema(
+                "FREEPDB1", "SYS", "USER$",
+                SYS_OBJECT_ID, SYS_DATA_OBJECT_ID,
+                10, 0, 0, List.of(), List.of(), List.of());
+    }
+
+    private static TableSchema systemObjectTable() {
+        return new TableSchema(
+                "FREEPDB1", "SYS", "OBJ$",
+                SYS_OBJ_TABLE_OBJECT_ID, SYS_OBJ_TABLE_DATA_OBJECT_ID,
+                10, 0, 0, List.of(), List.of(), List.of());
     }
 
     private static TableSchema table(String owner) {

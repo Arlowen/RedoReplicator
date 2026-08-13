@@ -28,11 +28,16 @@ final class StateMigrationRunner {
     private static final String TRACKING_TABLE = "schema_migration";
     private static final String INITIAL_SCHEMA_RESOURCE =
             "/db/migration/V001__initial_state.sql";
+    private static final String FINGERPRINT_VARCHAR_RESOURCE =
+            "/db/migration/V002__runtime_fingerprint_varchar.sql";
 
     private final List<StateMigration> migrations;
 
     StateMigrationRunner() throws IOException {
-        migrations = List.of(loadMigration(1, "initial state", INITIAL_SCHEMA_RESOURCE));
+        migrations = List.of(
+                loadMigration(1, "initial state", INITIAL_SCHEMA_RESOURCE),
+                loadMigration(2, "runtime fingerprint varchar",
+                        FINGERPRINT_VARCHAR_RESOURCE));
     }
 
     boolean requiresMigration(Connection connection) throws SQLException {

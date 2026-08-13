@@ -57,13 +57,20 @@ text, NUMBER, DATE/TIMESTAMP, RAW, binary floating point, intervals, UROWID and
 BOOLEAN. The fixed native JSON Builder emits separate begin, ordered DML/DDL
 and commit messages plus optional checkpoint heartbeats, always including the
 database name, and its byte messages are covered through JSONL fsync. LOB
-reconstruction and system dictionary transaction routing remain separate
-incomplete steps. Committed user transactions can now retain DML/DDL order from
-their redo entries, assemble supplemental row pieces, aggregate numbered DDL
-fragments and feed the Builder directly. Their table catalog is loaded from the
-latest live H2 schema versions at the requested SCN, with pre-commit fallback
-for dropped objects. Missing schema, incomplete DDL and untranslated multi-row
-DML stop processing instead of silently losing a change.
+reconstruction remains a separate incomplete step. Committed user transactions
+can now retain DML/DDL order from their redo entries, assemble supplemental row
+pieces, aggregate numbered DDL fragments and feed the Builder directly. Their
+table catalog is loaded from the latest live H2 schema versions at the requested
+SCN, with pre-commit fallback for dropped objects. Missing schema, incomplete
+DDL and untranslated multi-row DML stop processing instead of silently losing a
+change. Committed rows for all fifteen translated SYS dictionary tables are
+routed through the system transaction overlay, never emitted as user JSON, and
+publish complete schema versions or drop tombstones at commit. Startup-side
+catalog loading requires the physical schema of every translated SYS table at
+the target SCN. The LWN commit processor now writes and fsyncs the complete
+JSONL batch before atomically storing schema versions, the low-watermark and the
+single durable position in H2. The global capture loop still needs to invoke
+this processor.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
