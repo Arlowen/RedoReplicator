@@ -51,7 +51,11 @@ uncommitted tail to H2's safe byte offset, and refuses to start when the file is
 shorter than that offset. User-table redo pairs can now be assembled into
 typed before/after column bytes with row identity, supplemental images,
 multi-piece value merging and primary-key placeholders; compressed rows remain
-an explicit unsupported boundary until their decoder is translated.
+an explicit unsupported boundary until their decoder is translated. Those
+typed bytes can now be converted to the fixed native JSON scalar forms for
+text, NUMBER, DATE/TIMESTAMP, RAW, binary floating point, intervals, UROWID and
+BOOLEAN. LOB reconstruction and runtime JSON message construction remain
+separate incomplete steps.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
