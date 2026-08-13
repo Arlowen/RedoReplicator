@@ -153,16 +153,16 @@ src/parser/OpCode0514.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0514	
 src/parser/OpCode0A02.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0A02	translated	Translated leaf-row key and key-data positions plus KTB transaction identity
 src/parser/OpCode0A08.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0A08	translated	Translated leaf-block initialization and single-row key position
 src/parser/OpCode0A12.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0A12	translated	Translated updated key-data position plus KTB transaction identity
-src/parser/OpCode0B02.h	io.github.arlowen.redoreplicator.parser.OpCode0B02	pending	Translate redo and transaction parsing
-src/parser/OpCode0B03.h	io.github.arlowen.redoreplicator.parser.OpCode0B03	pending	Translate redo and transaction parsing
-src/parser/OpCode0B04.h	io.github.arlowen.redoreplicator.parser.OpCode0B04	pending	Translate redo and transaction parsing
-src/parser/OpCode0B05.h	io.github.arlowen.redoreplicator.parser.OpCode0B05	pending	Translate redo and transaction parsing
-src/parser/OpCode0B06.h	io.github.arlowen.redoreplicator.parser.OpCode0B06	pending	Translate redo and transaction parsing
-src/parser/OpCode0B08.h	io.github.arlowen.redoreplicator.parser.OpCode0B08	pending	Translate redo and transaction parsing
-src/parser/OpCode0B0B.h	io.github.arlowen.redoreplicator.parser.OpCode0B0B	pending	Translate redo and transaction parsing
-src/parser/OpCode0B0C.h	io.github.arlowen.redoreplicator.parser.OpCode0B0C	pending	Translate redo and transaction parsing
-src/parser/OpCode0B10.h	io.github.arlowen.redoreplicator.parser.OpCode0B10	pending	Translate redo and transaction parsing
-src/parser/OpCode0B16.h	io.github.arlowen.redoreplicator.parser.OpCode0B16	pending	Translate redo and transaction parsing
+src/parser/OpCode0B02.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B02	translated	Translated insert row-piece columns, compression marker and KDO state
+src/parser/OpCode0B03.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B03	translated	Translated KTB and KDO row state
+src/parser/OpCode0B04.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B04	translated	Translated KTB and KDO row state
+src/parser/OpCode0B05.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B05	translated	Translated updated-column numbers, row data and KDOM2 layout
+src/parser/OpCode0B06.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B06	translated	Translated overwrite row-piece columns, compression marker and KDO state
+src/parser/OpCode0B08.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B08	translated	Translated KTB and KDO row state
+src/parser/OpCode0B0B.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B0B	translated	Translated quick multi-row sizes and row data layout
+src/parser/OpCode0B0C.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B0C	translated	Translated quick multi-row delete slots
+src/parser/OpCode0B10.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B10	translated	Translated KTB and KDO row state
+src/parser/OpCode0B16.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B16	translated	Translated KTB and KDO row state
 src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.parser.OpCode1301	pending	Translate redo and transaction parsing
 src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.parser.OpCode1801	pending	Translate redo and transaction parsing
 src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.parser.OpCode1A02	pending	Translate redo and transaction parsing

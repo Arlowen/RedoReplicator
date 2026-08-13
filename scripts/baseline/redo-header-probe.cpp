@@ -182,6 +182,30 @@ int main() {
             Ctx::read32Little(ktbRedo.data() + 12)};
     std::cout << "opcodeKtb.xid=" << ktbXid.toString() << '\n';
 
+    std::array<uint8_t, 48> kdo{};
+    Ctx::write32Little(kdo.data(), 0xF1000001);
+    kdo[10] = 0x02;
+    kdo[11] = 0x41;
+    kdo[16] = 0x0C;
+    kdo[18] = 3;
+    Ctx::write16Little(kdo.data() + 40, 9);
+    Ctx::write16Little(kdo.data() + 42, 0x1234);
+    kdo[45] = 0x02;
+    uint32_t kdoColumnData = 0;
+    for (uint32_t column = 0; column < kdo[18]; ++column) {
+        if ((kdo[45 + column / 8] & (1U << (column % 8))) == 0)
+            kdoColumnData = column + 1;
+    }
+    std::cout << "opcodeKdo.blockDba=" << Ctx::read32Little(kdo.data()) << '\n';
+    std::cout << "opcodeKdo.operation=" << static_cast<uint32_t>(kdo[10]) << '\n';
+    std::cout << "opcodeKdo.flags=" << static_cast<uint32_t>(kdo[11]) << '\n';
+    std::cout << "opcodeKdo.rowFlags=" << static_cast<uint32_t>(kdo[16]) << '\n';
+    std::cout << "opcodeKdo.columnCount=" << static_cast<uint32_t>(kdo[18]) << '\n';
+    std::cout << "opcodeKdo.columnDataCount=" << kdoColumnData << '\n';
+    std::cout << "opcodeKdo.sizeDelta=" << Ctx::read16Little(kdo.data() + 40) << '\n';
+    std::cout << "opcodeKdo.slot=" << Ctx::read16Little(kdo.data() + 42) << '\n';
+    std::cout << "opcodeKdo.nullsOffset=45\n";
+
     std::array<uint8_t, 8> sessionAttribute{};
     Ctx::write16Little(sessionAttribute.data() + 2, 0x9ABC);
     Ctx::write32Little(sessionAttribute.data() + 4, 0xF1234567);

@@ -88,7 +88,7 @@ class TransactionOpCodeTest {
         assertEquals(50061, error.getErrorCode());
 
         RedoLogRecord untranslated = RedoOpCodeTestSupport.record(
-                0x0B02, 0, RedoOpCodeTestSupport.field(16));
+                0x1301, 0, RedoOpCodeTestSupport.field(16));
         assertFalse(dispatcher.dispatch(untranslated));
     }
 

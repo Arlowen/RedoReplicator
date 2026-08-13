@@ -27,6 +27,16 @@ public final class RedoOpCodeDispatcher {
     private final OpCode0A02 opCode0A02;
     private final OpCode0A08 opCode0A08;
     private final OpCode0A12 opCode0A12;
+    private final OpCode0B02 opCode0B02;
+    private final OpCode0B03 opCode0B03;
+    private final OpCode0B04 opCode0B04;
+    private final OpCode0B05 opCode0B05;
+    private final OpCode0B06 opCode0B06;
+    private final OpCode0B08 opCode0B08;
+    private final OpCode0B0B opCode0B0B;
+    private final OpCode0B0C opCode0B0C;
+    private final OpCode0B10 opCode0B10;
+    private final OpCode0B16 opCode0B16;
 
     public RedoOpCodeDispatcher(ByteOrder byteOrder, long redoVersion) {
         RedoByteReader byteReader = new RedoByteReader(byteOrder);
@@ -39,6 +49,16 @@ public final class RedoOpCodeDispatcher {
         opCode0A02 = new OpCode0A02(byteReader);
         opCode0A08 = new OpCode0A08(byteReader);
         opCode0A12 = new OpCode0A12(byteReader);
+        opCode0B02 = new OpCode0B02(byteReader);
+        opCode0B03 = new OpCode0B03(byteReader);
+        opCode0B04 = new OpCode0B04(byteReader);
+        opCode0B05 = new OpCode0B05(byteReader);
+        opCode0B06 = new OpCode0B06(byteReader);
+        opCode0B08 = new OpCode0B08(byteReader);
+        opCode0B0B = new OpCode0B0B(byteReader);
+        opCode0B0C = new OpCode0B0C(byteReader);
+        opCode0B10 = new OpCode0B10(byteReader);
+        opCode0B16 = new OpCode0B16(byteReader);
     }
 
     public boolean dispatch(RedoLogRecord record) {
@@ -73,6 +93,36 @@ public final class RedoOpCodeDispatcher {
                 return true;
             case 0x0A12:
                 opCode0A12.process(record);
+                return true;
+            case 0x0B02:
+                opCode0B02.process(record);
+                return true;
+            case 0x0B03:
+                opCode0B03.process(record);
+                return true;
+            case 0x0B04:
+                opCode0B04.process(record);
+                return true;
+            case 0x0B05:
+                opCode0B05.process(record);
+                return true;
+            case 0x0B06:
+                opCode0B06.process(record);
+                return true;
+            case 0x0B08:
+                opCode0B08.process(record);
+                return true;
+            case 0x0B0B:
+                opCode0B0B.process(record);
+                return true;
+            case 0x0B0C:
+                opCode0B0C.process(record);
+                return true;
+            case 0x0B10:
+                opCode0B10.process(record);
+                return true;
+            case 0x0B16:
+                opCode0B16.process(record);
                 return true;
             default:
                 return false;
