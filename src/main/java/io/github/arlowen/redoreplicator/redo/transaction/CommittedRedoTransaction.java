@@ -10,7 +10,6 @@
  */
 package io.github.arlowen.redoreplicator.redo.transaction;
 
-import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.Attribute;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.RedoRecordPair;
@@ -45,8 +44,7 @@ public record CommittedRedoTransaction(
 
     public List<List<RedoRecordPair>> rowGroups() {
         List<List<RedoRecordPair>> groups = new ArrayList<>();
-        List<RedoRecordPair> current = new ArrayList<>();
-        RedoRowOperation operation = null;
+        RedoRowGroupAssembler assembler = new RedoRowGroupAssembler();
         for (RedoTransactionEntry entry : entries) {
             if (!entry.paired() || entry.first().opCode != 0x0501) {
                 continue;
@@ -55,38 +53,9 @@ public record CommittedRedoTransaction(
             if (!isRowOpCode(redo.opCode)) {
                 continue;
             }
-            RedoLogRecord undo = entry.first();
-            if (current.isEmpty() && redo.opCode == 0x0B16
-                    && undo.suppLogBdba == 0
-                    && (undo.suppLogFb & RedoLogRecord.FB_L) == 0) {
-                continue;
-            }
-            validateSameRow(current, undo, redo);
-            operation = RedoRowOperation.append(operation, redo.opCode);
-            RedoRecordPair pair = new RedoRecordPair(undo, redo);
-            if (operation == RedoRowOperation.INSERT) {
-                current.add(0, pair);
-            } else if (redo.opCode == 0x0B06
-                    && !current.isEmpty()
-                    && current.get(current.size() - 1).redo().opCode == 0x0B02) {
-                RedoRecordPair previous = current.remove(current.size() - 1);
-                current.add(pair);
-                current.add(previous);
-            } else {
-                current.add(pair);
-            }
-
-            if ((undo.suppLogFb & RedoLogRecord.FB_L) != 0) {
-                groups.add(List.copyOf(current));
-                current.clear();
-                operation = null;
-            }
+            assembler.accept(entry.first(), redo).ifPresent(groups::add);
         }
-        if (!current.isEmpty()) {
-            throw new RedoLogException(50057,
-                    "Committed transaction contains an incomplete row group: "
-                            + xid);
-        }
+        assembler.finish(xid);
         return List.copyOf(groups);
     }
 
@@ -97,22 +66,4 @@ public record CommittedRedoTransaction(
                 || opCode == 0x0B16;
     }
 
-    private static void validateSameRow(
-            List<RedoRecordPair> current,
-            RedoLogRecord undo,
-            RedoLogRecord redo) {
-        if (current.isEmpty()) {
-            return;
-        }
-        RedoRecordPair first = current.get(0);
-        RedoRecordPair last = current.get(current.size() - 1);
-        boolean sameRow = last.undo().suppLogBdba == undo.suppLogBdba
-                && last.undo().suppLogSlot == undo.suppLogSlot
-                && first.undo().obj == undo.obj
-                && first.redo().obj == redo.obj;
-        if (!sameRow) {
-            throw new RedoLogException(50057,
-                    "Minimal supplemental log cannot prove one row group");
-        }
-    }
 }

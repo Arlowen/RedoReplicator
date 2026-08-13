@@ -12,6 +12,8 @@ import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
 import io.github.arlowen.redoreplicator.schema.OracleColumnType;
+import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
+import io.github.arlowen.redoreplicator.schema.SchemaCatalogLoader;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
 import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
 import org.junit.jupiter.api.Test;
@@ -124,6 +126,42 @@ class StateDatabaseTest {
     }
 
     @Test
+    void loadsOnlyLatestLiveSchemasIntoCatalogAtScn() throws Exception {
+        TableSchemaJsonCodec codec = new TableSchemaJsonCodec();
+        TableSchema orders = completeTableSchema(
+                "ORDERS", 101, 102);
+        TableSchema users = completeTableSchema(
+                "USERS", 201, 202);
+        TableSchemaVersion ordersInitial = TableSchemaVersion.initial(
+                orders, Scn.of(100), codec);
+        TableSchemaVersion ordersDrop = TableSchemaVersion.drop(
+                ordersInitial, Scn.of(200), "DROP",
+                "DROP TABLE APP.ORDERS", SchemaSource.REDO);
+        TableSchemaVersion usersInitial = TableSchemaVersion.initial(
+                users, Scn.of(150), codec);
+
+        try (StateDatabase database = StateDatabase.open(
+                temporaryDirectory)) {
+            database.store().commitLwn(
+                    runtimeState(Scn.of(200), Optional.empty()),
+                    List.of(ordersInitial, usersInitial, ordersDrop));
+            SchemaCatalogLoader loader = new SchemaCatalogLoader(
+                    database.store(), codec);
+
+            SchemaCatalog beforeDrop = loader.loadAt(Scn.of(175));
+            assertEquals("ORDERS", beforeDrop.findByObjectId(101)
+                    .orElseThrow().name());
+            assertEquals("USERS", beforeDrop.findByDataObjectId(202)
+                    .orElseThrow().name());
+
+            SchemaCatalog afterDrop = loader.loadAt(Scn.of(200));
+            assertTrue(afterDrop.findByObjectId(101).isEmpty());
+            assertEquals("USERS", afterDrop.findByObjectId(201)
+                    .orElseThrow().name());
+        }
+    }
+
+    @Test
     void rollsBackSchemaAndRuntimeStateTogether() throws Exception {
         RuntimeState firstState = runtimeState(Scn.of(100), Optional.empty());
         TableSchemaVersion schema = schemaVersion(100, 101, false, SchemaSource.INITIAL);
@@ -213,13 +251,18 @@ class StateDatabaseTest {
     }
 
     private static TableSchema completeTableSchema() {
+        return completeTableSchema("ORDERS", 101, 102);
+    }
+
+    private static TableSchema completeTableSchema(
+            String table, long objectId, long dataObjectId) {
         ColumnSchema id = new ColumnSchema(
                 1, -1, 1, 1, "ID", OracleColumnType.NUMBER,
                 22, 10, 0, 0, 1, false, false, false,
                 false, false, false, false, false, false);
         return new TableSchema(
-                "FREEPDB1", "APP", "ORDERS",
-                101, 102, 12, 0, 0,
+                "FREEPDB1", "APP", table,
+                objectId, dataObjectId, 12, 0, 0,
                 List.of(id), List.of(), List.of());
     }
 }

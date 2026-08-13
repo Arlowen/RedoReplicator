@@ -20,6 +20,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,27 @@ public final class StateStore {
                 return Optional.of(readSchemaVersion(resultSet));
             }
         }
+    }
+
+    public List<TableSchemaVersion> findSchemasAt(Scn targetScn)
+            throws SQLException {
+        String sql = "SELECT * FROM ("
+                + " SELECT H.*, ROW_NUMBER() OVER ("
+                + " PARTITION BY container_name, owner_name, table_name"
+                + " ORDER BY effective_scn DESC, id DESC) AS version_rank"
+                + " FROM table_schema_history H WHERE effective_scn <= ?"
+                + ") WHERE version_rank = 1"
+                + " ORDER BY container_name, owner_name, table_name";
+        List<TableSchemaVersion> versions = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setBigDecimal(1, unsigned(targetScn.rawValue()));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    versions.add(readSchemaVersion(resultSet));
+                }
+            }
+        }
+        return List.copyOf(versions);
     }
 
     public void validateDatabaseIdentity(DatabaseIdentity identity) throws SQLException {
