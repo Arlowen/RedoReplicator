@@ -206,6 +206,45 @@ int main() {
     std::cout << "opcodeKdo.slot=" << Ctx::read16Little(kdo.data() + 42) << '\n';
     std::cout << "opcodeKdo.nullsOffset=45\n";
 
+    std::array<uint8_t, 40> directLoader{};
+    Ctx::write32Little(directLoader.data(), 0xF1000001);
+    for (uint32_t index = 0; index < 10; ++index)
+        directLoader[4 + index] = index + 1;
+    Ctx::write32Little(directLoader.data() + 24, 77);
+    directLoader[36] = 0x11;
+    directLoader[37] = 0x22;
+    directLoader[38] = 0x33;
+    directLoader[39] = 0x44;
+    const LobId directLoaderLobId{directLoader.data() + 4};
+    std::cout << "opcode1301.dataObjectId=" << Ctx::read32Little(directLoader.data()) << '\n';
+    std::cout << "opcode1301.lobId=" << directLoaderLobId.lower() << '\n';
+    std::cout << "opcode1301.pageNumber=" << Ctx::read32Little(directLoader.data() + 24) << '\n';
+    std::cout << "opcode1301.payloadSize=4\n";
+
+    std::array<uint8_t, 18> ddl{};
+    Ctx::write16Little(ddl.data() + 4, 0x1234);
+    Ctx::write16Little(ddl.data() + 6, 0x5678);
+    Ctx::write32Little(ddl.data() + 8, 0x9ABCDEF0);
+    Ctx::write16Little(ddl.data() + 16, 3);
+    const Xid ddlXid{static_cast<typeUsn>(Ctx::read16Little(ddl.data() + 4)),
+            Ctx::read16Little(ddl.data() + 6),
+            Ctx::read32Little(ddl.data() + 8)};
+    std::cout << "opcode1801.xid=" << ddlXid.toString() << '\n';
+    std::cout << "opcode1801.ddlType=" << Ctx::read16Little(ddl.data() + 16) << '\n';
+    std::cout << "opcode1801.objectId=" << static_cast<uint32_t>(0xE2000002) << '\n';
+
+    std::array<uint8_t, 12> kdliCommon{};
+    kdliCommon[0] = 0x06;
+    Ctx::write32Little(kdliCommon.data() + 8, 0xF5000005);
+    std::array<uint8_t, 11> kdliFill{};
+    kdliFill[0] = 0x06;
+    Ctx::write16Little(kdliFill.data() + 2, 15);
+    Ctx::write16Little(kdliFill.data() + 6, 3);
+    std::cout << "opcodeKdli.operation=" << static_cast<uint32_t>(kdliCommon[0]) << '\n';
+    std::cout << "opcodeKdli.blockDba=" << Ctx::read32Little(kdliCommon.data() + 8) << '\n';
+    std::cout << "opcodeKdli.fillOffset=" << Ctx::read16Little(kdliFill.data() + 2) << '\n';
+    std::cout << "opcodeKdli.fillSize=" << Ctx::read16Little(kdliFill.data() + 6) << '\n';
+
     std::array<uint8_t, 8> sessionAttribute{};
     Ctx::write16Little(sessionAttribute.data() + 2, 0x9ABC);
     Ctx::write32Little(sessionAttribute.data() + 4, 0xF1234567);

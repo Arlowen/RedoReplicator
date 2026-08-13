@@ -37,6 +37,10 @@ public final class RedoOpCodeDispatcher {
     private final OpCode0B0C opCode0B0C;
     private final OpCode0B10 opCode0B10;
     private final OpCode0B16 opCode0B16;
+    private final OpCode1301 opCode1301;
+    private final OpCode1801 opCode1801;
+    private final OpCode1A02 opCode1A02;
+    private final OpCode1A06 opCode1A06;
 
     public RedoOpCodeDispatcher(ByteOrder byteOrder, long redoVersion) {
         RedoByteReader byteReader = new RedoByteReader(byteOrder);
@@ -59,6 +63,10 @@ public final class RedoOpCodeDispatcher {
         opCode0B0C = new OpCode0B0C(byteReader);
         opCode0B10 = new OpCode0B10(byteReader);
         opCode0B16 = new OpCode0B16(byteReader);
+        opCode1301 = new OpCode1301(byteReader);
+        opCode1801 = new OpCode1801(byteReader);
+        opCode1A02 = new OpCode1A02(byteReader);
+        opCode1A06 = new OpCode1A06(byteReader);
     }
 
     public boolean dispatch(RedoLogRecord record) {
@@ -123,6 +131,18 @@ public final class RedoOpCodeDispatcher {
                 return true;
             case 0x0B16:
                 opCode0B16.process(record);
+                return true;
+            case 0x1301:
+                opCode1301.process(record);
+                return true;
+            case 0x1801:
+                opCode1801.process(record);
+                return true;
+            case 0x1A02:
+                opCode1A02.process(record);
+                return true;
+            case 0x1A06:
+                opCode1A06.process(record);
                 return true;
             default:
                 return false;

@@ -80,16 +80,16 @@ class TransactionOpCodeTest {
     }
 
     @Test
-    void rejectsShortFieldsAndReportsUntranslatedOpcode() {
+    void rejectsShortFieldsAndReportsUnknownOpcode() {
         RedoLogRecord shortBegin = RedoOpCodeTestSupport.record(
                 0x0502, 7, RedoOpCodeTestSupport.field(31));
         RedoLogException error = assertThrows(
                 RedoLogException.class, () -> dispatcher.dispatch(shortBegin));
         assertEquals(50061, error.getErrorCode());
 
-        RedoLogRecord untranslated = RedoOpCodeTestSupport.record(
-                0x1301, 0, RedoOpCodeTestSupport.field(16));
-        assertFalse(dispatcher.dispatch(untranslated));
+        RedoLogRecord unknown = RedoOpCodeTestSupport.record(
+                0x7F7F, 0, RedoOpCodeTestSupport.field(16));
+        assertFalse(dispatcher.dispatch(unknown));
     }
 
     private static byte[] ktuBlock() {

@@ -163,10 +163,10 @@ src/parser/OpCode0B0B.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B0B	
 src/parser/OpCode0B0C.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B0C	translated	Translated quick multi-row delete slots
 src/parser/OpCode0B10.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B10	translated	Translated KTB and KDO row state
 src/parser/OpCode0B16.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B16	translated	Translated KTB and KDO row state
-src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.parser.OpCode1301	pending	Translate redo and transaction parsing
-src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.parser.OpCode1801	pending	Translate redo and transaction parsing
-src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.parser.OpCode1A02	pending	Translate redo and transaction parsing
-src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.parser.OpCode1A06	pending	Translate redo and transaction parsing
+src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1301	translated	Translated direct-loader LOB identity, page and payload location
+src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1801	translated	Translated DDL XID, temporary-object filtering and object identity
+src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A02	translated	Translated KTB and KDLI LOB operation fields
+src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A06	translated	Translated KDLI before-image payload and record object identity
 src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, cross-block LWN and vector parsing started; opcode and transaction behavior remains
 src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, cross-block LWN and vector parsing started; opcode and transaction behavior remains
 src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
