@@ -1,0 +1,211 @@
+source_path	target_java_type	status	notes
+src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.RedoReplicator	pending	Translate application lifecycle
+src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.RedoReplicator	pending	Translate application lifecycle
+src/StreamClient.cpp	-	excluded	Network stream client is out of scope
+src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.Builder	pending	Translate native JSON construction
+src/builder/Builder.h	io.github.arlowen.redoreplicator.output.Builder	pending	Translate native JSON construction
+src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
+src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
+src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope
+src/builder/BuilderProtobuf.h	-	excluded	Protobuf output is out of scope
+src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	Translate committed dictionary changes
+src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	Translate committed dictionary changes
+src/common/Attribute.h	io.github.arlowen.redoreplicator.redo.common.Attribute	pending	Translate redo domain model
+src/common/Clock.h	io.github.arlowen.redoreplicator.runtime.SystemClock	pending	Translate clock contract using java.time.Clock
+src/common/ClockHW.cpp	io.github.arlowen.redoreplicator.runtime.SystemClock	pending	Translate wall clock behavior using java.time.Clock
+src/common/ClockHW.h	io.github.arlowen.redoreplicator.runtime.SystemClock	pending	Translate wall clock behavior using java.time.Clock
+src/common/Ctx.cpp	io.github.arlowen.redoreplicator.runtime.RedoContext	pending	Translate redo domain model
+src/common/Ctx.h	io.github.arlowen.redoreplicator.runtime.RedoContext	pending	Translate redo domain model
+src/common/DbColumn.h	io.github.arlowen.redoreplicator.redo.common.DbColumn	pending	Translate redo domain model
+src/common/DbIncarnation.h	io.github.arlowen.redoreplicator.redo.common.DbIncarnation	pending	Translate redo domain model
+src/common/DbLob.cpp	io.github.arlowen.redoreplicator.redo.common.DbLob	pending	Translate redo domain model
+src/common/DbLob.h	io.github.arlowen.redoreplicator.redo.common.DbLob	pending	Translate redo domain model
+src/common/DbTable.cpp	io.github.arlowen.redoreplicator.redo.common.DbTable	pending	Translate redo domain model
+src/common/DbTable.h	io.github.arlowen.redoreplicator.redo.common.DbTable	pending	Translate redo domain model
+src/common/Format.h	io.github.arlowen.redoreplicator.output.Format	pending	Translate redo domain model
+src/common/LobCtx.cpp	io.github.arlowen.redoreplicator.redo.common.LobCtx	pending	Translate redo domain model
+src/common/LobCtx.h	io.github.arlowen.redoreplicator.redo.common.LobCtx	pending	Translate redo domain model
+src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.common.LobData	pending	Translate redo domain model
+src/common/LobData.h	io.github.arlowen.redoreplicator.redo.common.LobData	pending	Translate redo domain model
+src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
+src/common/LobKey.h	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
+src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
+src/common/MemoryManager.h	io.github.arlowen.redoreplicator.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
+src/common/OraProtoBuf.pb.cpp	-	excluded	Protobuf output is out of scope
+src/common/OraProtoBuf.pb.h	-	excluded	Protobuf output is out of scope
+src/common/RedoLogRecord.h	io.github.arlowen.redoreplicator.redo.common.RedoLogRecord	pending	Translate redo domain model
+src/common/Thread.cpp	io.github.arlowen.redoreplicator.runtime.ReplicatorTask	pending	Translate lifecycle and wakeup behavior using JDK threads
+src/common/Thread.h	io.github.arlowen.redoreplicator.runtime.ReplicatorTask	pending	Translate lifecycle and wakeup contract using JDK threads
+src/common/XmlCtx.cpp	io.github.arlowen.redoreplicator.redo.common.XmlCtx	pending	Translate redo domain model
+src/common/XmlCtx.h	io.github.arlowen.redoreplicator.redo.common.XmlCtx	pending	Translate redo domain model
+src/common/exception/BootException.cpp	io.github.arlowen.redoreplicator.error.BootException	pending	Translate domain error
+src/common/exception/BootException.h	io.github.arlowen.redoreplicator.error.BootException	pending	Translate domain error
+src/common/exception/ConfigurationException.cpp	io.github.arlowen.redoreplicator.error.ConfigurationException	pending	Translate domain error
+src/common/exception/ConfigurationException.h	io.github.arlowen.redoreplicator.error.ConfigurationException	pending	Translate domain error
+src/common/exception/DataException.cpp	io.github.arlowen.redoreplicator.error.DataException	pending	Translate domain error
+src/common/exception/DataException.h	io.github.arlowen.redoreplicator.error.DataException	pending	Translate domain error
+src/common/exception/NetworkException.cpp	-	excluded	Network output is out of scope
+src/common/exception/NetworkException.h	-	excluded	Network output is out of scope
+src/common/exception/RedoLogException.cpp	io.github.arlowen.redoreplicator.error.RedoLogException	pending	Translate domain error
+src/common/exception/RedoLogException.h	io.github.arlowen.redoreplicator.error.RedoLogException	pending	Translate domain error
+src/common/exception/RuntimeException.cpp	io.github.arlowen.redoreplicator.error.RedoRuntimeException	pending	Translate domain error
+src/common/exception/RuntimeException.h	io.github.arlowen.redoreplicator.error.RedoRuntimeException	pending	Translate domain error
+src/common/expression/BoolValue.cpp	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/expression/BoolValue.h	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/expression/Expression.cpp	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/expression/Expression.h	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/expression/StringValue.cpp	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/expression/StringValue.h	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/expression/Token.cpp	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/expression/Token.h	-	excluded	Configuration expressions are replaced by Java regular expressions
+src/common/metrics/Metrics.cpp	-	excluded	Prometheus and metrics endpoint are out of scope
+src/common/metrics/Metrics.h	-	excluded	Prometheus and metrics endpoint are out of scope
+src/common/metrics/MetricsPrometheus.cpp	-	excluded	Prometheus and metrics endpoint are out of scope
+src/common/metrics/MetricsPrometheus.h	-	excluded	Prometheus and metrics endpoint are out of scope
+src/common/table/SysCCol.h	io.github.arlowen.redoreplicator.redo.common.SysCCol	pending	Translate redo domain model
+src/common/table/SysCDef.h	io.github.arlowen.redoreplicator.redo.common.SysCDef	pending	Translate redo domain model
+src/common/table/SysCol.h	io.github.arlowen.redoreplicator.redo.common.SysCol	pending	Translate redo domain model
+src/common/table/SysDeferredStg.h	io.github.arlowen.redoreplicator.redo.common.SysDeferredStg	pending	Translate redo domain model
+src/common/table/SysECol.h	io.github.arlowen.redoreplicator.redo.common.SysECol	pending	Translate redo domain model
+src/common/table/SysLob.h	io.github.arlowen.redoreplicator.redo.common.SysLob	pending	Translate redo domain model
+src/common/table/SysLobCompPart.h	io.github.arlowen.redoreplicator.redo.common.SysLobCompPart	pending	Translate redo domain model
+src/common/table/SysLobFrag.h	io.github.arlowen.redoreplicator.redo.common.SysLobFrag	pending	Translate redo domain model
+src/common/table/SysObj.h	io.github.arlowen.redoreplicator.redo.common.SysObj	pending	Translate redo domain model
+src/common/table/SysTab.h	io.github.arlowen.redoreplicator.redo.common.SysTab	pending	Translate redo domain model
+src/common/table/SysTabComPart.h	io.github.arlowen.redoreplicator.redo.common.SysTabComPart	pending	Translate redo domain model
+src/common/table/SysTabPart.h	io.github.arlowen.redoreplicator.redo.common.SysTabPart	pending	Translate redo domain model
+src/common/table/SysTabSubPart.h	io.github.arlowen.redoreplicator.redo.common.SysTabSubPart	pending	Translate redo domain model
+src/common/table/SysTs.h	io.github.arlowen.redoreplicator.redo.common.SysTs	pending	Translate redo domain model
+src/common/table/SysUser.h	io.github.arlowen.redoreplicator.redo.common.SysUser	pending	Translate redo domain model
+src/common/table/TablePack.h	io.github.arlowen.redoreplicator.redo.common.TablePack	pending	Translate redo domain model
+src/common/table/XdbTtSet.h	io.github.arlowen.redoreplicator.redo.common.XdbTtSet	pending	Translate redo domain model
+src/common/table/XdbXNm.h	io.github.arlowen.redoreplicator.redo.common.XdbXNm	pending	Translate redo domain model
+src/common/table/XdbXPt.h	io.github.arlowen.redoreplicator.redo.common.XdbXPt	pending	Translate redo domain model
+src/common/table/XdbXQn.h	io.github.arlowen.redoreplicator.redo.common.XdbXQn	pending	Translate redo domain model
+src/common/types/Data.cpp	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
+src/common/types/Data.h	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
+src/common/types/FileOffset.h	io.github.arlowen.redoreplicator.redo.common.FileOffset	pending	Translate fixed-width redo value type
+src/common/types/IntX.h	io.github.arlowen.redoreplicator.redo.common.IntX	pending	Translate fixed-width redo value type
+src/common/types/LobId.h	io.github.arlowen.redoreplicator.redo.common.LobId	pending	Translate fixed-width redo value type
+src/common/types/RowId.h	io.github.arlowen.redoreplicator.redo.common.RowId	pending	Translate fixed-width redo value type
+src/common/types/Scn.h	io.github.arlowen.redoreplicator.redo.common.Scn	pending	Translate fixed-width redo value type
+src/common/types/Seq.h	io.github.arlowen.redoreplicator.redo.common.Seq	pending	Translate fixed-width redo value type
+src/common/types/Time.h	io.github.arlowen.redoreplicator.redo.common.Time	pending	Translate fixed-width redo value type
+src/common/types/Types.h	io.github.arlowen.redoreplicator.redo.common.RedoConstants	pending	Translate fixed-width redo value type
+src/common/types/Xid.h	io.github.arlowen.redoreplicator.redo.common.Xid	pending	Translate fixed-width redo value type
+src/locales/CharacterSet.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet	pending	Translate Oracle character set decoder
+src/locales/CharacterSet.h	io.github.arlowen.redoreplicator.charset.CharacterSet	pending	Translate Oracle character set decoder
+src/locales/CharacterSet16bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSet16bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSet7bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet7bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSet7bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet7bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSet8bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet8bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSet8bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet8bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSetAL16UTF16.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetAL16UTF16	pending	Translate Oracle character set decoder
+src/locales/CharacterSetAL16UTF16.h	io.github.arlowen.redoreplicator.charset.CharacterSetAL16UTF16	pending	Translate Oracle character set decoder
+src/locales/CharacterSetAL32UTF8.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetAL32UTF8	pending	Translate Oracle character set decoder
+src/locales/CharacterSetAL32UTF8.h	io.github.arlowen.redoreplicator.charset.CharacterSetAL32UTF8	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16EUC.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetJA16EUC	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16EUC.h	io.github.arlowen.redoreplicator.charset.CharacterSetJA16EUC	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16EUCTILDE.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetJA16EUCTILDE	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16EUCTILDE.h	io.github.arlowen.redoreplicator.charset.CharacterSetJA16EUCTILDE	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16SJIS.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetJA16SJIS	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16SJIS.h	io.github.arlowen.redoreplicator.charset.CharacterSetJA16SJIS	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16SJISTILDE.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetJA16SJISTILDE	pending	Translate Oracle character set decoder
+src/locales/CharacterSetJA16SJISTILDE.h	io.github.arlowen.redoreplicator.charset.CharacterSetJA16SJISTILDE	pending	Translate Oracle character set decoder
+src/locales/CharacterSetKO16KSCCS.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetKO16KSCCS	pending	Translate Oracle character set decoder
+src/locales/CharacterSetKO16KSCCS.h	io.github.arlowen.redoreplicator.charset.CharacterSetKO16KSCCS	pending	Translate Oracle character set decoder
+src/locales/CharacterSetUTF8.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetUTF8	pending	Translate Oracle character set decoder
+src/locales/CharacterSetUTF8.h	io.github.arlowen.redoreplicator.charset.CharacterSetUTF8	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHS16GBK.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHS16GBK.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHS32GB18030.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHS32GB18030.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHT16HKSCS31.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT16HKSCS31	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHT16HKSCS31.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT16HKSCS31	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHT32EUC.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32EUC	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHT32EUC.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32EUC	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHT32TRIS.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHT32TRIS.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
+src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Translate Oracle character set decoder
+src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Translate Oracle character set decoder
+src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Translate process entry point into Picocli
+src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.state.RuntimeState	pending	Replace checkpoint files with the H2 safe state row
+src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.state.RuntimeState	pending	Replace checkpoint files with the H2 safe state row
+src/metadata/Metadata.cpp	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
+src/metadata/Metadata.h	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
+src/metadata/RedoLog.h	io.github.arlowen.redoreplicator.schema.RedoLog	pending	Translate schema and redo metadata
+src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.Schema	pending	Translate schema and redo metadata
+src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.Schema	pending	Translate schema and redo metadata
+src/metadata/SchemaElement.h	io.github.arlowen.redoreplicator.schema.SchemaElement	pending	Translate schema and redo metadata
+src/metadata/Serializer.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
+src/metadata/Serializer.h	-	excluded	Checkpoint JSON serialization is replaced by H2
+src/metadata/SerializerJson.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
+src/metadata/SerializerJson.h	-	excluded	Checkpoint JSON serialization is replaced by H2
+src/parser/OpCode.h	io.github.arlowen.redoreplicator.parser.OpCode	pending	Translate redo and transaction parsing
+src/parser/OpCode0501.h	io.github.arlowen.redoreplicator.parser.OpCode0501	pending	Translate redo and transaction parsing
+src/parser/OpCode0502.h	io.github.arlowen.redoreplicator.parser.OpCode0502	pending	Translate redo and transaction parsing
+src/parser/OpCode0504.h	io.github.arlowen.redoreplicator.parser.OpCode0504	pending	Translate redo and transaction parsing
+src/parser/OpCode0506.h	io.github.arlowen.redoreplicator.parser.OpCode0506	pending	Translate redo and transaction parsing
+src/parser/OpCode050B.h	io.github.arlowen.redoreplicator.parser.OpCode050B	pending	Translate redo and transaction parsing
+src/parser/OpCode0513.h	io.github.arlowen.redoreplicator.parser.OpCode0513	pending	Translate redo and transaction parsing
+src/parser/OpCode0514.h	io.github.arlowen.redoreplicator.parser.OpCode0514	pending	Translate redo and transaction parsing
+src/parser/OpCode0A02.h	io.github.arlowen.redoreplicator.parser.OpCode0A02	pending	Translate redo and transaction parsing
+src/parser/OpCode0A08.h	io.github.arlowen.redoreplicator.parser.OpCode0A08	pending	Translate redo and transaction parsing
+src/parser/OpCode0A12.h	io.github.arlowen.redoreplicator.parser.OpCode0A12	pending	Translate redo and transaction parsing
+src/parser/OpCode0B02.h	io.github.arlowen.redoreplicator.parser.OpCode0B02	pending	Translate redo and transaction parsing
+src/parser/OpCode0B03.h	io.github.arlowen.redoreplicator.parser.OpCode0B03	pending	Translate redo and transaction parsing
+src/parser/OpCode0B04.h	io.github.arlowen.redoreplicator.parser.OpCode0B04	pending	Translate redo and transaction parsing
+src/parser/OpCode0B05.h	io.github.arlowen.redoreplicator.parser.OpCode0B05	pending	Translate redo and transaction parsing
+src/parser/OpCode0B06.h	io.github.arlowen.redoreplicator.parser.OpCode0B06	pending	Translate redo and transaction parsing
+src/parser/OpCode0B08.h	io.github.arlowen.redoreplicator.parser.OpCode0B08	pending	Translate redo and transaction parsing
+src/parser/OpCode0B0B.h	io.github.arlowen.redoreplicator.parser.OpCode0B0B	pending	Translate redo and transaction parsing
+src/parser/OpCode0B0C.h	io.github.arlowen.redoreplicator.parser.OpCode0B0C	pending	Translate redo and transaction parsing
+src/parser/OpCode0B10.h	io.github.arlowen.redoreplicator.parser.OpCode0B10	pending	Translate redo and transaction parsing
+src/parser/OpCode0B16.h	io.github.arlowen.redoreplicator.parser.OpCode0B16	pending	Translate redo and transaction parsing
+src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.parser.OpCode1301	pending	Translate redo and transaction parsing
+src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.parser.OpCode1801	pending	Translate redo and transaction parsing
+src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.parser.OpCode1A02	pending	Translate redo and transaction parsing
+src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.parser.OpCode1A06	pending	Translate redo and transaction parsing
+src/parser/Parser.cpp	io.github.arlowen.redoreplicator.parser.Parser	pending	Translate redo and transaction parsing
+src/parser/Parser.h	io.github.arlowen.redoreplicator.parser.Parser	pending	Translate redo and transaction parsing
+src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
+src/parser/Transaction.h	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
+src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.parser.TransactionBuffer	pending	Translate redo and transaction parsing
+src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.parser.TransactionBuffer	pending	Translate redo and transaction parsing
+src/reader/Reader.cpp	io.github.arlowen.redoreplicator.reader.Reader	pending	Translate filesystem redo reader
+src/reader/Reader.h	io.github.arlowen.redoreplicator.reader.Reader	pending	Translate filesystem redo reader
+src/reader/ReaderFilesystem.cpp	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader
+src/reader/ReaderFilesystem.h	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader
+src/replicator/DatabaseConnection.cpp	io.github.arlowen.redoreplicator.source.OracleConnection	pending	Translate online discovery using JDBC and local redo files
+src/replicator/DatabaseConnection.h	io.github.arlowen.redoreplicator.source.OracleConnection	pending	Translate online discovery using JDBC and local redo files
+src/replicator/DatabaseEnvironment.cpp	io.github.arlowen.redoreplicator.source.OracleConnectionFactory	pending	Translate online discovery using JDBC and local redo files
+src/replicator/DatabaseEnvironment.h	io.github.arlowen.redoreplicator.source.OracleConnectionFactory	pending	Translate online discovery using JDBC and local redo files
+src/replicator/DatabaseStatement.cpp	io.github.arlowen.redoreplicator.source.OracleStatement	pending	Translate online discovery using JDBC and local redo files
+src/replicator/DatabaseStatement.h	io.github.arlowen.redoreplicator.source.OracleStatement	pending	Translate online discovery using JDBC and local redo files
+src/replicator/Replicator.cpp	io.github.arlowen.redoreplicator.source.Replicator	pending	Translate online discovery using JDBC and local redo files
+src/replicator/Replicator.h	io.github.arlowen.redoreplicator.source.Replicator	pending	Translate online discovery using JDBC and local redo files
+src/replicator/ReplicatorBatch.cpp	-	excluded	Offline batch reader is out of scope
+src/replicator/ReplicatorBatch.h	-	excluded	Offline batch reader is out of scope
+src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.source.ReplicatorOnline	pending	Translate online discovery using JDBC and local redo files
+src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.source.ReplicatorOnline	pending	Translate online discovery using JDBC and local redo files
+src/state/State.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
+src/state/State.h	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
+src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
+src/state/StateDisk.h	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
+src/stream/Stream.cpp	-	excluded	Network output is out of scope
+src/stream/Stream.h	-	excluded	Network output is out of scope
+src/stream/StreamNetwork.cpp	-	excluded	Network output is out of scope
+src/stream/StreamNetwork.h	-	excluded	Network output is out of scope
+src/stream/StreamZeroMQ.cpp	-	excluded	Network output is out of scope
+src/stream/StreamZeroMQ.h	-	excluded	Network output is out of scope
+src/writer/Writer.cpp	io.github.arlowen.redoreplicator.output.Writer	pending	Translate JSONL file writer
+src/writer/Writer.h	io.github.arlowen.redoreplicator.output.Writer	pending	Translate JSONL file writer
+src/writer/WriterDiscard.cpp	-	excluded	Only JSONL file output is in scope
+src/writer/WriterDiscard.h	-	excluded	Only JSONL file output is in scope
+src/writer/WriterFile.cpp	io.github.arlowen.redoreplicator.output.WriterFile	pending	Translate JSONL file writer
+src/writer/WriterFile.h	io.github.arlowen.redoreplicator.output.WriterFile	pending	Translate JSONL file writer
+src/writer/WriterKafka.cpp	-	excluded	Only JSONL file output is in scope
+src/writer/WriterKafka.h	-	excluded	Only JSONL file output is in scope
+src/writer/WriterStream.cpp	-	excluded	Only JSONL file output is in scope
+src/writer/WriterStream.h	-	excluded	Only JSONL file output is in scope

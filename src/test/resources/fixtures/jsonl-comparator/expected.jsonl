@@ -1,0 +1,3 @@
+{"scn":100,"xid":"0x0001.001.00000001","payload":[{"op":"begin"}]}
+{"scn":101,"xid":"0x0001.001.00000001","payload":[{"op":"c","schema":{"owner":"APP","table":"ORDERS"},"after":{"ID":1,"TOTAL":10.5}}]}
+{"scn":102,"xid":"0x0001.001.00000001","payload":[{"op":"commit"}]}

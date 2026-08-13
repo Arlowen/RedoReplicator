@@ -1,5 +1,16 @@
 # Compiled class file
 *.class
+/target/
+
+# IDE and operating system files
+/.idea/
+*.iml
+.DS_Store
+
+# Runtime data
+/data/
+/logs/
+/output/
 
 # Log file
 *.log

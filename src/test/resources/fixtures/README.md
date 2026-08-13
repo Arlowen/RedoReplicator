@@ -1,0 +1,21 @@
+# Redo fixture contract
+
+Each behavior fixture lives in its own directory and uses these names when applicable:
+
+```text
+case-name/
+  source.sql
+  metadata.json
+  redo/
+    thread-<thread>-sequence-<sequence>.bin
+  expected-intermediate.jsonl
+  expected-output.jsonl
+```
+
+`metadata.json` records the Oracle version, architecture, DBID, incarnation, RESETLOGS identity, database block size, redo block size, character sets, start SCN and source OpenLogReplicator commit.
+
+`expected-intermediate.jsonl` contains stable parser observations such as LWN boundaries, record opcode, SCN, XID, object ID and byte offsets. It must not contain pointer values, wall-clock test times or other process-specific data.
+
+`expected-output.jsonl` is captured from the fixed C++ baseline. Object key order and whitespace are not significant. JSON array order, field types and values are significant.
+
+Large or licensed Oracle redo files must not be committed. Committed binary fixtures must be minimal synthetic or redistributable samples with documented provenance.
