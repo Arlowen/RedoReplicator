@@ -126,5 +126,15 @@ int main(int argc, char** argv) {
     std::cout << "we8mswin1252.map_fnv1a64=" << std::hex
               << std::setfill('0') << std::setw(16)
               << singleByteMapDigest(locales.characterMap.at(178)) << '\n';
+
+    const uint64_t sevenBitIds[]{
+        1, 11, 13, 14, 15, 16, 17, 21,
+        202, 203, 204, 206, 205, 207
+    };
+    for (const uint64_t id : sevenBitIds) {
+        std::cout << "seven." << std::dec << id << ".map_fnv1a64="
+                  << std::hex << std::setfill('0') << std::setw(16)
+                  << singleByteMapDigest(locales.characterMap.at(id)) << '\n';
+    }
     return 0;
 }

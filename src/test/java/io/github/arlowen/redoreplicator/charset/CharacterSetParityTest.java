@@ -50,6 +50,14 @@ class CharacterSetParityTest {
         add(actual, "we8mswin1252.controls", 178, "818d9d");
         actual.setProperty("we8mswin1252.map_fnv1a64",
                 singleByteMapDigest(178));
+        long[] sevenBitIds = {
+                1, 11, 13, 14, 15, 16, 17, 21,
+                202, 203, 204, 206, 205, 207
+        };
+        for (long id : sevenBitIds) {
+            actual.setProperty("seven." + id + ".map_fnv1a64",
+                    singleByteMapDigest(id));
+        }
 
         assertEquals(expected, actual);
     }

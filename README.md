@@ -20,7 +20,8 @@ continuously and commits each complete LWN through JSONL fsync and the H2 safe
 position. Quick multi-row INSERT and DELETE are expanded in original slot order
 for both user JSON and SYS dictionary transactions. Text values retain their
 dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK and
-WE8MSWIN1252 use upstream-compatible decoders across user values, DDL and SYS
+WE8MSWIN1252 plus all 14 upstream 7-bit character sets use upstream-compatible
+decoders across user values, DDL and SYS
 dictionary changes, including NCHAR/NVARCHAR values. Inline BLOB/CLOB locators
 are decoded directly. In-index and classic out-of-row locators reconstruct
 direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
