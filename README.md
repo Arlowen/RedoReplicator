@@ -45,7 +45,10 @@ the current file finishes. Startup uses the configured/current SCN only when H2
 has no state; recovery ignores YAML, validates the Oracle identity and replays
 from the earliest open-transaction low-watermark or the durable file offset.
 Multi-thread scheduling, JSONL output and the full capture lifecycle are not
-wired yet.
+wired yet. The JSONL file layer itself now writes `redo-000001.jsonl` style
+files, rolls only between complete messages, fsyncs each LWN batch, truncates an
+uncommitted tail to H2's safe byte offset, and refuses to start when the file is
+shorter than that offset.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),

@@ -203,8 +203,8 @@ src/writer/Writer.cpp	io.github.arlowen.redoreplicator.output.Writer	pending	Tra
 src/writer/Writer.h	io.github.arlowen.redoreplicator.output.Writer	pending	Translate JSONL file writer
 src/writer/WriterDiscard.cpp	-	excluded	Only JSONL file output is in scope
 src/writer/WriterDiscard.h	-	excluded	Only JSONL file output is in scope
-src/writer/WriterFile.cpp	io.github.arlowen.redoreplicator.output.WriterFile	pending	Translate JSONL file writer
-src/writer/WriterFile.h	io.github.arlowen.redoreplicator.output.WriterFile	pending	Translate JSONL file writer
+src/writer/WriterFile.cpp	io.github.arlowen.redoreplicator.output.JsonlFileWriter	translated	Fixed JSONL naming, message-boundary rolling, force(true), safe-offset truncation and short-file failure translated
+src/writer/WriterFile.h	io.github.arlowen.redoreplicator.output.JsonlFileWriter	translated	Scoped file writer lifecycle and durable JSONL position contract translated
 src/writer/WriterKafka.cpp	-	excluded	Only JSONL file output is in scope
 src/writer/WriterKafka.h	-	excluded	Only JSONL file output is in scope
 src/writer/WriterStream.cpp	-	excluded	Only JSONL file output is in scope
