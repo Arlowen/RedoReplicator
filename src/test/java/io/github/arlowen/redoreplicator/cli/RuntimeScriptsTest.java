@@ -77,8 +77,12 @@ class RuntimeScriptsTest {
         String duplicate = runExpecting("start.sh", null, 3);
         assertTrue(duplicate.contains("already running"));
 
+        Files.writeString(
+                installationDirectory.resolve("data/status.json"),
+                "{\"safeScn\":\"200\"}\n");
         String status = run("status.sh", null);
         assertTrue(status.contains("RUNNING (PID " + pid + ")"));
+        assertTrue(status.contains("\"safeScn\":\"200\""));
 
         String stopped = run("stop.sh", "5");
         assertTrue(stopped.contains("stopped"));

@@ -15,6 +15,7 @@ import io.github.arlowen.redoreplicator.redo.reader.RedoReadStatus;
 import io.github.arlowen.redoreplicator.source.OracleRedoLog;
 import io.github.arlowen.redoreplicator.source.OracleRedoLogKind;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
+import io.github.arlowen.redoreplicator.state.RuntimeState;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -32,6 +33,7 @@ class RedoCaptureLoopTest {
     void processesCompleteLwnsAndStopsBeforeTheNextOne() throws Exception {
         AtomicBoolean stop = new AtomicBoolean();
         List<Long> processed = new ArrayList<>();
+        List<String> statuses = new ArrayList<>();
         RedoThreadBatch batch = batch(
                 RedoReadStatus.DATA, lwn(100), lwn(200));
         RedoCaptureLoop loop = new RedoCaptureLoop(
@@ -39,7 +41,11 @@ class RedoCaptureLoopTest {
                 lwn -> {
                     processed.add(lwn.position().scn().rawValue());
                     stop.set(true);
+                    return state(lwn.position());
                 },
+                (redoLog, lwn, state) -> statuses.add(
+                        redoLog.oraclePath() + ":"
+                                + state.durablePosition().scn()),
                 stop::get,
                 10,
                 ignored -> {
@@ -48,6 +54,7 @@ class RedoCaptureLoopTest {
         loop.run();
 
         assertEquals(List.of(100L), processed);
+        assertEquals(List.of("/redo01.log:100"), statuses);
     }
 
     @Test
@@ -61,6 +68,9 @@ class RedoCaptureLoopTest {
                     return batch(RedoReadStatus.WAITING);
                 },
                 lwn -> {
+                    return state(lwn.position());
+                },
+                (redoLog, lwn, state) -> {
                 },
                 stop::get,
                 25,
@@ -90,5 +100,12 @@ class RedoCaptureLoopTest {
                 new RedoPosition(
                         Scn.of(scn), 1, Seq.of(7), FileOffset.of(2048)),
                 RedoTime.zero(), List.of(), Optional.empty());
+    }
+
+    private static RuntimeState state(RedoPosition position) {
+        return new RuntimeState(
+                1, 2, 3, position, Optional.empty(),
+                1, 0, "fingerprint",
+                java.time.OffsetDateTime.parse("2026-08-13T00:00:00Z"));
     }
 }

@@ -147,6 +147,7 @@ public final class OracleCaptureRunner {
                             configuration.tableFilter()::matches);
             long hostTimezoneSeconds = ZoneId.systemDefault().getRules()
                     .getOffset(Instant.now()).getTotalSeconds();
+            Clock clock = Clock.systemUTC();
             BuilderJson builder = new BuilderJson(
                     new OracleJsonValueDecoder(
                             properties.databaseCharacterSet(),
@@ -162,9 +163,14 @@ public final class OracleCaptureRunner {
                             stateDatabase.store(), jsonCodec),
                     staticCatalog, systemTransactionManager,
                     changeAssembler, builder, writer, jsonCodec,
-                    Clock.systemUTC());
+                    clock);
+            RuntimeStatusWriter statusWriter = new RuntimeStatusWriter(
+                    configuration.installationDirectory()
+                            .resolve("data/status.json"),
+                    clock, hostTimezoneSeconds);
             RedoCaptureLoop captureLoop = new RedoCaptureLoop(
                     stream::read, lwnProcessor::process,
+                    statusWriter::write,
                     stopRequested, ONLINE_IDLE_WAIT_MILLIS);
             captureLoop.run();
         }

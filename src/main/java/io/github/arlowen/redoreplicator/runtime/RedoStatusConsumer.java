@@ -7,12 +7,13 @@
 package io.github.arlowen.redoreplicator.runtime;
 
 import io.github.arlowen.redoreplicator.redo.parser.ParsedLwn;
+import io.github.arlowen.redoreplicator.source.OracleRedoLog;
 import io.github.arlowen.redoreplicator.state.RuntimeState;
 
-import java.io.IOException;
-import java.sql.SQLException;
-
 @FunctionalInterface
-interface RedoLwnConsumer {
-    RuntimeState process(ParsedLwn lwn) throws IOException, SQLException;
+interface RedoStatusConsumer {
+    void update(
+            OracleRedoLog redoLog,
+            ParsedLwn lwn,
+            RuntimeState runtimeState);
 }

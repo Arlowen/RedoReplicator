@@ -111,7 +111,10 @@ SIGTERM and never escalates to `kill -9`; its default wait is 60 seconds.
 Runtime startup also takes an OS file lock under `data/` before opening H2 or
 clearing stale transaction spill, so a second process cannot touch the same
 installation state. SIGTERM requests a stop at the next complete LWN boundary,
-after JSONL fsync and H2 commit. During source-tree development, the scripts can
+after JSONL fsync and H2 commit. After each successful H2 LWN commit, the process
+atomically replaces non-authoritative `data/status.json`; `status.sh` displays
+that snapshot after the PID state. Status write failures are logged but never
+alter the H2 recovery position. During source-tree development, the scripts can
 target the Maven artifact explicitly:
 
 ```bash

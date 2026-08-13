@@ -13,6 +13,7 @@ package io.github.arlowen.redoreplicator.runtime;
 import io.github.arlowen.redoreplicator.error.RedoRuntimeException;
 import io.github.arlowen.redoreplicator.redo.parser.ParsedLwn;
 import io.github.arlowen.redoreplicator.redo.reader.RedoReadStatus;
+import io.github.arlowen.redoreplicator.state.RuntimeState;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -23,6 +24,7 @@ import java.util.function.LongConsumer;
 final class RedoCaptureLoop {
     private final RedoBatchSource batchSource;
     private final RedoLwnConsumer lwnConsumer;
+    private final RedoStatusConsumer statusConsumer;
     private final BooleanSupplier stopRequested;
     private final long idleWaitMillis;
     private final LongConsumer sleeper;
@@ -30,15 +32,17 @@ final class RedoCaptureLoop {
     RedoCaptureLoop(
             RedoBatchSource batchSource,
             RedoLwnConsumer lwnConsumer,
+            RedoStatusConsumer statusConsumer,
             BooleanSupplier stopRequested,
             long idleWaitMillis) {
-        this(batchSource, lwnConsumer, stopRequested,
+        this(batchSource, lwnConsumer, statusConsumer, stopRequested,
                 idleWaitMillis, RedoCaptureLoop::sleep);
     }
 
     RedoCaptureLoop(
             RedoBatchSource batchSource,
             RedoLwnConsumer lwnConsumer,
+            RedoStatusConsumer statusConsumer,
             BooleanSupplier stopRequested,
             long idleWaitMillis,
             LongConsumer sleeper) {
@@ -46,6 +50,8 @@ final class RedoCaptureLoop {
                 batchSource, "batchSource");
         this.lwnConsumer = Objects.requireNonNull(
                 lwnConsumer, "lwnConsumer");
+        this.statusConsumer = Objects.requireNonNull(
+                statusConsumer, "statusConsumer");
         this.stopRequested = Objects.requireNonNull(
                 stopRequested, "stopRequested");
         if (idleWaitMillis <= 0) {
@@ -65,7 +71,8 @@ final class RedoCaptureLoop {
                     running = false;
                     break;
                 }
-                lwnConsumer.process(lwn);
+                RuntimeState state = lwnConsumer.process(lwn);
+                statusConsumer.update(batch.redoLog(), lwn, state);
             }
             if (running && batch.status() == RedoReadStatus.WAITING
                     && !stopRequested.getAsBoolean()) {
