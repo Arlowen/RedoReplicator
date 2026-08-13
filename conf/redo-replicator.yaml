@@ -1,6 +1,6 @@
 database:
   url: jdbc:oracle:thin:@//oracle:1521/FREE
-  username: REDO_REPLICATOR
+  username: C##REDO_REPLICATOR
   password: change-me
   redoPathMappings:
     - oracle: /opt/oracle/oradata

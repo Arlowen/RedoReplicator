@@ -8,11 +8,15 @@ package io.github.arlowen.redoreplicator.source;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 
 public record OracleSourceValidation(
         OracleDatabaseContext databaseContext,
+        OracleContainerRegistry containerRegistry,
         List<Path> redoFiles) {
     public OracleSourceValidation {
+        Objects.requireNonNull(databaseContext, "databaseContext");
+        Objects.requireNonNull(containerRegistry, "containerRegistry");
         redoFiles = List.copyOf(redoFiles);
     }
 }

@@ -24,6 +24,7 @@ import java.util.Optional;
 
 final class RedoDdlAssembler {
     private final CharacterSet databaseCharacterSet;
+    private final String container;
     private final ByteArrayOutputStream sql = new ByteArrayOutputStream();
 
     private int nextSequence;
@@ -32,9 +33,11 @@ final class RedoDdlAssembler {
     private long objectId;
     private String owner;
 
-    RedoDdlAssembler(CharacterSet databaseCharacterSet) {
+    RedoDdlAssembler(
+            CharacterSet databaseCharacterSet, String container) {
         this.databaseCharacterSet = Objects.requireNonNull(
                 databaseCharacterSet, "databaseCharacterSet");
+        this.container = container;
     }
 
     Optional<RedoJsonDdlChange> accept(
@@ -123,13 +126,13 @@ final class RedoDdlAssembler {
             SchemaCatalog transactionSchemaCatalog,
             SchemaCatalog schemaCatalog,
             SchemaCatalog previousSchemaCatalog) {
-        Optional<TableSchema> resolved = transactionSchemaCatalog.findByObjectId(
-                objectId);
+        Optional<TableSchema> resolved = findByObjectId(
+                transactionSchemaCatalog, objectId);
         if (resolved.isEmpty()) {
-            resolved = schemaCatalog.findByObjectId(objectId);
+            resolved = findByObjectId(schemaCatalog, objectId);
         }
         if (resolved.isEmpty()) {
-            resolved = previousSchemaCatalog.findByObjectId(objectId);
+            resolved = findByObjectId(previousSchemaCatalog, objectId);
         }
         TableSchema table = resolved.orElseThrow(() -> invalid(record,
                 "DDL object " + objectId
@@ -142,6 +145,14 @@ final class RedoDdlAssembler {
                 table.container(), table.owner(), table.name(), ddlType,
                 databaseCharacterSet.decode(sql.toByteArray()), commitScn);
         return new RedoJsonDdlChange(change);
+    }
+
+    private Optional<TableSchema> findByObjectId(
+            SchemaCatalog schemaCatalog, long id) {
+        if (container == null) {
+            return schemaCatalog.findByObjectId(id);
+        }
+        return schemaCatalog.findByObjectId(container, id);
     }
 
     private void reset() {

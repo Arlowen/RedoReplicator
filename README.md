@@ -98,11 +98,23 @@ continuous per-thread loop, waits when online redo has no complete LWN, switches
 to the exact next sequence, and handles SIGTERM only between complete LWN
 commits.
 
+One process can capture selected tables from multiple PDBs in the same CDB.
+Connect the YAML JDBC URL to `CDB$ROOT`; startup uses the root as its control
+connection, discovers every `READ WRITE` PDB, validates dictionary access in
+each one, and keeps independent object-number and SYS dictionary state by redo
+`CON_ID`. Root-container transactions are not output. Each captured
+transaction's JSON `db` field is the originating PDB. A JDBC URL connected
+directly to one PDB remains a supported single-PDB mode.
+
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
-then [sql/create_capture_user.sql](sql/create_capture_user.sql) in every PDB
-that will be tested. Place that ordinary account in the supplied YAML
-configuration.
+then use [sql/create_common_capture_user.sql](sql/create_common_capture_user.sql)
+for the recommended CDB-root/multi-PDB mode. It creates an ordinary common user
+with `SET CONTAINER` and narrowly listed dictionary privileges; edit its
+username/password first, run it manually as SYSDBA, and put the same values in
+YAML. For direct single-PDB mode, run
+[sql/create_capture_user.sql](sql/create_capture_user.sql) manually in that PDB
+instead.
 
 ## Build
 

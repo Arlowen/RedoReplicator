@@ -11,6 +11,7 @@ package io.github.arlowen.redoreplicator.redo.common;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigInteger;
 
 public final class Scn implements Comparable<Scn>, Serializable {
     @Serial
@@ -33,6 +34,15 @@ public final class Scn implements Comparable<Scn>, Serializable {
             return ZERO;
         }
         return new Scn(rawValue);
+    }
+
+    public static Scn parseDecimal(String value) {
+        BigInteger parsed = new BigInteger(value);
+        if (parsed.signum() < 0 || parsed.bitLength() > Long.SIZE) {
+            throw new IllegalArgumentException(
+                    "SCN is outside the unsigned 64-bit range: " + value);
+        }
+        return of(parsed.longValue());
     }
 
     public static Scn none() {

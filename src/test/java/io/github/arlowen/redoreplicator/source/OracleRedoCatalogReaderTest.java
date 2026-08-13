@@ -13,6 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Proxy;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -45,6 +46,8 @@ class OracleRedoCatalogReaderTest {
                 archived.localPath());
         assertEquals(1, catalog.onlineLogs().size());
         assertEquals("CURRENT", catalog.onlineLogs().get(0).status());
+        assertEquals("9295429630892703743",
+                catalog.onlineLogs().get(0).nextScn().toDecimalString());
         assertEquals(mountedRedo.resolve("redo01.log"),
                 catalog.onlineLogs().get(0).localPath());
     }
@@ -97,6 +100,10 @@ class OracleRedoCatalogReaderTest {
                         return ((Number) rows.get(current[0])[
                                 (Integer) arguments[0] - 1]).longValue();
                     }
+                    if (method.getName().equals("getBigDecimal")) {
+                        return new BigDecimal(rows.get(current[0])[
+                                (Integer) arguments[0] - 1].toString());
+                    }
                     if (method.getName().equals("getInt")) {
                         return ((Number) rows.get(current[0])[
                                 (Integer) arguments[0] - 1]).intValue();
@@ -124,7 +131,8 @@ class OracleRedoCatalogReaderTest {
         }
         if (sql.contains("FROM SYS.V_$LOG L")) {
             return List.<Object[]>of(new Object[]{
-                    1, 11L, 200L, 1_000L, "CURRENT",
+                    1, 11L, 200L,
+                    new BigDecimal("9295429630892703743"), "CURRENT",
                     "/oracle/redo/redo01.log"});
         }
         return List.of();

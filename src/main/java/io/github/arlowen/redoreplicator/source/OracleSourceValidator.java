@@ -49,10 +49,14 @@ public final class OracleSourceValidator {
             "V_$ARCHIVED_LOG", "V_$LOG", "V_$PARAMETER", "V_$PDBS");
     private final OracleDatabaseInspector databaseInspector;
     private final OracleRedoCatalogReader catalogReader;
+    private final OracleContainerCatalogReader containerCatalogReader;
+    private final OracleContainerSession containerSession;
 
     public OracleSourceValidator() {
         databaseInspector = new OracleDatabaseInspector();
         catalogReader = new OracleRedoCatalogReader();
+        containerCatalogReader = new OracleContainerCatalogReader();
+        containerSession = new OracleContainerSession();
     }
 
     public OracleSourceValidation validate(
@@ -61,6 +65,10 @@ public final class OracleSourceValidator {
         OracleDatabaseContext context = databaseInspector.inspect(connection);
         context.validateSupportedSource();
         validateDictionaryAccess(connection);
+        OracleContainerRegistry containerRegistry =
+                containerCatalogReader.read(connection, context);
+        validatePdbDictionaryAccess(
+                connection, context, containerRegistry);
         OracleRedoCatalog catalog = catalogReader.read(
                 connection, configuration.redoPathMapper(), context);
         if (catalog.onlineLogs().isEmpty()) {
@@ -77,20 +85,48 @@ public final class OracleSourceValidator {
             verifyReadable(online.oraclePath(), online.localPath());
             localFiles.add(online.localPath());
         }
-        return new OracleSourceValidation(context, List.copyOf(localFiles));
+        return new OracleSourceValidation(
+                context, containerRegistry, List.copyOf(localFiles));
+    }
+
+    private void validatePdbDictionaryAccess(
+            Connection connection,
+            OracleDatabaseContext context,
+            OracleContainerRegistry containerRegistry) throws SQLException {
+        if (!context.containerDatabase()
+                || !OracleContainer.ROOT_NAME.equals(
+                        context.containerName())) {
+            return;
+        }
+        try {
+            for (OracleContainer container : containerRegistry.containers()) {
+                if (container.name().equals(context.containerName())) {
+                    continue;
+                }
+                containerSession.switchTo(connection, container.name());
+                validateLocalDictionaryAccess(connection);
+            }
+        } finally {
+            containerSession.switchTo(connection, context.containerName());
+        }
     }
 
     private static void validateDictionaryAccess(Connection connection)
+            throws SQLException {
+        validateLocalDictionaryAccess(connection);
+        for (String view : REQUIRED_DYNAMIC_VIEWS) {
+            validateQuery(connection,
+                    "SELECT 1 FROM SYS." + view + " WHERE ROWNUM = 0");
+        }
+    }
+
+    private static void validateLocalDictionaryAccess(Connection connection)
             throws SQLException {
         validateQuery(connection, CONTAINER_NAME_SQL);
         validateQuery(connection, CHARACTER_SET_SQL);
         for (String table : REQUIRED_DICTIONARY_TABLES) {
             validateQuery(connection,
                     "SELECT 1 FROM SYS." + table + " WHERE ROWNUM = 0");
-        }
-        for (String view : REQUIRED_DYNAMIC_VIEWS) {
-            validateQuery(connection,
-                    "SELECT 1 FROM SYS." + view + " WHERE ROWNUM = 0");
         }
     }
 

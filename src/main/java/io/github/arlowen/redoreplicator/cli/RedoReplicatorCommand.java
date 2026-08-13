@@ -159,6 +159,8 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
                 if (validateOnly) {
                     System.out.println("Validation successful: Oracle "
                             + source.databaseContext().version() + ", "
+                            + source.containerRegistry().containers().size()
+                            + " container(s), "
                             + source.redoFiles().size()
                             + " readable redo/archive file(s)");
                     return 0;

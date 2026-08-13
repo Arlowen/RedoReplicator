@@ -33,6 +33,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.IntFunction;
 
 public final class RedoLwnProcessor {
     private final DatabaseIdentity databaseIdentity;
@@ -41,7 +42,8 @@ public final class RedoLwnProcessor {
     private final StateStore stateStore;
     private final SchemaCatalogLoader schemaCatalogLoader;
     private final SchemaCatalog systemSchemaCatalog;
-    private final SystemTransactionManager systemTransactionManager;
+    private final IntFunction<SystemTransactionManager>
+            systemTransactionResolver;
     private final RedoJsonChangeAssembler changeAssembler;
     private final BuilderJson builderJson;
     private final JsonlFileWriter jsonlWriter;
@@ -61,6 +63,25 @@ public final class RedoLwnProcessor {
             JsonlFileWriter jsonlWriter,
             TableSchemaJsonCodec tableSchemaJsonCodec,
             Clock clock) {
+        this(databaseIdentity, configFingerprint, checkpointHeartbeat,
+                stateStore, schemaCatalogLoader, systemSchemaCatalog,
+                ignored -> systemTransactionManager, changeAssembler,
+                builderJson, jsonlWriter, tableSchemaJsonCodec, clock);
+    }
+
+    public RedoLwnProcessor(
+            DatabaseIdentity databaseIdentity,
+            String configFingerprint,
+            boolean checkpointHeartbeat,
+            StateStore stateStore,
+            SchemaCatalogLoader schemaCatalogLoader,
+            SchemaCatalog systemSchemaCatalog,
+            IntFunction<SystemTransactionManager> systemTransactionResolver,
+            RedoJsonChangeAssembler changeAssembler,
+            BuilderJson builderJson,
+            JsonlFileWriter jsonlWriter,
+            TableSchemaJsonCodec tableSchemaJsonCodec,
+            Clock clock) {
         this.databaseIdentity = Objects.requireNonNull(
                 databaseIdentity, "databaseIdentity");
         this.configFingerprint = Objects.requireNonNull(
@@ -71,8 +92,8 @@ public final class RedoLwnProcessor {
                 schemaCatalogLoader, "schemaCatalogLoader");
         this.systemSchemaCatalog = Objects.requireNonNull(
                 systemSchemaCatalog, "systemSchemaCatalog").copy();
-        this.systemTransactionManager = Objects.requireNonNull(
-                systemTransactionManager, "systemTransactionManager");
+        this.systemTransactionResolver = Objects.requireNonNull(
+                systemTransactionResolver, "systemTransactionResolver");
         this.changeAssembler = Objects.requireNonNull(
                 changeAssembler, "changeAssembler");
         this.builderJson = Objects.requireNonNull(builderJson, "builderJson");
@@ -97,7 +118,8 @@ public final class RedoLwnProcessor {
             AssembledRedoTransaction assembled =
                     changeAssembler.assembleCommitted(
                             transaction, catalog, previousCatalog,
-                            systemTransactionManager);
+                            systemTransactionResolver.apply(
+                                    transaction.containerId()));
             messages.addAll(builderJson.buildTransaction(
                     transaction, assembled.jsonChanges()));
             for (TableSchemaVersion version : assembled.schemaVersions()) {

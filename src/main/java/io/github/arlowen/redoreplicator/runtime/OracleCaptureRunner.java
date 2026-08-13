@@ -20,19 +20,10 @@ import io.github.arlowen.redoreplicator.output.OracleJsonValueDecoder;
 import io.github.arlowen.redoreplicator.output.RedoJsonChangeAssembler;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
-import io.github.arlowen.redoreplicator.schema.InitialSchemaSnapshot;
-import io.github.arlowen.redoreplicator.schema.OracleDictionaryReader;
-import io.github.arlowen.redoreplicator.schema.OracleInitialSchemaLoader;
-import io.github.arlowen.redoreplicator.schema.OracleSystemDictionaryReader;
-import io.github.arlowen.redoreplicator.schema.OracleSystemSchemaCatalogLoader;
-import io.github.arlowen.redoreplicator.schema.OracleTableCatalogReader;
-import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
 import io.github.arlowen.redoreplicator.schema.SchemaCatalogLoader;
-import io.github.arlowen.redoreplicator.schema.SystemTransactionManager;
 import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
 import io.github.arlowen.redoreplicator.source.OracleRedoCatalogPoller;
 import io.github.arlowen.redoreplicator.source.OracleRuntimeProperties;
-import io.github.arlowen.redoreplicator.source.OracleRuntimePropertiesReader;
 import io.github.arlowen.redoreplicator.source.OracleSourceValidation;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
 import io.github.arlowen.redoreplicator.state.RuntimeState;
@@ -52,14 +43,12 @@ public final class OracleCaptureRunner {
     private static final long ONLINE_IDLE_WAIT_MILLIS = 1_000;
 
     private final RedoRuntimeFactory runtimeFactory;
-    private final OracleRuntimePropertiesReader propertiesReader;
-    private final OracleTableCatalogReader tableCatalogReader;
+    private final OracleContainerBootstrapLoader containerBootstrapLoader;
     private final ConfigurationFingerprint configurationFingerprint;
 
     public OracleCaptureRunner() {
         runtimeFactory = new RedoRuntimeFactory();
-        propertiesReader = new OracleRuntimePropertiesReader();
-        tableCatalogReader = new OracleTableCatalogReader();
+        containerBootstrapLoader = new OracleContainerBootstrapLoader();
         configurationFingerprint = new ConfigurationFingerprint();
     }
 
@@ -78,28 +67,12 @@ public final class OracleCaptureRunner {
                 .flatMap(RuntimeState::lowWatermarkPosition)
                 .map(RedoPosition::scn)
                 .orElse(captureStart.captureStartScn());
-        OracleRuntimeProperties properties = propertiesReader.read(connection);
         TableSchemaJsonCodec jsonCodec = new TableSchemaJsonCodec();
-        SchemaCatalog identityCatalog = tableCatalogReader.load(
+        OracleCaptureBootstrap bootstrap = containerBootstrapLoader.load(
                 connection, source.databaseContext().containerName(),
-                dictionaryScn);
-        OracleInitialSchemaLoader initialSchemaLoader =
-                new OracleInitialSchemaLoader(
-                        new OracleDictionaryReader(),
-                        new OracleSystemDictionaryReader(), jsonCodec);
-        InitialSchemaSnapshot initialSchema = initialSchemaLoader.load(
-                connection, identityCatalog, configuration.tableFilter(),
-                dictionaryScn);
-        SchemaCatalog staticCatalog = identityCatalog.copy();
-        for (var version : initialSchema.schemaVersions()) {
-            staticCatalog.remove(
-                    version.container(), version.owner(), version.table());
-        }
-        SchemaCatalog systemCatalog =
-                new OracleSystemSchemaCatalogLoader(
-                        new OracleDictionaryReader()).load(
-                        connection, dictionaryScn);
-        staticCatalog.addAll(systemCatalog);
+                source.containerRegistry(), configuration.tableFilter(),
+                dictionaryScn, jsonCodec);
+        OracleRuntimeProperties properties = bootstrap.runtimeProperties();
 
         String fingerprint = configurationFingerprint.calculate(configuration);
         try (JsonlFileWriter writer = runtimeFactory.openJsonlWriter(
@@ -125,16 +98,9 @@ public final class OracleCaptureRunner {
                         outputPosition.fsyncOffset(), fingerprint,
                         OffsetDateTime.now(Clock.systemUTC()));
                 stateDatabase.store().commitLwn(
-                        initialState, initialSchema.schemaVersions());
+                        initialState, bootstrap.initialSchemaVersions());
             }
 
-            SystemTransactionManager systemTransactionManager =
-                    new SystemTransactionManager(
-                            initialSchema.dictionaryState(),
-                            source.databaseContext().containerName(),
-                            properties.databaseCharacterSetId(),
-                            properties.nationalCharacterSetId(),
-                            properties.databaseCharacterSet(), jsonCodec);
             RedoJsonChangeAssembler changeAssembler =
                     new RedoJsonChangeAssembler(
                             stream.openHeader().orElseThrow(() ->
@@ -144,7 +110,8 @@ public final class OracleCaptureRunner {
                                                     .localPath()))
                                     .byteOrder(),
                             properties.databaseCharacterSet(),
-                            configuration.tableFilter()::matches);
+                            configuration.tableFilter()::matches,
+                            source.containerRegistry()::requireName);
             long hostTimezoneSeconds = ZoneId.systemDefault().getRules()
                     .getOffset(Instant.now()).getTotalSeconds();
             Clock clock = Clock.systemUTC();
@@ -154,6 +121,7 @@ public final class OracleCaptureRunner {
                             properties.databaseCharacterSetId(),
                             properties.databaseTimeZone()),
                     source.databaseContext().containerName(),
+                    source.containerRegistry()::requireName,
                     hostTimezoneSeconds);
             RedoLwnProcessor lwnProcessor = new RedoLwnProcessor(
                     source.databaseContext().identity(), fingerprint,
@@ -162,7 +130,8 @@ public final class OracleCaptureRunner {
                     stateDatabase.store(),
                     new SchemaCatalogLoader(
                             stateDatabase.store(), jsonCodec),
-                    staticCatalog, systemTransactionManager,
+                    bootstrap.staticSchemaCatalog(),
+                    bootstrap.systemTransactions()::require,
                     changeAssembler, builder, writer, jsonCodec,
                     clock);
             RuntimeStatusWriter statusWriter = new RuntimeStatusWriter(

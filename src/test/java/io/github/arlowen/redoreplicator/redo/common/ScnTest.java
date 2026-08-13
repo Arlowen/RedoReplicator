@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ScnTest {
@@ -32,6 +33,17 @@ class ScnTest {
         assertEquals("0xffff7fffffffffff", Scn.none().toHex16());
         assertTrue(Scn.none().compareTo(Scn.of(Long.MAX_VALUE)) > 0);
         assertTrue(Scn.of(Long.MIN_VALUE).compareTo(Scn.of(Long.MAX_VALUE)) > 0);
+    }
+
+    @Test
+    void parsesOracleUnsignedDecimalScns() {
+        Scn scn = Scn.parseDecimal("9295429630892703743");
+
+        assertEquals("9295429630892703743", scn.toDecimalString());
+        assertThrows(IllegalArgumentException.class,
+                () -> Scn.parseDecimal("18446744073709551616"));
+        assertThrows(IllegalArgumentException.class,
+                () -> Scn.parseDecimal("-1"));
     }
 
     @Test

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.IntFunction;
 
 public final class BuilderJson {
     private static final BigInteger NANOS_PER_SECOND =
@@ -40,6 +41,7 @@ public final class BuilderJson {
     private final ObjectWriter objectWriter;
     private final OracleJsonValueDecoder valueDecoder;
     private final String databaseName;
+    private final IntFunction<String> transactionDatabaseResolver;
     private final long hostTimezoneSeconds;
 
     private Scn lwnScn = Scn.none();
@@ -49,10 +51,21 @@ public final class BuilderJson {
             OracleJsonValueDecoder valueDecoder,
             String databaseName,
             long hostTimezoneSeconds) {
+        this(valueDecoder, databaseName, ignored -> databaseName,
+                hostTimezoneSeconds);
+    }
+
+    public BuilderJson(
+            OracleJsonValueDecoder valueDecoder,
+            String databaseName,
+            IntFunction<String> transactionDatabaseResolver,
+            long hostTimezoneSeconds) {
         this.valueDecoder = Objects.requireNonNull(
                 valueDecoder, "valueDecoder");
         this.databaseName = Objects.requireNonNull(
                 databaseName, "databaseName");
+        this.transactionDatabaseResolver = Objects.requireNonNull(
+                transactionDatabaseResolver, "transactionDatabaseResolver");
         this.hostTimezoneSeconds = hostTimezoneSeconds;
         objectMapper = new ObjectMapper();
         objectMapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
@@ -187,7 +200,12 @@ public final class BuilderJson {
         if (transaction != null) {
             message.put("xid", transaction.xid().toString());
         }
-        message.put("db", databaseName);
+        String messageDatabase = databaseName;
+        if (transaction != null) {
+            messageDatabase = transactionDatabaseResolver.apply(
+                    transaction.containerId());
+        }
+        message.put("db", messageDatabase);
         return message;
     }
 

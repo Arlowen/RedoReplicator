@@ -130,6 +130,43 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
+    void resolvesDuplicateObjectIdsWithinTheTransactionPdb() {
+        SchemaCatalog catalog = new SchemaCatalog();
+        catalog.add(table("FREEPDB1", "USERS"));
+        catalog.add(table("REPORTING", "REPORT_USERS"));
+        RedoJsonChangeAssembler containerAssembler =
+                new RedoJsonChangeAssembler(
+                        ByteOrder.LITTLE_ENDIAN,
+                        StandardCharsets.UTF_8,
+                        ignored -> true,
+                        containerId -> {
+                            assertEquals(3, containerId);
+                            return "REPORTING";
+                        });
+
+        List<RedoJsonChange> changes = containerAssembler.assemble(
+                transaction(List.of(insertEntry())), catalog);
+
+        RedoJsonDmlChange change = (RedoJsonDmlChange) changes.get(0);
+        assertEquals("REPORTING", change.row().table().container());
+        assertEquals("REPORT_USERS", change.row().table().name());
+    }
+
+    @Test
+    void ignoresControlTransactionsFromTheCdbRoot() {
+        RedoJsonChangeAssembler rootAssembler =
+                new RedoJsonChangeAssembler(
+                        ByteOrder.LITTLE_ENDIAN,
+                        StandardCharsets.UTF_8,
+                        ignored -> true,
+                        containerId -> "CDB$ROOT");
+
+        assertTrue(rootAssembler.assemble(
+                transaction(List.of(insertEntry())),
+                new SchemaCatalog()).isEmpty());
+    }
+
+    @Test
     void assemblesSingleRecordDdlFromTerminatedFieldEight() {
         List<RedoJsonChange> changes = assembler.assemble(
                 transaction(List.of(RedoTransactionEntry.single(
@@ -921,8 +958,17 @@ class RedoJsonChangeAssemblerTest {
     }
 
     private static TableSchema table(String owner) {
+        return table("FREEPDB1", "USERS", owner);
+    }
+
+    private static TableSchema table(String container, String name) {
+        return table(container, name, "APP");
+    }
+
+    private static TableSchema table(
+            String container, String name, String owner) {
         return new TableSchema(
-                "FREEPDB1", owner, "USERS",
+                container, owner, name,
                 OBJECT_ID, DATA_OBJECT_ID, 10, 0, 0,
                 List.of(new ColumnSchema(
                         1, -1, 1, 1, "ID",

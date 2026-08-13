@@ -166,6 +166,21 @@ class RedoLobContextTest {
     }
 
     @Test
+    void resolvesDuplicateLobIdsWithinTheTransactionPdb() {
+        SchemaCatalog catalogs = catalog("FREEPDB1");
+        catalogs.addAll(catalog("REPORTING"));
+
+        RedoLobContext context = RedoLobContext.from(
+                List.of(RedoTransactionEntry.single(page(
+                        100, 0, new byte[]{1, 2, 3}))),
+                catalogs, new SchemaCatalog(),
+                ByteOrder.LITTLE_ENDIAN, "REPORTING");
+
+        assertArrayEquals(new byte[]{1, 2, 3},
+                context.readIndexed(LOB_ID, 0, 3, List.of(100L)));
+    }
+
+    @Test
     void followsAndAppendsKdliListPages() {
         RedoLogRecord firstList = listRecord(
                 RedoKdliDecoder.CODE_LMAP, 200, 0, 100, 1);
@@ -247,12 +262,16 @@ class RedoLobContextTest {
     }
 
     private static SchemaCatalog catalog() {
+        return catalog("FREEPDB1");
+    }
+
+    private static SchemaCatalog catalog(String container) {
         LobSchema lob = new LobSchema(
                 22, LOB_DATA_OBJECT_ID, 44, 1, 1,
                 List.of(), List.of(new LobPartition(
                         LOB_DATA_OBJECT_ID, 4)));
         TableSchema table = new TableSchema(
-                "FREEPDB1", "APP", "LOB_DATA",
+                container, "APP", "LOB_DATA",
                 22, 33, 1, 0, 0,
                 List.of(), List.of(lob), List.of());
         SchemaCatalog catalog = new SchemaCatalog();

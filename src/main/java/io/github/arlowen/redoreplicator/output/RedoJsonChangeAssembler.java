@@ -38,6 +38,7 @@ import io.github.arlowen.redoreplicator.schema.SystemTransactionManager;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
 import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
 import io.github.arlowen.redoreplicator.state.TableSchemaVersion;
+import io.github.arlowen.redoreplicator.source.OracleContainer;
 
 import java.io.IOException;
 import java.nio.ByteOrder;
@@ -48,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
 public final class RedoJsonChangeAssembler {
@@ -58,6 +60,7 @@ public final class RedoJsonChangeAssembler {
     private final SystemDictionaryRedoBridge systemDictionaryBridge;
     private final TableSchemaJsonCodec tableSchemaJsonCodec;
     private final Predicate<String> outputTableFilter;
+    private final IntFunction<String> containerResolver;
     private final RedoLobValueResolver lobValueResolver;
 
     public RedoJsonChangeAssembler(
@@ -77,8 +80,28 @@ public final class RedoJsonChangeAssembler {
 
     public RedoJsonChangeAssembler(
             ByteOrder byteOrder,
+            Charset databaseCharacterSet,
+            Predicate<String> outputTableFilter,
+            IntFunction<String> containerResolver) {
+        this(byteOrder,
+                new CharacterSetJdk(0, databaseCharacterSet.name(),
+                        databaseCharacterSet),
+                outputTableFilter, containerResolver);
+    }
+
+    public RedoJsonChangeAssembler(
+            ByteOrder byteOrder,
             CharacterSet databaseCharacterSet,
             Predicate<String> outputTableFilter) {
+        this(byteOrder, databaseCharacterSet, outputTableFilter,
+                ignored -> null);
+    }
+
+    public RedoJsonChangeAssembler(
+            ByteOrder byteOrder,
+            CharacterSet databaseCharacterSet,
+            Predicate<String> outputTableFilter,
+            IntFunction<String> containerResolver) {
         this.byteOrder = Objects.requireNonNull(byteOrder, "byteOrder");
         rowDecoder = new RedoRowDecoder(byteOrder);
         multiRowDecoder = new RedoMultiRowDecoder(byteOrder);
@@ -89,6 +112,8 @@ public final class RedoJsonChangeAssembler {
                 databaseCharacterSet, "databaseCharacterSet");
         this.outputTableFilter = Objects.requireNonNull(
                 outputTableFilter, "outputTableFilter");
+        this.containerResolver = Objects.requireNonNull(
+                containerResolver, "containerResolver");
     }
 
     public List<RedoJsonChange> assemble(
@@ -105,8 +130,12 @@ public final class RedoJsonChangeAssembler {
         Objects.requireNonNull(schemaCatalog, "schemaCatalog");
         Objects.requireNonNull(
                 previousSchemaCatalog, "previousSchemaCatalog");
+        String container = containerResolver.apply(transaction.containerId());
+        if (OracleContainer.ROOT_NAME.equals(container)) {
+            return List.of();
+        }
         return assembleOutput(transaction, schemaCatalog,
-                previousSchemaCatalog, schemaCatalog, false);
+                previousSchemaCatalog, schemaCatalog, false, container);
     }
 
     public AssembledRedoTransaction assembleCommitted(
@@ -117,8 +146,12 @@ public final class RedoJsonChangeAssembler {
             throws IOException {
         Objects.requireNonNull(systemTransactionManager,
                 "systemTransactionManager");
+        String container = containerResolver.apply(transaction.containerId());
+        if (OracleContainer.ROOT_NAME.equals(container)) {
+            return new AssembledRedoTransaction(List.of(), List.of());
+        }
         List<SystemDictionaryRedoChange> systemChanges =
-                decodeSystemChanges(transaction, schemaCatalog);
+                decodeSystemChanges(transaction, schemaCatalog, container);
         if (systemChanges.isEmpty()) {
             List<RedoJsonChange> changes = assemble(
                     transaction, schemaCatalog, previousSchemaCatalog);
@@ -147,7 +180,7 @@ public final class RedoJsonChangeAssembler {
         }
         List<RedoJsonChange> changes = assembleOutput(
                 transaction, schemaCatalog, previousSchemaCatalog,
-                transactionSchemaCatalog, true);
+                transactionSchemaCatalog, true, container);
         return new AssembledRedoTransaction(
                 changes, commit.schemaVersions());
     }
@@ -157,22 +190,19 @@ public final class RedoJsonChangeAssembler {
             SchemaCatalog schemaCatalog,
             SchemaCatalog previousSchemaCatalog,
             SchemaCatalog transactionSchemaCatalog,
-            boolean skipSystemRows) {
-        Objects.requireNonNull(transaction, "transaction");
-        Objects.requireNonNull(schemaCatalog, "schemaCatalog");
-        Objects.requireNonNull(
-                previousSchemaCatalog, "previousSchemaCatalog");
+            boolean skipSystemRows,
+            String container) {
         List<RedoJsonChange> changes = new ArrayList<>();
         RedoRowGroupAssembler rowAssembler = new RedoRowGroupAssembler();
         RedoDdlAssembler ddlAssembler = new RedoDdlAssembler(
-                databaseCharacterSet);
+                databaseCharacterSet, container);
         RedoLobContext lobContext = RedoLobContext.from(
                 transaction.entries(), schemaCatalog,
-                transactionSchemaCatalog, byteOrder);
+                transactionSchemaCatalog, byteOrder, container);
         for (RedoTransactionEntry entry : transaction.entries()) {
             appendEntry(transaction, schemaCatalog, previousSchemaCatalog,
                     transactionSchemaCatalog, rowAssembler, ddlAssembler,
-                    lobContext, changes, entry, skipSystemRows);
+                    lobContext, changes, entry, skipSystemRows, container);
         }
         rowAssembler.finish(transaction.xid());
         ddlAssembler.finish();
@@ -189,14 +219,15 @@ public final class RedoJsonChangeAssembler {
             RedoLobContext lobContext,
             List<RedoJsonChange> changes,
             RedoTransactionEntry entry,
-            boolean skipSystemRows) {
+            boolean skipSystemRows,
+            String container) {
         if (skipClusterOrPartitionMove(entry)) {
             return;
         }
         int operation = entry.operationCode();
         if (isRowOperation(operation)) {
             appendRow(schemaCatalog, rowAssembler, lobContext, changes, entry,
-                    skipSystemRows);
+                    skipSystemRows, container);
             return;
         }
         if (operation == 0x05010B0B || operation == 0x05010B0C) {
@@ -206,7 +237,8 @@ public final class RedoJsonChangeAssembler {
                                 + entry.first().fileOffset);
             }
             appendMultiRows(
-                    schemaCatalog, lobContext, changes, entry, skipSystemRows);
+                    schemaCatalog, lobContext, changes, entry, skipSystemRows,
+                    container);
             return;
         }
         if (operation == 0x18010000) {
@@ -237,10 +269,12 @@ public final class RedoJsonChangeAssembler {
             RedoLobContext lobContext,
             List<RedoJsonChange> changes,
             RedoTransactionEntry entry,
-            boolean skipSystemRows) {
+            boolean skipSystemRows,
+            String container) {
         RedoLogRecord redo = entry.second().orElseThrow();
         RedoRecordPair pair = new RedoRecordPair(entry.first(), redo);
-        TableSchema table = resolveTable(List.of(pair), schemaCatalog);
+        TableSchema table = resolveTable(
+                List.of(pair), schemaCatalog, container);
         if ("SYS".equals(table.owner())) {
             if (skipSystemRows) {
                 return;
@@ -266,7 +300,8 @@ public final class RedoJsonChangeAssembler {
             RedoLobContext lobContext,
             List<RedoJsonChange> changes,
             RedoTransactionEntry entry,
-            boolean skipSystemRows) {
+            boolean skipSystemRows,
+            String container) {
         RedoLogRecord redo = entry.second().orElseThrow();
         Optional<List<RedoRecordPair>> complete = rowAssembler.accept(
                 entry.first(), redo);
@@ -274,7 +309,7 @@ public final class RedoJsonChangeAssembler {
             return;
         }
         List<RedoRecordPair> group = complete.orElseThrow();
-        TableSchema table = resolveTable(group, schemaCatalog);
+        TableSchema table = resolveTable(group, schemaCatalog, container);
         if ("SYS".equals(table.owner())) {
             if (skipSystemRows) {
                 return;
@@ -294,7 +329,8 @@ public final class RedoJsonChangeAssembler {
 
     private List<SystemDictionaryRedoChange> decodeSystemChanges(
             CommittedRedoTransaction transaction,
-            SchemaCatalog schemaCatalog) {
+            SchemaCatalog schemaCatalog,
+            String container) {
         List<SystemDictionaryRedoChange> changes = new ArrayList<>();
         RedoRowGroupAssembler rowAssembler = new RedoRowGroupAssembler();
         boolean userRows = false;
@@ -311,7 +347,8 @@ public final class RedoJsonChangeAssembler {
                     continue;
                 }
                 List<RedoRecordPair> group = complete.orElseThrow();
-                TableSchema table = resolveTable(group, schemaCatalog);
+                TableSchema table = resolveTable(
+                        group, schemaCatalog, container);
                 if (!"SYS".equals(table.owner())) {
                     userRows = true;
                     continue;
@@ -335,7 +372,7 @@ public final class RedoJsonChangeAssembler {
                 RedoRecordPair pair = new RedoRecordPair(
                         entry.first(), redo);
                 TableSchema table = resolveTable(
-                        List.of(pair), schemaCatalog);
+                        List.of(pair), schemaCatalog, container);
                 if (!"SYS".equals(table.owner())) {
                     userRows = true;
                     continue;
@@ -405,20 +442,23 @@ public final class RedoJsonChangeAssembler {
     }
 
     private static TableSchema resolveTable(
-            List<RedoRecordPair> group, SchemaCatalog schemaCatalog) {
+            List<RedoRecordPair> group,
+            SchemaCatalog schemaCatalog,
+            String container) {
         RedoRecordPair first = group.get(0);
-        Optional<TableSchema> byObject = schemaCatalog.findByObjectId(
-                first.undo().obj);
+        Optional<TableSchema> byObject = findByObjectId(
+                schemaCatalog, container, first.undo().obj);
         if (byObject.isEmpty()) {
-            byObject = schemaCatalog.findByObjectId(first.redo().obj);
+            byObject = findByObjectId(
+                    schemaCatalog, container, first.redo().obj);
         }
         if (byObject.isEmpty()) {
-            byObject = schemaCatalog.findByDataObjectId(
-                    first.redo().dataObj);
+            byObject = findByDataObjectId(
+                    schemaCatalog, container, first.redo().dataObj);
         }
         if (byObject.isEmpty()) {
-            byObject = schemaCatalog.findByDataObjectId(
-                    first.undo().dataObj);
+            byObject = findByDataObjectId(
+                    schemaCatalog, container, first.undo().dataObj);
         }
         if (byObject.isEmpty()) {
             throw new DataException(50071,
@@ -429,14 +469,32 @@ public final class RedoJsonChangeAssembler {
         }
         TableSchema table = byObject.orElseThrow();
         for (RedoRecordPair pair : group) {
-            Optional<TableSchema> current = schemaCatalog.findByObjectId(
-                    pair.undo().obj);
+            Optional<TableSchema> current = findByObjectId(
+                    schemaCatalog, container, pair.undo().obj);
             if (current.isPresent() && !current.get().equals(table)) {
                 throw new DataException(50071,
                         "Redo row group resolves to multiple table schemas");
             }
         }
         return table;
+    }
+
+    private static Optional<TableSchema> findByObjectId(
+            SchemaCatalog schemaCatalog, String container, long objectId) {
+        if (container == null) {
+            return schemaCatalog.findByObjectId(objectId);
+        }
+        return schemaCatalog.findByObjectId(container, objectId);
+    }
+
+    private static Optional<TableSchema> findByDataObjectId(
+            SchemaCatalog schemaCatalog,
+            String container,
+            long dataObjectId) {
+        if (container == null) {
+            return schemaCatalog.findByDataObjectId(dataObjectId);
+        }
+        return schemaCatalog.findByDataObjectId(container, dataObjectId);
     }
 
     private static boolean skipClusterOrPartitionMove(

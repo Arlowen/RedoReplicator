@@ -45,6 +45,16 @@ public final class RedoLobContext {
             SchemaCatalog schemaCatalog,
             SchemaCatalog transactionSchemaCatalog,
             ByteOrder byteOrder) {
+        return from(entries, schemaCatalog, transactionSchemaCatalog,
+                byteOrder, null);
+    }
+
+    public static RedoLobContext from(
+            List<RedoTransactionEntry> entries,
+            SchemaCatalog schemaCatalog,
+            SchemaCatalog transactionSchemaCatalog,
+            ByteOrder byteOrder,
+            String container) {
         RedoLobContext context = new RedoLobContext(byteOrder);
         for (RedoTransactionEntry entry : entries) {
             if (entry.paired()) {
@@ -62,7 +72,7 @@ public final class RedoLobContext {
                         && !record.lobId.equals(LobId.zero())) {
                     int pageSize = context.pageSize(
                             record.dataObj, schemaCatalog,
-                            transactionSchemaCatalog);
+                            transactionSchemaCatalog, container);
                     context.addDataRecord(
                             record, pageSize, record.lobOffset);
                 }
@@ -72,10 +82,11 @@ public final class RedoLobContext {
             if (record.opCode != 0x1301 && record.opCode != 0x1A06) {
                 continue;
             }
-            Optional<LobSchema> lob = transactionSchemaCatalog
-                    .findLobByDataObjectId(record.dataObj);
+            Optional<LobSchema> lob = findLobByDataObjectId(
+                    transactionSchemaCatalog, container, record.dataObj);
             if (lob.isEmpty()) {
-                lob = schemaCatalog.findLobByDataObjectId(record.dataObj);
+                lob = findLobByDataObjectId(
+                        schemaCatalog, container, record.dataObj);
             }
             if (lob.isPresent()) {
                 context.addDataRecord(record,
@@ -321,24 +332,48 @@ public final class RedoLobContext {
     private int pageSize(
             long dataObjectId,
             SchemaCatalog schemaCatalog,
-            SchemaCatalog transactionSchemaCatalog) {
-        Optional<LobSchema> lob = transactionSchemaCatalog
-                .findLobByDataObjectId(dataObjectId);
+            SchemaCatalog transactionSchemaCatalog,
+            String container) {
+        Optional<LobSchema> lob = findLobByDataObjectId(
+                transactionSchemaCatalog, container, dataObjectId);
         if (lob.isEmpty()) {
-            lob = transactionSchemaCatalog
-                    .findLobIndexByDataObjectId(dataObjectId);
+            lob = findLobIndexByDataObjectId(
+                    transactionSchemaCatalog, container, dataObjectId);
         }
         if (lob.isEmpty()) {
-            lob = schemaCatalog.findLobByDataObjectId(dataObjectId);
+            lob = findLobByDataObjectId(
+                    schemaCatalog, container, dataObjectId);
         }
         if (lob.isEmpty()) {
-            lob = schemaCatalog.findLobIndexByDataObjectId(dataObjectId);
+            lob = findLobIndexByDataObjectId(
+                    schemaCatalog, container, dataObjectId);
         }
         if (lob.isEmpty()) {
             return 0;
         }
         LobSchema schema = lob.orElseThrow();
         return schema.pageSize(schema.dataObjectId());
+    }
+
+    private static Optional<LobSchema> findLobByDataObjectId(
+            SchemaCatalog schemaCatalog,
+            String container,
+            long dataObjectId) {
+        if (container == null) {
+            return schemaCatalog.findLobByDataObjectId(dataObjectId);
+        }
+        return schemaCatalog.findLobByDataObjectId(container, dataObjectId);
+    }
+
+    private static Optional<LobSchema> findLobIndexByDataObjectId(
+            SchemaCatalog schemaCatalog,
+            String container,
+            long dataObjectId) {
+        if (container == null) {
+            return schemaCatalog.findLobIndexByDataObjectId(dataObjectId);
+        }
+        return schemaCatalog.findLobIndexByDataObjectId(
+                container, dataObjectId);
     }
 
     private RedoLobData require(LobId lobId) {

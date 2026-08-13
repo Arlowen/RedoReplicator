@@ -138,6 +138,27 @@ class BuilderJsonTest {
     }
 
     @Test
+    void resolvesTheDatabaseNameFromTheTransactionContainer() throws Exception {
+        BuilderJson multiPdbBuilder = new BuilderJson(
+                new OracleJsonValueDecoder(
+                        StandardCharsets.UTF_8, ZoneOffset.UTC),
+                "CDB$ROOT", containerId -> {
+                    assertEquals(3, containerId);
+                    return "FREEPDB1";
+                }, 0);
+
+        List<byte[]> messages = multiPdbBuilder.buildTransaction(
+                transaction(100, 0, 200),
+                List.of(new RedoJsonDmlChange(row(
+                        RedoRowOperation.INSERT, table(), Map.of(),
+                        values(number(1), text("row"))))));
+
+        assertEquals("FREEPDB1", json(messages.get(0)).get("db").textValue());
+        assertEquals("FREEPDB1", json(messages.get(1)).get("db").textValue());
+        assertEquals("FREEPDB1", json(messages.get(2)).get("db").textValue());
+    }
+
+    @Test
     void skipsEmptyTransactionsAndBuildsCheckpoint() throws Exception {
         assertTrue(builder.buildTransaction(
                 transaction(500, 0, 600), List.of()).isEmpty());

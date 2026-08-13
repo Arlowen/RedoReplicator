@@ -14,6 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Proxy;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -171,6 +172,11 @@ class OracleSourceValidatorTest {
                                 (Integer) arguments[0] - 1];
                         return ((Number) value).longValue();
                     }
+                    if (method.getName().equals("getBigDecimal")) {
+                        Object value = rows.get(current[0])[
+                                (Integer) arguments[0] - 1];
+                        return new BigDecimal(value.toString());
+                    }
                     if (method.getName().equals("getInt")) {
                         Object value = rows.get(current[0])[
                                 (Integer) arguments[0] - 1];
@@ -192,6 +198,9 @@ class OracleSourceValidatorTest {
             return List.<Object[]>of(new Object[]{
                     100L, 200L, "ARCHIVELOG", "YES", "YES", "YES",
                     3L, 4L, "FREE", "FREEPDB1"});
+        }
+        if (sql.contains("TO_NUMBER(SYS_CONTEXT('USERENV', 'CON_ID'))")) {
+            return List.<Object[]>of(new Object[]{3, "FREEPDB1"});
         }
         if (sql.contains("JOIN SYS.V_$LOGFILE")) {
             List<Object[]> rows = new ArrayList<>();

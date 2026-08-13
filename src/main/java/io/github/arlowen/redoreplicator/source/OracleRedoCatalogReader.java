@@ -15,6 +15,7 @@ import io.github.arlowen.redoreplicator.error.ConfigurationException;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -92,13 +93,19 @@ public final class OracleRedoCatalogReader {
                         kind,
                         resultSet.getInt(1),
                         Seq.of(resultSet.getLong(2)),
-                        Scn.of(resultSet.getLong(3)),
-                        Scn.of(resultSet.getLong(4)),
+                        readScn(resultSet, 3),
+                        readScn(resultSet, 4),
                         resultSet.getString(5),
                         oraclePath,
                         localPath));
             }
         }
         return List.copyOf(logs);
+    }
+
+    private static Scn readScn(ResultSet resultSet, int column)
+            throws SQLException {
+        BigDecimal value = resultSet.getBigDecimal(column);
+        return Scn.parseDecimal(value.toBigIntegerExact().toString());
     }
 }
