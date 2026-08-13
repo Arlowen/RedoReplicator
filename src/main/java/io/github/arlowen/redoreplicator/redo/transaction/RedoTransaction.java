@@ -29,6 +29,9 @@ final class RedoTransaction {
     private final RedoTime beginTimestamp;
     private final Map<Attribute, String> attributes;
     private final List<RedoTransactionEntry> entries;
+    private TransactionSpillManager spillManager;
+    private TransactionSpillFile spillFile;
+    private int entryCount;
 
     RedoTransaction(RedoLogRecord begin, RedoPosition beginPosition) {
         xid = begin.xid;
@@ -53,18 +56,47 @@ final class RedoTransaction {
     }
 
     void add(RedoTransactionEntry entry) {
-        entries.add(entry);
+        if (spillFile == null) {
+            entries.add(entry);
+        } else {
+            spillFile.append(entry);
+        }
+        entryCount++;
+    }
+
+    void spill(TransactionSpillManager manager) {
+        if (spillFile != null || entries.isEmpty()) {
+            return;
+        }
+        spillManager = manager;
+        spillFile = manager.open(containerId, xid);
+        for (RedoTransactionEntry entry : entries) {
+            spillFile.append(entry);
+        }
+        entries.clear();
+    }
+
+    boolean spilled() {
+        return spillFile != null;
+    }
+
+    long memoryBytes() {
+        long bytes = 0;
+        for (RedoTransactionEntry entry : entries) {
+            bytes += entry.estimatedMemoryBytes();
+        }
+        return bytes;
     }
 
     void rollbackPair(RedoLogRecord inverse) {
-        while (!entries.isEmpty()) {
-            RedoTransactionEntry last = entries.get(entries.size() - 1);
+        while (entryCount > 0) {
+            RedoTransactionEntry last = lastEntry();
             int lastRedoOpCode = 0;
             if (last.second().isPresent()) {
                 lastRedoOpCode = last.second().orElseThrow().opCode;
             }
             if (isIndexOperation(lastRedoOpCode)) {
-                entries.remove(entries.size() - 1);
+                removeLast();
                 continue;
             }
             boolean matches = inverseMatches(lastRedoOpCode, inverse.opCode)
@@ -74,7 +106,7 @@ final class RedoTransaction {
                         "Partial rollback does not match buffered operation for "
                                 + xid);
             }
-            entries.remove(entries.size() - 1);
+            removeLast();
             return;
         }
         throw new RedoLogException(50044,
@@ -82,14 +114,14 @@ final class RedoTransaction {
     }
 
     void rollbackSingle(RedoLogRecord inverse) {
-        while (!entries.isEmpty()) {
-            RedoTransactionEntry last = entries.get(entries.size() - 1);
+        while (entryCount > 0) {
+            RedoTransactionEntry last = lastEntry();
             int lastRedoOpCode = 0;
             if (last.second().isPresent()) {
                 lastRedoOpCode = last.second().orElseThrow().opCode;
             }
             if (isIndexOperation(lastRedoOpCode)) {
-                entries.remove(entries.size() - 1);
+                removeLast();
                 continue;
             }
             boolean rollbackCandidate = lastRedoOpCode == 0
@@ -101,7 +133,7 @@ final class RedoTransaction {
                         "Single partial rollback does not match buffered operation for "
                                 + xid);
             }
-            entries.remove(entries.size() - 1);
+            removeLast();
             return;
         }
         throw new RedoLogException(50044,
@@ -111,7 +143,13 @@ final class RedoTransaction {
     CommittedRedoTransaction commit(RedoLogRecord commit) {
         RedoPosition commitPosition = new RedoPosition(
                 commit.scn, commit.thread, commit.sequence, commit.fileOffset);
-        return new CommittedRedoTransaction(
+        List<RedoTransactionEntry> committedEntries = new ArrayList<>(
+                entryCount);
+        if (spillFile != null) {
+            committedEntries.addAll(spillFile.readAll());
+        }
+        committedEntries.addAll(entries);
+        CommittedRedoTransaction committed = new CommittedRedoTransaction(
                 xid,
                 containerId,
                 thread,
@@ -120,11 +158,39 @@ final class RedoTransaction {
                 commitPosition,
                 commit.timestamp,
                 attributes,
-                entries);
+                committedEntries);
+        discard();
+        return committed;
     }
 
     int entryCount() {
-        return entries.size();
+        return entryCount;
+    }
+
+    void discard() {
+        entries.clear();
+        entryCount = 0;
+        if (spillFile != null) {
+            spillManager.release(spillFile);
+            spillFile = null;
+            spillManager = null;
+        }
+    }
+
+    private RedoTransactionEntry lastEntry() {
+        if (!entries.isEmpty()) {
+            return entries.get(entries.size() - 1);
+        }
+        return spillFile.readLast();
+    }
+
+    private void removeLast() {
+        if (!entries.isEmpty()) {
+            entries.remove(entries.size() - 1);
+        } else {
+            spillFile.removeLast();
+        }
+        entryCount--;
     }
 
     private static boolean isIndexOperation(int opCode) {

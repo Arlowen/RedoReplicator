@@ -9,7 +9,12 @@
  */
 package io.github.arlowen.redoreplicator.redo.common;
 
-public final class Scn implements Comparable<Scn> {
+import java.io.Serial;
+import java.io.Serializable;
+
+public final class Scn implements Comparable<Scn>, Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     private static final long NONE_VALUE = 0xFFFF_FFFF_FFFF_FFFFL;
     private static final Scn NONE = new Scn(NONE_VALUE);
     private static final Scn ZERO = new Scn(0);

@@ -29,8 +29,8 @@ src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.common.LobData	pend
 src/common/LobData.h	io.github.arlowen.redoreplicator.redo.common.LobData	pending	Translate redo domain model
 src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
 src/common/LobKey.h	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
-src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
-src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
+src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill files, startup cleanup, commit replay and tail rollback implemented; runtime configuration, metrics and scale parity remain
+src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill files, startup cleanup, commit replay and tail rollback implemented; runtime configuration, metrics and scale parity remain
 src/common/OraProtoBuf.pb.cpp	-	excluded	Protobuf output is out of scope
 src/common/OraProtoBuf.pb.h	-	excluded	Protobuf output is out of scope
 src/common/RedoLogRecord.h	io.github.arlowen.redoreplicator.redo.common.RedoLogRecord	translated	Translated record model and field traversal cursor with parity tests
@@ -171,8 +171,8 @@ src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pe
 src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, LWN, vector and opcode dispatch now route in-memory transactions; metadata filtering, multiblock undo, LOB and output integration remain
 src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	In-memory entries, rollback matching, commit snapshots and row grouping implemented; multiblock undo, LOB, multi-row and output flush remain
 src/parser/Transaction.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	In-memory entries, rollback matching, commit snapshots and row grouping implemented; multiblock undo, LOB, multi-row and output flush remain
-src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Transaction slot lookup, interleaving, commit, rollback and low-watermark implemented; spill, multiblock undo and orphaned LOB handling remain
-src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Transaction slot lookup, interleaving, commit, rollback and low-watermark implemented; spill, multiblock undo and orphaned LOB handling remain
+src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Transaction slot lookup, interleaving, commit, rollback, low-watermark and file spill implemented; multiblock undo, orphaned LOB and runtime wiring remain
+src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Transaction slot lookup, interleaving, commit, rollback, low-watermark and file spill implemented; multiblock undo, orphaned LOB and runtime wiring remain
 src/reader/Reader.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	File and block headers started; asynchronous filesystem lifecycle remains
 src/reader/Reader.h	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	File and block headers started; asynchronous filesystem lifecycle remains
 src/reader/ReaderFilesystem.cpp	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader

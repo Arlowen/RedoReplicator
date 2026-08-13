@@ -23,6 +23,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public final class RedoParser {
     private final RedoVectorParser vectorParser;
@@ -31,10 +32,20 @@ public final class RedoParser {
     private final int blockSize;
 
     public RedoParser(ByteOrder byteOrder, long redoVersion, int blockSize) {
+        this(byteOrder, redoVersion, blockSize,
+                new RedoTransactionBuffer());
+    }
+
+    public RedoParser(
+            ByteOrder byteOrder,
+            long redoVersion,
+            int blockSize,
+            RedoTransactionBuffer transactionBuffer) {
         vectorParser = new RedoVectorParser(
                 byteOrder, redoVersion, blockSize);
         opCodeDispatcher = new RedoOpCodeDispatcher(byteOrder, redoVersion);
-        transactionBuffer = new RedoTransactionBuffer();
+        this.transactionBuffer = Objects.requireNonNull(
+                transactionBuffer, "transactionBuffer");
         this.blockSize = blockSize;
     }
 

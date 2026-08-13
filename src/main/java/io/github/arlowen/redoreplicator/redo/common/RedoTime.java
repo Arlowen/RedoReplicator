@@ -9,7 +9,12 @@
  */
 package io.github.arlowen.redoreplicator.redo.common;
 
-public final class RedoTime {
+import java.io.Serial;
+import java.io.Serializable;
+
+public final class RedoTime implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     private static final RedoTime ZERO = new RedoTime(0);
 
     private final int value;

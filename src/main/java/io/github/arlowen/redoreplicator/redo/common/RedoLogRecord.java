@@ -9,7 +9,15 @@
  */
 package io.github.arlowen.redoreplicator.redo.common;
 
-public final class RedoLogRecord {
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serial;
+import java.io.Serializable;
+
+public final class RedoLogRecord implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     public static final int FB_N = 0x01;
     public static final int FB_P = 0x02;
     public static final int FB_L = 0x04;
@@ -52,8 +60,8 @@ public final class RedoLogRecord {
 
     public static final int TYP_ENCRYPTED_TABLESPACE = 0x80;
 
-    private byte[] data;
-    private int dataOffset;
+    private transient byte[] data;
+    private transient int dataOffset;
 
     public FileOffset fileOffset;
     public Xid xid;
@@ -262,6 +270,36 @@ public final class RedoLogRecord {
         ddlPayload1Size = 0;
         ddlPayload2 = 0;
         ddlPayload2Size = 0;
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream output) throws IOException {
+        output.defaultWriteObject();
+        if (data == null) {
+            output.writeInt(-1);
+            return;
+        }
+        output.writeInt(size);
+        output.write(data, dataOffset, size);
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream input)
+            throws IOException, ClassNotFoundException {
+        input.defaultReadObject();
+        int dataSize = input.readInt();
+        if (dataSize < 0) {
+            data = null;
+            dataOffset = 0;
+            return;
+        }
+        byte[] recordData = input.readNBytes(dataSize);
+        if (recordData.length != dataSize) {
+            throw new IOException("Incomplete redo record in transaction spill");
+        }
+        data = recordData;
+        dataOffset = 0;
+        size = dataSize;
     }
 
     @Override

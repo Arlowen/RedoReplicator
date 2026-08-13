@@ -14,6 +14,12 @@ public abstract class RedoReplicatorException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
+    protected RedoReplicatorException(
+            int errorCode, String message, Throwable cause) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+
     public int getErrorCode() {
         return errorCode;
     }

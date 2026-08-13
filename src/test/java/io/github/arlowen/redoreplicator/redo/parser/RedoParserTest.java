@@ -13,6 +13,7 @@ import io.github.arlowen.redoreplicator.redo.common.RedoTime;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.redo.transaction.CommittedRedoTransaction;
+import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
 import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 import io.github.arlowen.redoreplicator.schema.SysUser;
@@ -24,10 +25,14 @@ import io.github.arlowen.redoreplicator.schema.SystemTransactionManager;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
 import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -39,50 +44,77 @@ class RedoParserTest {
     private static final long BLOCK_ADDRESS = 0xF100_0001L;
     private static final int SLOT = 7;
 
+    @TempDir
+    Path temporaryDirectory;
+
     @Test
     void parsesAndCommitsSystemDictionaryTransaction() throws Exception {
-        RedoParser parser = new RedoParser(
-                ByteOrder.LITTLE_ENDIAN,
-                RedoLogRecord.REDO_VERSION_19_0,
-                512);
-        AssembledLwn lwn = lwn(
-                vector(0x0502, 1, beginField()),
-                vector(0x0501, 1,
-                        undoBlock(), ktuBlock(), ktbNoOperation(),
-                        deleteRowPiece(), supplementalHeader()),
-                vector(0x0B02, 0,
-                        ktbNoOperation(), insertRowPiece(),
-                        number(12), "APP".getBytes(StandardCharsets.UTF_8)),
-                vector(0x0504, 1, commitField()));
+        try (RedoTransactionBuffer buffer = new RedoTransactionBuffer(
+                temporaryDirectory, 1)) {
+            RedoParser parser = new RedoParser(
+                    ByteOrder.LITTLE_ENDIAN,
+                    RedoLogRecord.REDO_VERSION_19_0,
+                    512,
+                    buffer);
+            AssembledLwn data = lwn(
+                    vector(0x0502, 1, beginField()),
+                    vector(0x0501, 1,
+                            undoBlock(), ktuBlock(), ktbNoOperation(),
+                            deleteRowPiece(), supplementalHeader()),
+                    vector(0x0B02, 0,
+                            ktbNoOperation(), insertRowPiece(),
+                            number(12),
+                            "APP".getBytes(StandardCharsets.UTF_8)));
 
-        List<CommittedRedoTransaction> committed = parser.process(
-                lwn, Seq.of(10), 1);
+            assertTrue(parser.process(data, Seq.of(10), 1).isEmpty());
+            assertEquals(1, buffer.spilledTransactionCount());
+            assertEquals(1, spillFileCount());
 
-        assertEquals(1, committed.size());
-        CommittedRedoTransaction transaction = committed.get(0);
-        assertEquals("0x0001.002.00000003", transaction.xid().toString());
-        assertEquals(1, transaction.rowGroups().size());
-        assertEquals(Scn.of(200), transaction.commitPosition().scn());
-        assertTrue(parser.transactionBuffer().lowWatermark().isEmpty());
+            List<CommittedRedoTransaction> committed = parser.process(
+                    lwn(vector(0x0504, 1, commitField())),
+                    Seq.of(10), 1);
 
-        SystemDictionaryRedoBridge bridge = new SystemDictionaryRedoBridge(
-                ByteOrder.LITTLE_ENDIAN);
-        SystemDictionaryRedoChange change = bridge.decode(
-                SystemDictionaryTable.USER,
-                userTable(),
-                transaction.rowGroups().get(0));
-        SystemTransactionManager manager = new SystemTransactionManager(
-                SystemDictionaryState.empty(),
-                "FREEPDB1", 873, 2000,
-                StandardCharsets.UTF_8,
-                new TableSchemaJsonCodec());
-        manager.apply(change.xid(), change.change());
-        SysUser user = manager.commit(
-                change.xid(), transaction.commitPosition().scn())
-                .dictionaryState().users().get(0);
+            assertEquals(1, committed.size());
+            CommittedRedoTransaction transaction = committed.get(0);
+            assertEquals("0x0001.002.00000003",
+                    transaction.xid().toString());
+            assertEquals(1, transaction.rowGroups().size());
+            assertEquals(Scn.of(200), transaction.commitPosition().scn());
+            assertTrue(parser.transactionBuffer().lowWatermark().isEmpty());
+            assertEquals(0, spillFileCount());
+            RedoLogRecord spilledUndo = transaction.entries().get(0).first();
+            RedoLogRecord spilledRedo = transaction.entries().get(0)
+                    .second().orElseThrow();
+            assertEquals(spilledUndo.size, spilledUndo.data().length);
+            assertEquals(spilledRedo.size, spilledRedo.data().length);
+            assertEquals(0, spilledUndo.dataOffset());
+            assertEquals(0, spilledRedo.dataOffset());
 
-        assertEquals(12, user.userId());
-        assertEquals("APP", user.name());
+            SystemDictionaryRedoBridge bridge =
+                    new SystemDictionaryRedoBridge(ByteOrder.LITTLE_ENDIAN);
+            SystemDictionaryRedoChange change = bridge.decode(
+                    SystemDictionaryTable.USER,
+                    userTable(),
+                    transaction.rowGroups().get(0));
+            SystemTransactionManager manager = new SystemTransactionManager(
+                    SystemDictionaryState.empty(),
+                    "FREEPDB1", 873, 2000,
+                    StandardCharsets.UTF_8,
+                    new TableSchemaJsonCodec());
+            manager.apply(change.xid(), change.change());
+            SysUser user = manager.commit(
+                    change.xid(), transaction.commitPosition().scn())
+                    .dictionaryState().users().get(0);
+
+            assertEquals(12, user.userId());
+            assertEquals("APP", user.name());
+        }
+    }
+
+    private long spillFileCount() throws Exception {
+        try (Stream<Path> files = Files.list(temporaryDirectory)) {
+            return files.count();
+        }
     }
 
     @Test

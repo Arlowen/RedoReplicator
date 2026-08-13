@@ -4,14 +4,17 @@ RedoReplicator is an in-progress JDK 17 translation of OpenLogReplicator's Oracl
 
 The current implementation covers parts of stages 3 and 4. Parsed redo vectors
 now enter an in-memory transaction buffer keyed by Oracle transaction slot. The
-buffer supports
-interleaved transactions, begin/commit, complete rollback, savepoint partial
-rollback, commit-order delivery, row-piece grouping and an in-memory
-low-watermark. A binary-vector integration test covers the path from redo record
-parsing through a committed SYS dictionary change. Transaction spill,
-multi-block undo merging, multi-row DML output, online redo routing and XDB
-dictionary families are not complete, so the project is not ready to capture
-Oracle redo yet.
+buffer supports interleaved transactions, begin/commit, complete rollback,
+savepoint partial rollback, commit-order delivery, row-piece grouping and an
+in-memory
+low-watermark. Transactions can spill decoded entries to `data/tmp`-style
+scratch files under a global memory limit; commit reads them in order, partial
+rollback truncates the tail, and startup removes stale spill files before
+low-watermark replay. A binary-vector integration test covers the path from a
+spilled redo record through a committed SYS dictionary change. Runtime YAML/CLI
+wiring for the spill limit, multi-block undo merging, multi-row DML output,
+online redo routing and XDB dictionary families are not complete, so the
+project is not ready to capture Oracle redo yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),

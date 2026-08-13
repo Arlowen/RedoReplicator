@@ -9,7 +9,12 @@
  */
 package io.github.arlowen.redoreplicator.redo.common;
 
-public final class Seq implements Comparable<Seq> {
+import java.io.Serial;
+import java.io.Serializable;
+
+public final class Seq implements Comparable<Seq>, Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     private static final int NONE_VALUE = 0xFFFF_FFFF;
     private static final Seq NONE = new Seq(NONE_VALUE);
     private static final Seq ZERO = new Seq(0);

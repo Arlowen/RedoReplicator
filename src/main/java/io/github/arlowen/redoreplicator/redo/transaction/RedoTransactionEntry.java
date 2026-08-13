@@ -11,10 +11,15 @@ package io.github.arlowen.redoreplicator.redo.transaction;
 
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
 
-public final class RedoTransactionEntry {
+public final class RedoTransactionEntry implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
+    private static final long RECORD_FIXED_BYTES = 512;
     private final RedoLogRecord first;
     private final RedoLogRecord second;
 
@@ -52,5 +57,13 @@ public final class RedoTransactionEntry {
             secondOpCode = second.opCode;
         }
         return first.opCode << 16 | secondOpCode;
+    }
+
+    long estimatedMemoryBytes() {
+        long bytes = RECORD_FIXED_BYTES + first.size;
+        if (second != null) {
+            bytes += RECORD_FIXED_BYTES + second.size;
+        }
+        return bytes;
     }
 }

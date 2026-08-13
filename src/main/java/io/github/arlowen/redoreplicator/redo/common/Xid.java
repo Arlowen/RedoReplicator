@@ -11,10 +11,14 @@ package io.github.arlowen.redoreplicator.redo.common;
 
 import io.github.arlowen.redoreplicator.error.DataException;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class Xid implements Comparable<Xid> {
+public final class Xid implements Comparable<Xid>, Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     private static final Pattern COMPACT = Pattern.compile("([0-9A-Fa-f]{4})([0-9A-Fa-f]{4})([0-9A-Fa-f]{8})");
     private static final Pattern DOTTED = Pattern.compile("([0-9A-Fa-f]{4})\\.([0-9A-Fa-f]{3,4})\\.([0-9A-Fa-f]{8})");
     private static final Pattern PREFIXED = Pattern.compile("0x([0-9A-Fa-f]{4})\\.([0-9A-Fa-f]{3,4})\\.([0-9A-Fa-f]{8})");

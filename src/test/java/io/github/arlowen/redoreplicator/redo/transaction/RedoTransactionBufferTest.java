@@ -16,8 +16,12 @@ import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -30,6 +34,9 @@ class RedoTransactionBufferTest {
     private static final long OBJECT_ID = 100;
     private static final long DATA_OBJECT_ID = 101;
     private static final long BLOCK_ADDRESS = 0xF100_0001L;
+
+    @TempDir
+    Path temporaryDirectory;
 
     @Test
     void reconstructsInterleavedTransactionsInCommitOrder() {
@@ -202,6 +209,129 @@ class RedoTransactionBufferTest {
                 () -> buffer.accept(
                         List.of(split), position(300, 11, 512)));
         assertEquals(50041, splitError.getErrorCode());
+    }
+
+    @Test
+    void spillsLongTransactionsAndReadsCommitInOriginalOrder()
+            throws Exception {
+        try (RedoTransactionBuffer buffer = new RedoTransactionBuffer(
+                temporaryDirectory, 1)) {
+            buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+            buffer.appendPair(
+                    undo(XID_1, RedoLogRecord.FB_L), redo(0x0B02));
+            buffer.appendPair(
+                    undo(XID_1, RedoLogRecord.FB_L), redo(0x0B05));
+
+            assertEquals(1, buffer.spilledTransactionCount());
+            assertEquals(0, buffer.bufferedMemoryBytes());
+            assertEquals(1, spillFileCount());
+
+            CommittedRedoTransaction committed = buffer.commit(
+                    commit(XID_1, 200, 0)).orElseThrow();
+
+            assertEquals(List.of(0x0B02, 0x0B05),
+                    committed.entries().stream()
+                            .map(entry -> entry.second().orElseThrow().opCode)
+                            .toList());
+            assertEquals(0, spillFileCount());
+        }
+    }
+
+    @Test
+    void rollsBackSpilledTailAndDeletesFullRollbackSpill()
+            throws Exception {
+        try (RedoTransactionBuffer buffer = new RedoTransactionBuffer(
+                temporaryDirectory, 1)) {
+            buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+            buffer.appendPair(
+                    undo(XID_1, RedoLogRecord.FB_L), redo(0x0B02));
+            buffer.appendPair(
+                    undo(XID_1, RedoLogRecord.FB_L), redo(0x0B05));
+
+            assertTrue(buffer.rollbackPair(
+                    redo(0x0B05), rollback(XID_1, 0)));
+            CommittedRedoTransaction committed = buffer.commit(
+                    commit(XID_1, 200, 0)).orElseThrow();
+            assertEquals(1, committed.entries().size());
+            assertEquals(0x0B02,
+                    committed.entries().get(0).second().orElseThrow().opCode);
+
+            buffer.begin(begin(XID_2, 300), position(300, 11, 512));
+            buffer.appendPair(
+                    undo(XID_2, RedoLogRecord.FB_L), redo(0x0B03));
+            assertTrue(buffer.commit(commit(
+                    XID_2, 400,
+                    RedoTransactionBuffer.FLG_ROLLBACK_COMMIT)).isEmpty());
+            assertEquals(0, spillFileCount());
+        }
+    }
+
+    @Test
+    void spillsLargestInterleavedTransactionUnderGlobalLimit()
+            throws Exception {
+        try (RedoTransactionBuffer buffer = new RedoTransactionBuffer(
+                temporaryDirectory, 1500)) {
+            buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+            buffer.begin(begin(XID_2, 101), position(101, 10, 1024));
+            buffer.appendPair(
+                    undo(XID_1, RedoLogRecord.FB_L), redo(0x0B02));
+            buffer.appendPair(
+                    undo(XID_2, RedoLogRecord.FB_L), redo(0x0B05));
+
+            assertEquals(1, buffer.spilledTransactionCount());
+            assertEquals(1024, buffer.bufferedMemoryBytes());
+            assertEquals(1, spillFileCount());
+
+            List<CommittedRedoTransaction> committed = buffer.accept(
+                    List.of(
+                            commit(XID_2, 200, 0),
+                            commit(XID_1, 201, 0)),
+                    position(200, 10, 2048));
+            assertEquals(List.of(XID_2, XID_1),
+                    committed.stream()
+                            .map(CommittedRedoTransaction::xid)
+                            .toList());
+            assertEquals(0, spillFileCount());
+        }
+    }
+
+    @Test
+    void clearsStaleSpillWithoutDeletingOtherTemporaryFiles()
+            throws Exception {
+        Path stale = temporaryDirectory.resolve(
+                "transaction-stale.spill");
+        Path unrelated = temporaryDirectory.resolve("keep.txt");
+        Files.writeString(stale, "stale");
+        Files.writeString(unrelated, "keep");
+
+        try (RedoTransactionBuffer ignored = new RedoTransactionBuffer(
+                temporaryDirectory, 1024)) {
+            assertFalse(Files.exists(stale));
+            assertTrue(Files.exists(unrelated));
+        }
+    }
+
+    @Test
+    void closeDeletesSpillForOpenTransactions() throws Exception {
+        RedoTransactionBuffer buffer = new RedoTransactionBuffer(
+                temporaryDirectory, 1);
+        buffer.begin(begin(XID_1, 100), position(100, 10, 512));
+        buffer.appendPair(
+                undo(XID_1, RedoLogRecord.FB_L), redo(0x0B02));
+        assertEquals(1, spillFileCount());
+
+        buffer.close();
+
+        assertEquals(0, spillFileCount());
+        assertEquals(0, buffer.openTransactionCount());
+    }
+
+    private long spillFileCount() throws Exception {
+        try (Stream<Path> files = Files.list(temporaryDirectory)) {
+            return files.filter(path -> path.getFileName().toString()
+                            .endsWith(".spill"))
+                    .count();
+        }
     }
 
     private static RedoLogRecord begin(Xid xid, long scn) {

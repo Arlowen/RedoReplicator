@@ -16,13 +16,14 @@ import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class RedoTransactionBuffer {
+public final class RedoTransactionBuffer implements AutoCloseable {
     public static final int FLG_MULTIBLOCK_UNDO_HEAD = 0x0001;
     public static final int FLG_MULTIBLOCK_UNDO_TAIL = 0x0002;
     public static final int FLG_ROLLBACK_COMMIT = 0x0004;
@@ -30,9 +31,24 @@ public final class RedoTransactionBuffer {
     public static final int FLG_MULTIBLOCK_UNDO_MIDDLE = 0x0100;
 
     private final Map<TransactionSlotKey, RedoTransaction> transactions;
+    private final TransactionSpillManager spillManager;
+    private final long memoryLimitBytes;
 
     public RedoTransactionBuffer() {
         transactions = new LinkedHashMap<>();
+        spillManager = null;
+        memoryLimitBytes = Long.MAX_VALUE;
+    }
+
+    public RedoTransactionBuffer(
+            Path spillDirectory, long memoryLimitBytes) {
+        if (memoryLimitBytes <= 0) {
+            throw new IllegalArgumentException(
+                    "Transaction memory limit must be positive");
+        }
+        transactions = new LinkedHashMap<>();
+        spillManager = new TransactionSpillManager(spillDirectory);
+        this.memoryLimitBytes = memoryLimitBytes;
     }
 
     public List<CommittedRedoTransaction> accept(
@@ -116,6 +132,7 @@ public final class RedoTransactionBuffer {
         }
         if (redo.opCode != 0x0B04) {
             transaction.add(RedoTransactionEntry.pair(undo, redo));
+            spillIfNeeded();
         }
         return true;
     }
@@ -129,6 +146,7 @@ public final class RedoTransactionBuffer {
             return false;
         }
         transaction.add(RedoTransactionEntry.single(record));
+        spillIfNeeded();
         return true;
     }
 
@@ -175,9 +193,11 @@ public final class RedoTransactionBuffer {
         }
         transactions.remove(key);
         if ((record.flg & FLG_ROLLBACK_COMMIT) != 0) {
+            transaction.discard();
             return Optional.empty();
         }
         if (transaction.entryCount() == 0) {
+            transaction.discard();
             return Optional.empty();
         }
         return Optional.of(transaction.commit(record));
@@ -215,8 +235,37 @@ public final class RedoTransactionBuffer {
         return count;
     }
 
+    public long bufferedMemoryBytes() {
+        long bytes = 0;
+        for (RedoTransaction transaction : transactions.values()) {
+            bytes += transaction.memoryBytes();
+        }
+        return bytes;
+    }
+
+    public int spilledTransactionCount() {
+        int count = 0;
+        for (RedoTransaction transaction : transactions.values()) {
+            if (transaction.spilled()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public void clear() {
+        for (RedoTransaction transaction : transactions.values()) {
+            transaction.discard();
+        }
         transactions.clear();
+    }
+
+    @Override
+    public void close() {
+        clear();
+        if (spillManager != null) {
+            spillManager.close();
+        }
     }
 
     private RedoTransaction findExact(Xid xid, int containerId) {
@@ -235,6 +284,27 @@ public final class RedoTransactionBuffer {
         TransactionSlotKey key = TransactionSlotKey.of(
                 rollback.conId, rollback.usn, rollback.slt);
         return transactions.get(key);
+    }
+
+    private void spillIfNeeded() {
+        if (spillManager == null) {
+            return;
+        }
+        while (bufferedMemoryBytes() > memoryLimitBytes) {
+            RedoTransaction largest = null;
+            long largestBytes = 0;
+            for (RedoTransaction transaction : transactions.values()) {
+                long bytes = transaction.memoryBytes();
+                if (bytes > largestBytes) {
+                    largest = transaction;
+                    largestBytes = bytes;
+                }
+            }
+            if (largest == null) {
+                return;
+            }
+            largest.spill(spillManager);
+        }
     }
 
     private static void propagateObjectIdentity(

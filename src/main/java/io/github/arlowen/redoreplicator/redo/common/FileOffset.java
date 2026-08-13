@@ -9,7 +9,13 @@
  */
 package io.github.arlowen.redoreplicator.redo.common;
 
-public final class FileOffset implements Comparable<FileOffset> {
+import java.io.Serial;
+import java.io.Serializable;
+
+public final class FileOffset
+        implements Comparable<FileOffset>, Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     private static final FileOffset ZERO = new FileOffset(0);
 
     private final long value;
