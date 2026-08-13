@@ -19,9 +19,9 @@ selected-table and SYS dictionaries at the replay SCN, discovers redo
 continuously and commits each complete LWN through JSONL fsync and the H2 safe
 position. Quick multi-row INSERT and DELETE are expanded in original slot order
 for both user JSON and SYS dictionary transactions. Text values retain their
-dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK and
-WE8MSWIN1252 plus all 14 upstream 7-bit character sets use upstream-compatible
-decoders across user values, DDL and SYS
+dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK,
+all 14 upstream 7-bit character sets and all 101 upstream 8-bit character sets
+use upstream-compatible decoders across user values, DDL and SYS
 dictionary changes, including NCHAR/NVARCHAR values. Inline BLOB/CLOB locators
 are decoded directly. In-index and classic out-of-row locators reconstruct
 direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
@@ -174,6 +174,15 @@ scripts/baseline/prepare-rapidjson.sh target/rapidjson
 scripts/baseline/build-openlogreplicator.sh \
   /Users/pika/codex-cli-worker/OpenLogReplicator \
   target/rapidjson
+```
+
+The complete 8-bit Java catalog is mechanically regenerated from the same
+fixed source checkout:
+
+```bash
+scripts/baseline/generate-character-set-8bit-catalog.py \
+  /Users/pika/codex-cli-worker/OpenLogReplicator \
+  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-8bit-catalog.tsv
 ```
 
 ## Source migration coverage

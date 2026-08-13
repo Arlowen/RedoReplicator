@@ -18,3 +18,7 @@ byte order. The WE8MSWIN1252 (178) digest covers all 256 byte values, so the
 compact fixture detects mapping-table drift without committing large tables.
 The `seven.<id>.map_fnv1a64` values cover all 14 upstream 7-bit character sets
 across every possible input byte, including the upstream high-bit masking rule.
+The `eight.<id>.map_fnv1a64` values cover all 101 registered upstream 8-bit
+character sets across every possible input byte, including the four custom
+ASCII maps. The adjacent `eight.<id>.name` values also fix every Oracle
+registration identity.

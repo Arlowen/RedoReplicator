@@ -58,6 +58,23 @@ class CharacterSetParityTest {
             actual.setProperty("seven." + id + ".map_fnv1a64",
                     singleByteMapDigest(id));
         }
+        String prefix = "eight.";
+        String digestSuffix = ".map_fnv1a64";
+        String nameSuffix = ".name";
+        for (String key : expected.stringPropertyNames()) {
+            if (key.startsWith(prefix) && key.endsWith(digestSuffix)) {
+                int end = key.length() - digestSuffix.length();
+                long id = Long.parseLong(
+                        key.substring(prefix.length(), end));
+                actual.setProperty(key, singleByteMapDigest(id));
+            }
+            if (key.startsWith(prefix) && key.endsWith(nameSuffix)) {
+                int end = key.length() - nameSuffix.length();
+                long id = Long.parseLong(
+                        key.substring(prefix.length(), end));
+                actual.setProperty(key, locales.require(id).name());
+            }
+        }
 
         assertEquals(expected, actual);
     }

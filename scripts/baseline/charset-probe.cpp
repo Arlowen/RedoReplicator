@@ -11,6 +11,7 @@
 
 #include "common/types/Xid.h"
 #include "locales/CharacterSet.h"
+#include "locales/CharacterSet8bit.h"
 #include "locales/Locales.h"
 
 using namespace OpenLogReplicator;
@@ -135,6 +136,16 @@ int main(int argc, char** argv) {
         std::cout << "seven." << std::dec << id << ".map_fnv1a64="
                   << std::hex << std::setfill('0') << std::setw(16)
                   << singleByteMapDigest(locales.characterMap.at(id)) << '\n';
+    }
+
+    for (const auto& [id, characterSet] : locales.characterMap) {
+        if (dynamic_cast<const CharacterSet8bit*>(characterSet) == nullptr)
+            continue;
+        std::cout << "eight." << std::dec << id << ".name="
+                  << characterSet->name << '\n';
+        std::cout << "eight." << std::dec << id << ".map_fnv1a64="
+                  << std::hex << std::setfill('0') << std::setw(16)
+                  << singleByteMapDigest(characterSet) << '\n';
     }
     return 0;
 }

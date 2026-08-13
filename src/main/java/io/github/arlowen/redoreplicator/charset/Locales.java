@@ -10,6 +10,11 @@
  */
 package io.github.arlowen.redoreplicator.charset;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -21,11 +26,11 @@ public final class Locales {
     public Locales() {
         characterSets = new HashMap<>();
         register7BitCharacterSets();
+        register8BitCharacterSets();
         register(new CharacterSetAL32UTF8());
         register(new CharacterSetUTF8());
         register(new CharacterSetAL16UTF16());
         register(new CharacterSetZHS16GBK());
-        register(new CharacterSetWE8MSWIN1252());
     }
 
     public CharacterSet require(long id) {
@@ -99,5 +104,29 @@ public final class Locales {
         register(new CharacterSet7bit(207, "D7SIEMENS9780X",
                 0x40, 0xA7, 0x5B, 0xC4, 0x5C, 0xD6, 0x5D, 0xDC,
                 0x7B, 0xE4, 0x7C, 0xF6, 0x7D, 0xFC, 0x7E, 0xDF));
+    }
+
+    private void register8BitCharacterSets() {
+        InputStream input = Locales.class.getResourceAsStream(
+                "oracle-8bit-catalog.tsv");
+        if (input == null) {
+            throw new IllegalStateException(
+                    "Oracle 8-bit character-set catalog is missing");
+        }
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank() || line.startsWith("#")) {
+                    continue;
+                }
+                String[] fields = line.split("\\t", 3);
+                register(new CharacterSet8bit(
+                        Long.parseLong(fields[0]), fields[1], fields[2]));
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Failed to load Oracle 8-bit character-set catalog", e);
+        }
     }
 }
