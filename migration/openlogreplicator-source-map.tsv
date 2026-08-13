@@ -1,6 +1,6 @@
 source_path	target_java_type	status	notes
-src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status and identity-checked backup/restore are wired; rewind remains
-src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status and identity-checked backup/restore are wired; rewind remains
+src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status, backup/restore and stopped-state rewind are wired
+src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status, backup/restore and stopped-state rewind are wired
 src/StreamClient.cpp	-	excluded	Network stream client is out of scope
 src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.RedoJsonChangeAssembler	pending	Ordered user and SYS row routing, quick multi-row insert/delete, DDL assembly, typed values and native JSON conversion translated; compressed rows and LOB reconstruction remain
 src/builder/Builder.h	io.github.arlowen.redoreplicator.output.OracleJsonValueDecoder	pending	Oracle NUMBER, timestamp, RAW, binary float, interval, UROWID and BOOLEAN conversion translated; charset catalog and LOB reconstruction remain
@@ -129,9 +129,9 @@ src/locales/CharacterSetZHT32TRIS.cpp	io.github.arlowen.redoreplicator.charset.C
 src/locales/CharacterSetZHT32TRIS.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
 src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Translate Oracle character set decoder
 src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Translate Oracle character set decoder
-src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Picocli help, version, strict YAML, validate and continuous capture entry points plus graceful shutdown are implemented; remaining scripts and status reporting remain
-src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence and continuous lifecycle wiring translated; rewind, backup and restore remain
-src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence and continuous lifecycle wiring translated; rewind, backup and restore remain
+src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Picocli help/version, strict YAML, validation, continuous capture, graceful shutdown, lifecycle/status, backup/restore and rewind entry points are implemented
+src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated
+src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated
 src/metadata/Metadata.cpp	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/Metadata.h	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/RedoLog.h	io.github.arlowen.redoreplicator.schema.RedoLog	pending	Translate schema and redo metadata
@@ -189,10 +189,10 @@ src/replicator/ReplicatorBatch.cpp	-	excluded	Offline batch reader is out of sco
 src/replicator/ReplicatorBatch.h	-	excluded	Offline batch reader is out of scope
 src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, catalog discovery, replay-SCN dictionary bootstrap, strict sequence planning and continuous single-thread consumption translated; configuration changes and full schema recovery remain
 src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, catalog discovery, replay-SCN dictionary bootstrap, strict sequence planning and continuous single-thread consumption translated; configuration changes and full schema recovery remain
-src/state/State.cpp	io.github.arlowen.redoreplicator.state.StateStore	pending	H2 single-row runtime state, identity validation and low-watermark/durable resume translated; JSONL fsync coordination and rewind remain
-src/state/State.h	io.github.arlowen.redoreplicator.state.StateStore	pending	H2 runtime state contract and recovery positioning translated; output lifecycle and rewind remain
-src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.StateDatabase	pending	Versioned H2 file, migration backup and durable recovery state replace disk checkpoints; backup/restore scripts remain
-src/state/StateDisk.h	io.github.arlowen.redoreplicator.state.StateDatabase	pending	H2 database lifecycle replaces disk checkpoint files; backup/restore scripts remain
+src/state/State.cpp	io.github.arlowen.redoreplicator.state.StateStore	pending	H2 single-row runtime state, identity validation, low-watermark resume and verified rewind are translated; remaining parser-state integration is tracked separately
+src/state/State.h	io.github.arlowen.redoreplicator.state.StateStore	pending	H2 runtime state contract, recovery positioning and rewind are translated; remaining parser-state integration is tracked separately
+src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.StateDatabase	pending	Versioned H2 file, migration backup, backup/restore scripts and rewind safety copies replace disk checkpoints
+src/state/StateDisk.h	io.github.arlowen.redoreplicator.state.StateDatabase	pending	H2 database lifecycle, backup/restore and rewind replace disk checkpoint files
 src/stream/Stream.cpp	-	excluded	Network output is out of scope
 src/stream/Stream.h	-	excluded	Network output is out of scope
 src/stream/StreamNetwork.cpp	-	excluded	Network output is out of scope

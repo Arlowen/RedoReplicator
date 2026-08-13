@@ -134,6 +134,13 @@ replaces anything. Existing H2, YAML and status files remain in a timestamped
 restored state keeps its safe redo SCN but starts at a new file number above all
 existing JSONL files; historical output is neither deleted nor overwritten.
 
+With capture stopped, `bin/rewind.sh --scn <SCN>` moves the single H2 safe
+position backward. It rejects forward moves and validates the connected Oracle
+identity, a readable redo/archive sequence covering the target, and complete
+selected-table dictionary state at that SCN before changing H2. The previous H2
+is retained under `data/backups/rewind-safety-*`; old JSONL files remain intact,
+and resumed output starts in a new monotonically numbered file.
+
 ## Compare JSONL output
 
 The stage 1 comparator checks JSONL line by line. JSON object key order and whitespace are ignored; array order, field types and values remain significant.

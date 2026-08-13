@@ -10,6 +10,7 @@ import io.github.arlowen.redoreplicator.config.ConfigurationLoader;
 import io.github.arlowen.redoreplicator.config.ResolvedConfiguration;
 import io.github.arlowen.redoreplicator.error.ConfigurationException;
 import io.github.arlowen.redoreplicator.error.RedoReplicatorException;
+import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.runtime.OracleCaptureRunner;
 import io.github.arlowen.redoreplicator.runtime.RuntimeLock;
 import io.github.arlowen.redoreplicator.runtime.ShutdownCoordinator;
@@ -19,6 +20,7 @@ import io.github.arlowen.redoreplicator.source.OracleSourceValidator;
 import io.github.arlowen.redoreplicator.state.StateDatabase;
 import io.github.arlowen.redoreplicator.state.StateBackupService;
 import io.github.arlowen.redoreplicator.state.StateRestoreService;
+import io.github.arlowen.redoreplicator.state.StateRewindService;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -44,6 +46,7 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
     private final OracleCaptureRunner captureRunner;
     private final StateBackupService backupService;
     private final StateRestoreService restoreService;
+    private final StateRewindService rewindService;
 
     @Option(
             names = {"-f", "--file"},
@@ -73,6 +76,12 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
             description = "Restore a stopped capture after Oracle identity validation")
     private Path restoreFile;
 
+    @Option(
+            names = "--rewind",
+            paramLabel = "<SCN>",
+            description = "Rewind stopped capture to an earlier durable SCN")
+    private Long rewindScn;
+
     public RedoReplicatorCommand() {
         this(new ConfigurationLoader(), new OracleSourceValidator(),
                 new OracleCaptureRunner());
@@ -87,6 +96,7 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
         this.captureRunner = captureRunner;
         backupService = new StateBackupService();
         restoreService = new StateRestoreService();
+        rewindService = new StateRewindService();
     }
 
     @Override
@@ -104,12 +114,20 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
             if (restoreFile != null) {
                 maintenanceOperations++;
             }
+            if (rewindScn != null) {
+                maintenanceOperations++;
+            }
             if (validateOnly) {
                 maintenanceOperations++;
             }
             if (maintenanceOperations > 1) {
                 throw new ConfigurationException(
-                        30001, "--validate, --backup and --restore are mutually exclusive");
+                        30001, "--validate, --backup, --restore and --rewind "
+                        + "are mutually exclusive");
+            }
+            if (rewindScn != null && rewindScn < 0) {
+                throw new ConfigurationException(
+                        30001, "--rewind SCN must not be negative");
             }
             if (backup) {
                 Path backupFile = backupService.backup(configuration);
@@ -127,6 +145,14 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
                             configuration, restoreFile,
                             source.databaseContext().identity());
                     System.out.println("Restore successful; previous files: "
+                            + safety);
+                    return 0;
+                }
+                if (rewindScn != null) {
+                    Path safety = rewindService.rewind(
+                            connection, configuration,
+                            source.databaseContext(), Scn.of(rewindScn));
+                    System.out.println("Rewind successful; previous H2: "
                             + safety);
                     return 0;
                 }

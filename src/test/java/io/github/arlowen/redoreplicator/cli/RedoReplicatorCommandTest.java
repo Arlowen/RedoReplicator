@@ -34,6 +34,9 @@ class RedoReplicatorCommandTest {
         assertEquals(0, commandLine.execute("--help"));
         String help = output.toString(StandardCharsets.UTF_8);
         assertTrue(help.contains("--validate"));
+        assertTrue(help.contains("--backup"));
+        assertTrue(help.contains("--restore"));
+        assertTrue(help.contains("--rewind"));
         assertTrue(help.contains("conf/redo-replicator.yaml"));
 
         output.reset();
