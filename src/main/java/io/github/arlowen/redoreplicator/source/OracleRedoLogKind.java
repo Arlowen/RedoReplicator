@@ -6,5 +6,7 @@
  */
 package io.github.arlowen.redoreplicator.source;
 
-public record OracleRedoFile(String path, String type) {
+public enum OracleRedoLogKind {
+    ARCHIVED,
+    ONLINE
 }

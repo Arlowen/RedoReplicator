@@ -28,6 +28,14 @@ configured ordinary Oracle account and checks supported version, logging mode,
 dictionary access, redo/archive mappings and local read access without starting
 the capture loop.
 
+Redo catalog discovery now reads the current incarnation's archived logs and
+online log members with their redo thread, sequence and SCN range. The planner
+selects an archive covering the configured start SCN for every active thread,
+prefers continuous archived sequences before online redo, polls temporarily
+missing files, and stops on a proven gap, timeout or database identity change.
+The filesystem block reader and capture lifecycle are not wired to this planner
+yet.
+
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
 then [sql/create_capture_user.sql](sql/create_capture_user.sql) in every PDB

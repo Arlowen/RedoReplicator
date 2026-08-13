@@ -187,8 +187,8 @@ src/replicator/Replicator.cpp	io.github.arlowen.redoreplicator.source.Replicator
 src/replicator/Replicator.h	io.github.arlowen.redoreplicator.source.Replicator	pending	Translate online discovery using JDBC and local redo files
 src/replicator/ReplicatorBatch.cpp	-	excluded	Offline batch reader is out of scope
 src/replicator/ReplicatorBatch.h	-	excluded	Offline batch reader is out of scope
-src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.schema.OracleDictionaryReader	pending	Database identity and initial Flashback dictionary loading translated; redo discovery loop remains
-src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.schema.OracleDictionaryReader	pending	Database identity and initial Flashback dictionary loading translated; redo discovery loop remains
+src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, Flashback dictionary loading, redo catalog discovery and strict sequence planning translated; capture loop remains
+src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, Flashback dictionary loading, redo catalog discovery and strict sequence planning translated; capture loop remains
 src/state/State.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
 src/state/State.h	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2
 src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.H2StateStore	pending	Replace disk checkpoint state with H2

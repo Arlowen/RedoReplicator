@@ -171,6 +171,11 @@ class OracleSourceValidatorTest {
                                 (Integer) arguments[0] - 1];
                         return ((Number) value).longValue();
                     }
+                    if (method.getName().equals("getInt")) {
+                        Object value = rows.get(current[0])[
+                                (Integer) arguments[0] - 1];
+                        return ((Number) value).intValue();
+                    }
                     if (method.getName().equals("close")) {
                         return null;
                     }
@@ -188,8 +193,13 @@ class OracleSourceValidatorTest {
                     100L, 200L, "ARCHIVELOG", "YES", "YES", "YES",
                     3L, 4L, "FREE", "FREEPDB1"});
         }
-        if (sql.contains("FROM SYS.V_$LOGFILE")) {
-            return new ArrayList<>(redoFiles);
+        if (sql.contains("JOIN SYS.V_$LOGFILE")) {
+            List<Object[]> rows = new ArrayList<>();
+            for (Object[] redoFile : redoFiles) {
+                rows.add(new Object[]{
+                        1, 10L, 100L, 1_000L, "CURRENT", redoFile[0]});
+            }
+            return rows;
         }
         return List.of();
     }

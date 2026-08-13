@@ -24,8 +24,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class OracleSourceValidator {
     private static final Logger log = LoggerFactory.getLogger(
@@ -46,28 +47,12 @@ public final class OracleSourceValidator {
             "TABCOMPART$", "TABPART$", "TABSUBPART$", "TS$", "USER$");
     private static final List<String> REQUIRED_DYNAMIC_VIEWS = List.of(
             "V_$ARCHIVED_LOG", "V_$LOG", "V_$PARAMETER", "V_$PDBS");
-    private static final String REDO_FILES_SQL = """
-            SELECT MEMBER, TYPE
-              FROM SYS.V_$LOGFILE
-             WHERE TYPE IN ('ONLINE', 'STANDBY')
-             ORDER BY GROUP#, MEMBER
-            """;
-    private static final String ARCHIVED_FILES_SQL = """
-            SELECT A.NAME, 'ARCHIVED'
-              FROM SYS.V_$ARCHIVED_LOG A
-              JOIN SYS.V_$DATABASE_INCARNATION I
-                ON I.STATUS = 'CURRENT'
-               AND I.RESETLOGS_ID = A.RESETLOGS_ID
-             WHERE A.NAME IS NOT NULL
-               AND A.DELETED = 'NO'
-               AND A.STATUS = 'A'
-             ORDER BY A.THREAD#, A.SEQUENCE#, A.DEST_ID
-            """;
-
     private final OracleDatabaseInspector databaseInspector;
+    private final OracleRedoCatalogReader catalogReader;
 
     public OracleSourceValidator() {
         databaseInspector = new OracleDatabaseInspector();
+        catalogReader = new OracleRedoCatalogReader();
     }
 
     public OracleSourceValidation validate(
@@ -76,23 +61,23 @@ public final class OracleSourceValidator {
         OracleDatabaseContext context = databaseInspector.inspect(connection);
         context.validateSupportedSource();
         validateDictionaryAccess(connection);
-        List<OracleRedoFile> databaseFiles = readRedoFiles(connection);
-        if (databaseFiles.isEmpty()) {
+        OracleRedoCatalog catalog = catalogReader.read(
+                connection, configuration.redoPathMapper(), context);
+        if (catalog.onlineLogs().isEmpty()) {
             throw new ConfigurationException(10006,
                     "Oracle did not return any online redo files");
         }
 
-        List<Path> localFiles = new ArrayList<>(databaseFiles.size());
-        for (OracleRedoFile databaseFile : databaseFiles) {
-            Path local = configuration.redoPathMapper()
-                    .map(databaseFile.path())
-                    .orElseThrow(() -> new ConfigurationException(10007,
-                            "No redoPathMappings entry matches Oracle redo file: "
-                                    + databaseFile.path()));
-            verifyReadable(databaseFile.path(), local);
-            localFiles.add(local);
+        Set<Path> localFiles = new LinkedHashSet<>();
+        for (OracleRedoLog archived : catalog.archivedLogs()) {
+            verifyReadable(archived.oraclePath(), archived.localPath());
+            localFiles.add(archived.localPath());
         }
-        return new OracleSourceValidation(context, localFiles);
+        for (OracleRedoLog online : catalog.onlineLogs()) {
+            verifyReadable(online.oraclePath(), online.localPath());
+            localFiles.add(online.localPath());
+        }
+        return new OracleSourceValidation(context, List.copyOf(localFiles));
     }
 
     private static void validateDictionaryAccess(Connection connection)
@@ -121,14 +106,6 @@ public final class OracleSourceValidator {
         }
     }
 
-    private static List<OracleRedoFile> readRedoFiles(Connection connection)
-            throws SQLException {
-        List<OracleRedoFile> files = new ArrayList<>();
-        readRedoFiles(connection, REDO_FILES_SQL, files);
-        readRedoFiles(connection, ARCHIVED_FILES_SQL, files);
-        return List.copyOf(files);
-    }
-
     private static void verifyReadable(String oraclePath, Path local) {
         if (!Files.isRegularFile(local)) {
             throw new ConfigurationException(10008,
@@ -146,16 +123,4 @@ public final class OracleSourceValidator {
         }
     }
 
-    private static void readRedoFiles(
-            Connection connection,
-            String sql,
-            List<OracleRedoFile> files) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet resultSet = statement.executeQuery()) {
-            while (resultSet.next()) {
-                files.add(new OracleRedoFile(
-                        resultSet.getString(1), resultSet.getString(2)));
-            }
-        }
-    }
 }
