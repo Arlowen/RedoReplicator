@@ -17,6 +17,7 @@ import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.RedoRecordPair;
 import io.github.arlowen.redoreplicator.redo.common.RowId;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
+import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
 
 import java.nio.ByteOrder;
@@ -29,6 +30,12 @@ import java.util.Objects;
 import java.util.Set;
 
 public final class RedoRowDecoder {
+    private static final int COMPRESSED_COLUMN_INDEX = -1;
+    private static final ColumnSchema COMPRESSED_COLUMN = new ColumnSchema(
+            0, -1, 0, 0, "COMPRESSED", OracleColumnType.RAW,
+            0, -1, -1, 0, 0, true, false, false,
+            false, false, false, false, false, false);
+
     private final RedoByteReader byteReader;
 
     public RedoRowDecoder(ByteOrder byteOrder) {
@@ -52,21 +59,34 @@ public final class RedoRowDecoder {
         Map<Integer, RedoColumnValueAccumulator> afterSupplemental =
                 new LinkedHashMap<>();
         boolean supplementalPrevious = false;
+        boolean compressedBefore = false;
+        boolean compressedAfter = false;
         for (RedoRecordPair pair : recordPairs) {
-            decodeUndoValues(pair.undo(), table.columns(), before);
+            if (pair.undo().compressed) {
+                compressedBefore = true;
+                decodeCompressedValue(pair.undo(), before, 0x000003);
+            } else {
+                decodeUndoValues(pair.undo(), table.columns(), before);
+            }
             supplementalPrevious = decodeSupplementalValues(
                     pair, table.columns(), beforeSupplemental,
                     afterSupplemental, supplementalPrevious);
-            decodeRedoValues(
-                    pair.redo(), pair.undo().suppLogAfter,
-                    table.columns(), after);
+            if (pair.redo().compressed) {
+                compressedAfter = true;
+                decodeCompressedValue(pair.redo(), after, 0x000008);
+            } else {
+                decodeRedoValues(
+                        pair.redo(), pair.undo().suppLogAfter,
+                        table.columns(), after);
+            }
         }
 
         Map<Integer, RedoColumnValue> beforeValues = finish(before);
         Map<Integer, RedoColumnValue> afterValues = finish(after);
         mergeSupplemental(beforeValues, finish(beforeSupplemental));
         mergeSupplemental(afterValues, finish(afterSupplemental));
-        normalize(operation, table, beforeValues, afterValues);
+        normalize(operation, table, beforeValues, afterValues,
+                compressedBefore, compressedAfter);
         RedoRecordPair first = recordPairs.get(0);
         return new DecodedRedoRow(
                 operation, table, rowId(operation, recordPairs),
@@ -81,7 +101,6 @@ public final class RedoRowDecoder {
         if (record.rowData <= 0) {
             return;
         }
-        rejectCompressed(record);
         validateNullBitmap(record);
         int columnShift = columnShift(record, record.suppLogBefore);
         RedoFieldCursor cursor = cursorAtRowData(record, 0x000003);
@@ -108,7 +127,6 @@ public final class RedoRowDecoder {
         if (record.rowData <= 0) {
             return;
         }
-        rejectCompressed(record);
         validateNullBitmap(record);
         int columnShift = columnShift(record, supplementalAfter);
         RedoFieldCursor cursor = cursorAtRowData(record, 0x000008);
@@ -197,17 +215,26 @@ public final class RedoRowDecoder {
             RedoRowOperation operation,
             TableSchema table,
             Map<Integer, RedoColumnValue> before,
-            Map<Integer, RedoColumnValue> after) {
+            Map<Integer, RedoColumnValue> after,
+            boolean compressedBefore,
+            boolean compressedAfter) {
         if (operation == RedoRowOperation.INSERT) {
-            removeNullNonPrimaryKey(table, after);
-            addMissingPrimaryKeys(table, after);
+            if (!compressedAfter) {
+                removeNullNonPrimaryKey(table, after);
+                addMissingPrimaryKeys(table, after);
+            }
             before.clear();
             return;
         }
         if (operation == RedoRowOperation.DELETE) {
-            removeNullNonPrimaryKey(table, before);
-            addMissingPrimaryKeys(table, before);
+            if (!compressedBefore) {
+                removeNullNonPrimaryKey(table, before);
+                addMissingPrimaryKeys(table, before);
+            }
             after.clear();
+            return;
+        }
+        if (compressedBefore || compressedAfter) {
             return;
         }
 
@@ -259,6 +286,10 @@ public final class RedoRowDecoder {
             TableSchema table, Map<Integer, RedoColumnValue> values) {
         Map<String, RedoColumnValue> named = new LinkedHashMap<>();
         for (Map.Entry<Integer, RedoColumnValue> entry : values.entrySet()) {
+            if (entry.getKey() == COMPRESSED_COLUMN_INDEX) {
+                named.put(COMPRESSED_COLUMN.name(), entry.getValue());
+                continue;
+            }
             named.put(table.columns().get(entry.getKey()).name(),
                     entry.getValue());
         }
@@ -375,6 +406,20 @@ public final class RedoRowDecoder {
         return Arrays.copyOfRange(record.data(), start, start + length);
     }
 
+    private void decodeCompressedValue(
+            RedoLogRecord record,
+            Map<Integer, RedoColumnValueAccumulator> values,
+            int code) {
+        if (record.rowData <= 0 || record.sizeDelt <= 0) {
+            return;
+        }
+        RedoFieldCursor cursor = cursorAtRowData(record, code);
+        cursor.next();
+        byte[] data = fieldData(record, cursor, cursor.fieldSize());
+        accumulator(values, COMPRESSED_COLUMN_INDEX, COMPRESSED_COLUMN).add(
+                data, false, fragmentBits(record, 0));
+    }
+
     private static RedoColumnValueAccumulator accumulator(
             Map<Integer, RedoColumnValueAccumulator> values,
             int columnIndex,
@@ -451,12 +496,6 @@ public final class RedoRowDecoder {
     private static void validateNullBitmap(RedoLogRecord record) {
         int bytes = (record.cc + 7) / 8;
         requireRange(record, record.nullsDelta, bytes, "NULL bitmap");
-    }
-
-    private static void rejectCompressed(RedoLogRecord record) {
-        if (record.compressed) {
-            throw invalid("compressed row redo is not supported");
-        }
     }
 
     private static void requireRange(

@@ -22,9 +22,10 @@ for both user JSON and SYS dictionary transactions. Text values retain their
 dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK and
 WE8MSWIN1252 use upstream-compatible decoders across user values, DDL and SYS
 dictionary changes, including NCHAR/NVARCHAR values. LOB
-reconstruction, the complete charset catalog, compressed rows and XDB
-dictionary families are not complete, so the project is not production-ready
-yet.
+reconstruction, the complete charset catalog and XDB dictionary families are
+not complete, so the project is not production-ready yet. As in the upstream
+Builder, Oracle compressed user rows are preserved losslessly as one RAW
+`COMPRESSED` field rather than presented as decoded logical columns.
 
 Strict YAML loading and the Picocli startup preflight are available. The loader
 rejects unknown or duplicate keys, invalid table regular expressions, duplicate
@@ -59,9 +60,9 @@ between complete messages, fsyncs each LWN batch, truncates an uncommitted tail
 to H2's safe byte offset, and refuses to start when the file is shorter than
 that offset. User-table redo pairs can now be assembled into
 typed before/after column bytes with row identity, supplemental images,
-multi-piece value merging and primary-key placeholders; compressed rows remain
-an explicit unsupported boundary until their decoder is translated. Those
-typed bytes can now be converted to the fixed native JSON scalar forms for
+multi-piece value merging and primary-key placeholders. Compressed user-row
+payloads retain their complete bytes as the upstream `COMPRESSED` RAW field.
+Those typed bytes can now be converted to the fixed native JSON scalar forms for
 text, NUMBER, DATE/TIMESTAMP, RAW, binary floating point, intervals, UROWID and
 BOOLEAN. The fixed native JSON Builder emits separate begin, ordered DML/DDL
 and commit messages plus optional checkpoint heartbeats, always including the

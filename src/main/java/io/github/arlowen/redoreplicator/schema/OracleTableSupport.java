@@ -44,9 +44,6 @@ final class OracleTableSupport {
         if (hasFlag(table.tableProperties(), TABLE_EXTERNAL)) {
             unsupported(table, "external table");
         }
-        if (table.delayedStorageCompressed()) {
-            unsupported(table, "compressed table");
-        }
     }
 
     private static void unsupported(OracleTableMetadata table, String reason) {

@@ -19,12 +19,16 @@ import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -134,13 +138,15 @@ class RedoRowDecoderTest {
     }
 
     @Test
-    void rejectsCompressedAndIncompleteRows() {
-        RedoLogException compressed = assertThrows(
-                RedoLogException.class,
-                () -> decoder.decode(table(), List.of(
-                        new RedoRecordPair(undo(0),
-                                compressedInsertRedo()))));
-        assertEquals(50014, compressed.getErrorCode());
+    void emitsCompressedRowsAsRawPayloadAndRejectsIncompleteRows() {
+        DecodedRedoRow compressed = decoder.decode(table(), List.of(
+                new RedoRecordPair(undo(0), compressedInsertRedo())));
+        assertEquals(List.of("COMPRESSED"),
+                compressed.after().keySet().stream().toList());
+        assertArrayEquals(new byte[]{1, 2, 3},
+                compressed.after().get("COMPRESSED").data());
+        assertEquals(OracleColumnType.RAW,
+                compressed.after().get("COMPRESSED").type());
 
         RedoLogRecord undo = undo(2);
         undo.suppLogBdba = BLOCK_ADDRESS;
@@ -153,6 +159,27 @@ class RedoRowDecoderTest {
                                 "APP_".getBytes(
                                         StandardCharsets.UTF_8))))));
         assertEquals(50014, incomplete.getErrorCode());
+    }
+
+    @Test
+    void matchesTheFixedOpenLogReplicatorCompressedOutput() throws Exception {
+        Properties expected = new Properties();
+        try (InputStream input = getClass().getResourceAsStream(
+                "/fixtures/compressed-row/"
+                        + "openlogreplicator-6bc92bc1.properties")) {
+            assertNotNull(input);
+            expected.load(input);
+        }
+
+        DecodedRedoRow row = decoder.decode(table(), List.of(
+                new RedoRecordPair(undo(0), compressedInsertRedo())));
+        Properties actual = new Properties();
+        actual.setProperty("column.name",
+                row.after().keySet().iterator().next());
+        actual.setProperty("column.hex", HexFormat.of().formatHex(
+                row.after().get("COMPRESSED").data()));
+
+        assertEquals(expected, actual);
     }
 
     private RedoLogRecord insertRedo(

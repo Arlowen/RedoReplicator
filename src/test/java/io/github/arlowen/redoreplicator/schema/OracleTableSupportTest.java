@@ -17,6 +17,7 @@ class OracleTableSupportTest {
     @Test
     void acceptsRegularHeapTable() {
         assertDoesNotThrow(() -> OracleTableSupport.validate(metadata(0, 0, 0, false)));
+        assertDoesNotThrow(() -> OracleTableSupport.validate(metadata(0, 0, 0, true)));
     }
 
     @Test
@@ -28,7 +29,6 @@ class OracleTableSupportTest {
         assertUnsupported(metadata(0, 0, 1L << 13, false), "nested table");
         assertUnsupported(metadata(0, 0, 1L << 26, false), "materialized view table");
         assertUnsupported(metadata(0, 0, 1L << 31, false), "external table");
-        assertUnsupported(metadata(0, 0, 0, true), "compressed table");
     }
 
     private static void assertUnsupported(OracleTableMetadata table, String reason) {

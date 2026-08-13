@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -212,6 +213,25 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
+    void preservesCompressedRowPayloadThroughJson() throws Exception {
+        CommittedRedoTransaction transaction = transaction(
+                List.of(compressedInsertEntry()));
+
+        List<RedoJsonChange> changes = assembler.assemble(
+                transaction, catalog(table("APP")));
+        BuilderJson builder = new BuilderJson(
+                new OracleJsonValueDecoder(
+                        StandardCharsets.UTF_8, ZoneOffset.UTC),
+                "FREEPDB1", 0);
+        JsonNode message = new ObjectMapper().readTree(
+                builder.buildTransaction(transaction, changes).get(1));
+
+        assertEquals("010203", message.at(
+                "/payload/0/after/COMPRESSED").textValue());
+        assertFalse(message.at("/payload/0/after").has("ID"));
+    }
+
+    @Test
     void skipsResolvedTablesOutsideTheConfiguredOutputFilter() {
         RedoJsonChangeAssembler filtered = new RedoJsonChangeAssembler(
                 ByteOrder.LITTLE_ENDIAN, StandardCharsets.UTF_8,
@@ -367,6 +387,30 @@ class RedoJsonChangeAssemblerTest {
 
     private static RedoTransactionEntry insertEntry() {
         return RedoTransactionEntry.pair(undo(), redo(0x0B02));
+    }
+
+    private static RedoTransactionEntry compressedInsertEntry() {
+        byte[] ktb = RedoOpCodeTestSupport.field(8);
+        ktb[0] = 0x06;
+        byte[] kdo = RedoOpCodeTestSupport.field(48);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                kdo, 0, 100, ByteOrder.LITTLE_ENDIAN);
+        kdo[10] = RedoLogRecord.OP_IRP;
+        kdo[16] = (byte) RedoLogRecord.FB_F;
+        kdo[18] = 2;
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 40, 3, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 42, 3, ByteOrder.LITTLE_ENDIAN);
+        RedoLogRecord redo = RedoOpCodeTestSupport.record(
+                0x0B02, 0, ktb, kdo, new byte[]{1, 2, 3});
+        new RedoOpCodeDispatcher(
+                ByteOrder.LITTLE_ENDIAN,
+                RedoLogRecord.REDO_VERSION_19_0).dispatch(redo);
+        redo.xid = XID;
+        redo.obj = OBJECT_ID;
+        redo.dataObj = DATA_OBJECT_ID;
+        return RedoTransactionEntry.pair(undo(), redo);
     }
 
     private static RedoTransactionEntry multiInsertEntry() {
