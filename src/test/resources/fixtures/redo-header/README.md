@@ -12,3 +12,5 @@ big-endian header pins the native-word checksum behavior used by `Reader.cpp`.
 The fixture also records the record member ordering key and vector field-list
 layout produced by the corresponding `Parser.cpp` formulas. Transaction-control
 fields pin the state extracted by opcode 5.2, 5.4, 5.6 and 5.11 handlers.
+Session-attribute fields pin the numeric layout and transaction flags used by
+opcode 5.19 and 5.20.

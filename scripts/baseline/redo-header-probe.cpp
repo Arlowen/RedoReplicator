@@ -171,6 +171,31 @@ int main() {
     std::cout << "opcodeKtu.slot=" << static_cast<uint32_t>(ktuBlock[18]) << '\n';
     std::cout << "opcodeKtu.flags=" << Ctx::read16Little(ktuBlock.data() + 20) << '\n';
 
+    std::array<uint8_t, 8> sessionAttribute{};
+    Ctx::write16Little(sessionAttribute.data() + 2, 0x9ABC);
+    Ctx::write32Little(sessionAttribute.data() + 4, 0xF1234567);
+    std::cout << "opcode0513.sessionNumber=" << Ctx::read32Little(sessionAttribute.data() + 4) << '\n';
+    std::cout << "opcode0513.serialNumber=" << Ctx::read16Little(sessionAttribute.data() + 2) << '\n';
+
+    std::array<uint8_t, 6> transactionFlags{};
+    Ctx::write16Little(transactionFlags.data(), 0x1805);
+    Ctx::write16Little(transactionFlags.data() + 4, 0x0009);
+    const uint16_t flags = Ctx::read16Little(transactionFlags.data());
+    const uint16_t flags2 = Ctx::read16Little(transactionFlags.data() + 4);
+    std::cout << std::boolalpha;
+    std::cout << "opcode0513.ddlTransaction=" << ((flags & 0x0001) != 0) << '\n';
+    std::cout << "opcode0513.recursiveTransaction=" << ((flags & 0x0004) != 0) << '\n';
+    std::cout << "opcode0513.disabledLogicalReplication=" << ((flags & 0x0800) != 0) << '\n';
+    std::cout << "opcode0513.datapumpImport=" << ((flags & 0x1000) != 0) << '\n';
+    std::cout << "opcode0513.federationPdbReplay=" << ((flags2 & 0x0001) != 0) << '\n';
+    std::cout << "opcode0513.sequenceUpdate=" << ((flags2 & 0x0008) != 0) << '\n';
+
+    std::array<uint8_t, 4> versionAttribute{};
+    Ctx::write32Little(versionAttribute.data(), 0x171A2000);
+    std::cout << "opcode0513.version=" << Ctx::read32Little(versionAttribute.data()) << '\n';
+    Ctx::write32Little(versionAttribute.data(), 0xE1234567);
+    std::cout << "opcode0513.auditSessionId=" << Ctx::read32Little(versionAttribute.data()) << '\n';
+
     alignas(8) std::array<uint8_t, blockSize * 2> bigHeader{};
     bigHeader[1] = 0x22;
     Ctx::write32Big(bigHeader.data() + 20, blockSize);

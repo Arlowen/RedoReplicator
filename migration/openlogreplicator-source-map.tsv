@@ -148,8 +148,8 @@ src/parser/OpCode0502.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0502	
 src/parser/OpCode0504.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0504	translated	Translated commit and rollback fields; dump-only formatting intentionally omitted
 src/parser/OpCode0506.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0506	translated	Translated partial rollback fields; dump-only formatting intentionally omitted
 src/parser/OpCode050B.h	io.github.arlowen.redoreplicator.redo.parser.OpCode050B	translated	Translated undo block fields; dump-only formatting intentionally omitted
-src/parser/OpCode0513.h	io.github.arlowen.redoreplicator.parser.OpCode0513	pending	Translate redo and transaction parsing
-src/parser/OpCode0514.h	io.github.arlowen.redoreplicator.parser.OpCode0514	pending	Translate redo and transaction parsing
+src/parser/OpCode0513.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0513	translated	Translated 19c and 26ai session attributes and transaction flags; dump formatting omitted
+src/parser/OpCode0514.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0514	translated	Translated compact session attributes including reserved field handling
 src/parser/OpCode0A02.h	io.github.arlowen.redoreplicator.parser.OpCode0A02	pending	Translate redo and transaction parsing
 src/parser/OpCode0A08.h	io.github.arlowen.redoreplicator.parser.OpCode0A08	pending	Translate redo and transaction parsing
 src/parser/OpCode0A12.h	io.github.arlowen.redoreplicator.parser.OpCode0A12	pending	Translate redo and transaction parsing
