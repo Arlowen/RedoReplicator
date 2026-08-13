@@ -31,6 +31,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -139,6 +140,110 @@ class RedoParserTest {
         assertTrue(encrypted.getMessage().contains("Encrypted"));
     }
 
+    @Test
+    void mergesSplitUndoAcrossRedoRecordsAndSpill() throws Exception {
+        try (RedoTransactionBuffer buffer = new RedoTransactionBuffer(
+                temporaryDirectory, 1)) {
+            RedoParser parser = new RedoParser(
+                    ByteOrder.LITTLE_ENDIAN,
+                    RedoLogRecord.REDO_VERSION_19_0,
+                    512,
+                    buffer);
+            parser.process(lwn(vector(0x0502, 1, beginField())),
+                    Seq.of(10), 1);
+
+            byte[] ktb = ktbNoOperation();
+            parser.process(lwn(vector(0x0501, 1,
+                            undoBlock(),
+                            ktuBlock(RedoTransactionBuffer
+                                    .FLG_MULTIBLOCK_UNDO_TAIL),
+                            Arrays.copyOfRange(ktb, 4, ktb.length),
+                            deleteRowPiece(), supplementalHeader())),
+                    Seq.of(10), 1);
+            assertEquals(1, buffer.spilledTransactionCount());
+
+            int headFlags = RedoTransactionBuffer.FLG_MULTIBLOCK_UNDO_HEAD
+                    | RedoTransactionBuffer.FLG_LAST_BUFFER_SPLIT;
+            parser.process(lwn(
+                            vector(0x0501, 1,
+                                    undoBlock(), ktuBlock(headFlags),
+                                    Arrays.copyOfRange(ktb, 0, 4)),
+                            vector(0x0B02, 0,
+                                    ktbNoOperation(), insertRowPiece(),
+                                    number(12),
+                                    "APP".getBytes(StandardCharsets.UTF_8))),
+                    Seq.of(10), 1);
+
+            parser.process(lwn(vector(0x0501, 1,
+                            undoBlock(),
+                            ktuBlock(RedoTransactionBuffer
+                                    .FLG_MULTIBLOCK_UNDO_MIDDLE),
+                            Arrays.copyOfRange(ktb, 4, ktb.length),
+                            deleteRowPiece(), supplementalHeader())),
+                    Seq.of(10), 1);
+            int headAndTailFlags = headFlags
+                    | RedoTransactionBuffer.FLG_MULTIBLOCK_UNDO_TAIL;
+            parser.process(lwn(
+                            vector(0x0501, 1,
+                                    undoBlock(), ktuBlock(headAndTailFlags),
+                                    Arrays.copyOfRange(ktb, 0, 4)),
+                            vector(0x0B02, 0,
+                                    ktbNoOperation(), insertRowPiece(),
+                                    number(13),
+                                    "APP2".getBytes(StandardCharsets.UTF_8))),
+                    Seq.of(10), 1);
+            RedoLogRecord inverse = new RedoLogRecord();
+            inverse.opCode = 0x0B03;
+            inverse.obj = OBJECT_ID;
+            inverse.dataObj = DATA_OBJECT_ID;
+            inverse.bdba = BLOCK_ADDRESS;
+            RedoLogRecord rollback = new RedoLogRecord();
+            rollback.opCode = 0x0506;
+            rollback.usn = 1;
+            rollback.slt = 2;
+            assertTrue(buffer.rollbackPair(inverse, rollback));
+
+            List<CommittedRedoTransaction> committed = parser.process(
+                    lwn(vector(0x0504, 1, commitField())),
+                    Seq.of(10), 1);
+
+            assertEquals(1, committed.size());
+            assertEquals(1, committed.get(0).entries().size());
+            RedoLogRecord undo = committed.get(0).entries().get(0).first();
+            assertEquals(5, undo.fieldCnt);
+            assertEquals(0, undo.flg);
+            assertEquals(RedoLogRecord.OP_DRP, undo.op);
+            assertEquals(BLOCK_ADDRESS, undo.suppLogBdba);
+            assertEquals(1, committed.get(0).rowGroups().size());
+            assertEquals(0, spillFileCount());
+        }
+    }
+
+    @Test
+    void stopsWhenTransactionCommitsWithIncompleteSplitUndo() {
+        RedoParser parser = new RedoParser(
+                ByteOrder.LITTLE_ENDIAN,
+                RedoLogRecord.REDO_VERSION_19_0,
+                512);
+        parser.process(lwn(vector(0x0502, 1, beginField())),
+                Seq.of(10), 1);
+        parser.process(lwn(vector(0x0501, 1,
+                        undoBlock(),
+                        ktuBlock(RedoTransactionBuffer
+                                .FLG_MULTIBLOCK_UNDO_TAIL),
+                        ktbNoOperation())),
+                Seq.of(10), 1);
+
+        RedoLogException error = assertThrows(
+                RedoLogException.class,
+                () -> parser.process(
+                        lwn(vector(0x0504, 1, commitField())),
+                        Seq.of(10), 1));
+
+        assertEquals(50041, error.getErrorCode());
+        assertEquals(1, parser.transactionBuffer().openTransactionCount());
+    }
+
     private static AssembledLwn lwn(byte[]... vectors) {
         byte[] recordData = redoRecord(vectors);
         LwnMember member = new LwnMember(
@@ -229,6 +334,10 @@ class RedoParserTest {
     }
 
     private static byte[] ktuBlock() {
+        return ktuBlock(0);
+    }
+
+    private static byte[] ktuBlock(int flags) {
         byte[] field = new byte[24];
         RedoBinaryTestSupport.writeUnsignedInt(
                 field, 0, OBJECT_ID, ByteOrder.LITTLE_ENDIAN);
@@ -236,6 +345,8 @@ class RedoParserTest {
                 field, 4, DATA_OBJECT_ID, ByteOrder.LITTLE_ENDIAN);
         field[16] = 0x0B;
         field[17] = 0x01;
+        RedoBinaryTestSupport.writeUnsignedShort(
+                field, 20, flags, ByteOrder.LITTLE_ENDIAN);
         return field;
     }
 

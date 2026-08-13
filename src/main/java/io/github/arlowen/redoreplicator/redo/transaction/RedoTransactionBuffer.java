@@ -26,6 +26,7 @@ import java.util.Optional;
 public final class RedoTransactionBuffer implements AutoCloseable {
     public static final int FLG_MULTIBLOCK_UNDO_HEAD = 0x0001;
     public static final int FLG_MULTIBLOCK_UNDO_TAIL = 0x0002;
+    public static final int FLG_LAST_BUFFER_SPLIT = 0x0004;
     public static final int FLG_ROLLBACK_COMMIT = 0x0004;
     public static final int FLG_USER_UNDO_DONE = 0x0010;
     public static final int FLG_MULTIBLOCK_UNDO_MIDDLE = 0x0100;
@@ -150,6 +151,73 @@ public final class RedoTransactionBuffer implements AutoCloseable {
         return true;
     }
 
+    public Optional<RedoLogRecord> prepareUndo(
+            RedoLogRecord record,
+            boolean paired,
+            RedoUndoBlockMerger merger) {
+        if (record.opCode != 0x0501) {
+            throw new IllegalArgumentException(
+                    "Only opcode 0x0501 can contain split undo");
+        }
+        RedoTransaction transaction = findExact(record.xid, record.conId);
+        if (transaction == null) {
+            if (hasSplitFlag(record)) {
+                return Optional.empty();
+            }
+            return Optional.of(record);
+        }
+
+        if (paired) {
+            if (!transaction.splitUndoPending()) {
+                if ((record.flg & FLG_MULTIBLOCK_UNDO_HEAD) != 0) {
+                    throw new RedoLogException(50043,
+                            "Split undo HEAD has no buffered continuation at offset "
+                                    + record.fileOffset + " xid: " + record.xid);
+                }
+                rejectSplitUndo(record);
+                return Optional.of(record);
+            }
+            if ((record.flg & FLG_MULTIBLOCK_UNDO_HEAD) == 0) {
+                throw new RedoLogException(50043,
+                        "Expected split undo HEAD at offset "
+                                + record.fileOffset + " xid: " + record.xid);
+            }
+            RedoLogRecord previous = transaction.removeLastSplitUndo();
+            RedoLogRecord merged = merger.merge(record, previous);
+            merger.writeKtuFlags(merged);
+            transaction.splitUndoPending(false);
+            return Optional.of(merged);
+        }
+
+        boolean mergedBlock = false;
+        if (transaction.splitUndoPending()) {
+            if ((record.flg & FLG_MULTIBLOCK_UNDO_MIDDLE) == 0) {
+                throw new RedoLogException(50041,
+                        "Expected split undo MID at offset "
+                                + record.fileOffset + " xid: " + record.xid);
+            }
+            RedoLogRecord previous = transaction.removeLastSplitUndo();
+            record = merger.merge(record, previous);
+            mergedBlock = true;
+        }
+
+        int continuingFlags = FLG_MULTIBLOCK_UNDO_TAIL
+                | FLG_MULTIBLOCK_UNDO_MIDDLE;
+        if (mergedBlock || (record.flg & continuingFlags) != 0) {
+            transaction.splitUndoPending(
+                    (record.flg & continuingFlags) != 0);
+            transaction.add(RedoTransactionEntry.single(record));
+            spillIfNeeded();
+            return Optional.empty();
+        }
+        if ((record.flg & FLG_MULTIBLOCK_UNDO_HEAD) != 0) {
+            throw new RedoLogException(50043,
+                    "Split undo HEAD is not paired at offset "
+                            + record.fileOffset + " xid: " + record.xid);
+        }
+        return Optional.of(record);
+    }
+
     public boolean rollbackPair(
             RedoLogRecord inverse, RedoLogRecord rollback) {
         RedoTransaction transaction = findForRollback(rollback);
@@ -191,11 +259,17 @@ public final class RedoTransactionBuffer implements AutoCloseable {
         if (!transaction.xid().equals(record.xid)) {
             throw conflict(record.xid, transaction.xid());
         }
-        transactions.remove(key);
         if ((record.flg & FLG_ROLLBACK_COMMIT) != 0) {
+            transactions.remove(key);
             transaction.discard();
             return Optional.empty();
         }
+        if (transaction.splitUndoPending()) {
+            throw new RedoLogException(50041,
+                    "Transaction committed with incomplete split undo: "
+                            + record.xid);
+        }
+        transactions.remove(key);
         if (transaction.entryCount() == 0) {
             transaction.discard();
             return Optional.empty();
@@ -319,14 +393,18 @@ public final class RedoTransactionBuffer implements AutoCloseable {
     }
 
     private static void rejectSplitUndo(RedoLogRecord record) {
+        if (hasSplitFlag(record)) {
+            throw new RedoLogException(50041,
+                    "Split undo must be prepared before buffering at offset "
+                            + record.fileOffset);
+        }
+    }
+
+    private static boolean hasSplitFlag(RedoLogRecord record) {
         int splitFlags = FLG_MULTIBLOCK_UNDO_HEAD
                 | FLG_MULTIBLOCK_UNDO_TAIL
                 | FLG_MULTIBLOCK_UNDO_MIDDLE;
-        if ((record.flg & splitFlags) != 0) {
-            throw new RedoLogException(50041,
-                    "Multi-block undo merge is not implemented at offset "
-                            + record.fileOffset);
-        }
+        return (record.flg & splitFlags) != 0;
     }
 
     private static boolean isUndoPairSecond(int opCode) {

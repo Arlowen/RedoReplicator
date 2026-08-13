@@ -429,6 +429,7 @@ Linux runtime 在 Debian Docker 中使用 Debian OpenJDK 17，分 ARM64 和 x86_
 
 - interleaved transaction。
 - commit、rollback、savepoint partial rollback。
+- 跨 redo record 的 multi-block undo 合并与重新解码。
 - low-watermark。
 - 事务内存限制和 `data/tmp/` spill。
 

@@ -32,6 +32,7 @@ final class RedoTransaction {
     private TransactionSpillManager spillManager;
     private TransactionSpillFile spillFile;
     private int entryCount;
+    private boolean splitUndoPending;
 
     RedoTransaction(RedoLogRecord begin, RedoPosition beginPosition) {
         xid = begin.xid;
@@ -167,9 +168,33 @@ final class RedoTransaction {
         return entryCount;
     }
 
+    boolean splitUndoPending() {
+        return splitUndoPending;
+    }
+
+    void splitUndoPending(boolean pending) {
+        splitUndoPending = pending;
+    }
+
+    RedoLogRecord removeLastSplitUndo() {
+        if (entryCount == 0) {
+            throw new RedoLogException(50044,
+                    "Trying to merge split undo from an empty transaction: "
+                            + xid);
+        }
+        RedoTransactionEntry last = lastEntry();
+        if (last.first().opCode != 0x0501 || last.second().isPresent()) {
+            throw new RedoLogException(50044,
+                    "Last transaction entry is not split undo: " + xid);
+        }
+        removeLast();
+        return last.first();
+    }
+
     void discard() {
         entries.clear();
         entryCount = 0;
+        splitUndoPending = false;
         if (spillFile != null) {
             spillManager.release(spillFile);
             spillFile = null;

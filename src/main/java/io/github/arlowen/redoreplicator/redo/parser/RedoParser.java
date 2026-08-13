@@ -17,6 +17,7 @@ import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.redo.transaction.CommittedRedoTransaction;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer;
+import io.github.arlowen.redoreplicator.redo.transaction.RedoUndoBlockMerger;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
 
 import java.nio.ByteOrder;
@@ -24,11 +25,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class RedoParser {
     private final RedoVectorParser vectorParser;
     private final RedoOpCodeDispatcher opCodeDispatcher;
     private final RedoTransactionBuffer transactionBuffer;
+    private final RedoUndoBlockMerger undoBlockMerger;
     private final int blockSize;
 
     public RedoParser(ByteOrder byteOrder, long redoVersion, int blockSize) {
@@ -44,6 +47,7 @@ public final class RedoParser {
         vectorParser = new RedoVectorParser(
                 byteOrder, redoVersion, blockSize);
         opCodeDispatcher = new RedoOpCodeDispatcher(byteOrder, redoVersion);
+        undoBlockMerger = new RedoUndoBlockMerger(byteOrder);
         this.transactionBuffer = Objects.requireNonNull(
                 transactionBuffer, "transactionBuffer");
         this.blockSize = blockSize;
@@ -88,6 +92,25 @@ public final class RedoParser {
                     && second != null && isUndoPairSecond(second.opCode);
             boolean rollbackPair = isRowOpCode(first.opCode)
                     && second != null && isPartialRollback(second.opCode);
+            if (first.opCode == 0x0501) {
+                byte[] undoData = first.data();
+                Optional<RedoLogRecord> prepared = transactionBuffer.prepareUndo(
+                        first, pair, undoBlockMerger);
+                if (prepared.isEmpty()) {
+                    if (pair) {
+                        dispatch(second, first);
+                        index += 2;
+                    } else {
+                        index++;
+                    }
+                    continue;
+                }
+                RedoLogRecord preparedUndo = prepared.orElseThrow();
+                if (preparedUndo.data() != undoData) {
+                    first = preparedUndo;
+                    dispatch(first, null);
+                }
+            }
             if (pair || rollbackPair) {
                 dispatch(second, first);
                 committed.addAll(transactionBuffer.accept(

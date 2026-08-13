@@ -10,11 +10,13 @@ in-memory
 low-watermark. Transactions can spill decoded entries to `data/tmp`-style
 scratch files under a global memory limit; commit reads them in order, partial
 rollback truncates the tail, and startup removes stale spill files before
-low-watermark replay. A binary-vector integration test covers the path from a
-spilled redo record through a committed SYS dictionary change. Runtime YAML/CLI
-wiring for the spill limit, multi-block undo merging, multi-row DML output,
-online redo routing and XDB dictionary families are not complete, so the
-project is not ready to capture Oracle redo yet.
+low-watermark replay. Multi-block undo is merged across redo records, including
+middle fragments and split field buffers, then decoded again before pairing it
+with the business redo vector. Binary-vector integration tests cover that path
+through transaction spill, partial rollback and commit. Runtime YAML/CLI wiring
+for the spill limit, multi-row DML output, online redo routing and XDB
+dictionary families are not complete, so the project is not ready to capture
+Oracle redo yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
