@@ -3,13 +3,17 @@ set -euo pipefail
 
 expected_commit=6bc92bc1b89255fbc491e3080cb12a4c1dd8e832
 
-if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 <isolated OpenLogReplicator source> <output file>" >&2
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+    echo "Usage: $0 <isolated OpenLogReplicator source> <output file> [RapidJSON root]" >&2
     exit 2
 fi
 
 source_dir=$(cd "$1" && pwd)
 output_file=$2
+rapidjson_dir=""
+if [[ $# -eq 3 ]]; then
+    rapidjson_dir=$(cd "$3" && pwd)
+fi
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 project_dir=$(cd "$script_dir/../.." && pwd)
 probe_binary="$project_dir/target/value-types-probe"
@@ -25,8 +29,13 @@ if [[ "$actual_commit" != "$expected_commit" ]]; then
     exit 1
 fi
 
-c++ -std=c++17 \
-    -I "$source_dir" \
+include_args=(-I "$source_dir")
+if [[ -n "$rapidjson_dir" ]]; then
+    include_args+=(-I "$rapidjson_dir/include")
+fi
+
+c++ -std=c++17 -DCTXASSERT=0 \
+    "${include_args[@]}" \
     "$project_dir/scripts/baseline/value-types-probe.cpp" \
     "$source_dir/src/common/types/Data.cpp" \
     "$source_dir/src/common/exception/DataException.cpp" \

@@ -33,7 +33,7 @@ src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.transaction.Transa
 src/common/MemoryManager.h	io.github.arlowen.redoreplicator.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
 src/common/OraProtoBuf.pb.cpp	-	excluded	Protobuf output is out of scope
 src/common/OraProtoBuf.pb.h	-	excluded	Protobuf output is out of scope
-src/common/RedoLogRecord.h	io.github.arlowen.redoreplicator.redo.common.RedoLogRecord	pending	Translate redo domain model
+src/common/RedoLogRecord.h	io.github.arlowen.redoreplicator.redo.common.RedoLogRecord	translated	Translated record model and field traversal cursor with parity tests
 src/common/Thread.cpp	io.github.arlowen.redoreplicator.runtime.ReplicatorTask	pending	Translate lifecycle and wakeup behavior using JDK threads
 src/common/Thread.h	io.github.arlowen.redoreplicator.runtime.ReplicatorTask	pending	Translate lifecycle and wakeup contract using JDK threads
 src/common/XmlCtx.cpp	io.github.arlowen.redoreplicator.redo.common.XmlCtx	pending	Translate redo domain model
@@ -46,8 +46,8 @@ src/common/exception/DataException.cpp	io.github.arlowen.redoreplicator.error.Da
 src/common/exception/DataException.h	io.github.arlowen.redoreplicator.error.DataException	translated	Translated domain error
 src/common/exception/NetworkException.cpp	-	excluded	Network output is out of scope
 src/common/exception/NetworkException.h	-	excluded	Network output is out of scope
-src/common/exception/RedoLogException.cpp	io.github.arlowen.redoreplicator.error.RedoLogException	pending	Translate domain error
-src/common/exception/RedoLogException.h	io.github.arlowen.redoreplicator.error.RedoLogException	pending	Translate domain error
+src/common/exception/RedoLogException.cpp	io.github.arlowen.redoreplicator.error.RedoLogException	translated	Translated redo format error
+src/common/exception/RedoLogException.h	io.github.arlowen.redoreplicator.error.RedoLogException	translated	Translated redo format error
 src/common/exception/RuntimeException.cpp	io.github.arlowen.redoreplicator.error.RedoRuntimeException	pending	Translate domain error
 src/common/exception/RuntimeException.h	io.github.arlowen.redoreplicator.error.RedoRuntimeException	pending	Translate domain error
 src/common/expression/BoolValue.cpp	-	excluded	Configuration expressions are replaced by Java regular expressions
@@ -85,12 +85,12 @@ src/common/table/XdbXQn.h	io.github.arlowen.redoreplicator.redo.common.XdbXQn	pe
 src/common/types/Data.cpp	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
 src/common/types/Data.h	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
 src/common/types/FileOffset.h	io.github.arlowen.redoreplicator.redo.common.FileOffset	translated	Translated and parity-tested fixed-width redo value type
-src/common/types/IntX.h	io.github.arlowen.redoreplicator.redo.common.IntX	pending	Translate fixed-width redo value type
-src/common/types/LobId.h	io.github.arlowen.redoreplicator.redo.common.LobId	pending	Translate fixed-width redo value type
+src/common/types/IntX.h	io.github.arlowen.redoreplicator.redo.common.IntX	translated	Translated and parity-tested unsigned 128-bit value type
+src/common/types/LobId.h	io.github.arlowen.redoreplicator.redo.common.LobId	translated	Translated and parity-tested fixed-width LOB identifier
 src/common/types/RowId.h	io.github.arlowen.redoreplicator.redo.common.RowId	translated	Translated and parity-tested fixed-width redo value type
 src/common/types/Scn.h	io.github.arlowen.redoreplicator.redo.common.Scn	translated	Translated and parity-tested fixed-width redo value type
 src/common/types/Seq.h	io.github.arlowen.redoreplicator.redo.common.Seq	translated	Translated and parity-tested fixed-width redo value type
-src/common/types/Time.h	io.github.arlowen.redoreplicator.redo.common.Time	pending	Translate fixed-width redo value type
+src/common/types/Time.h	io.github.arlowen.redoreplicator.redo.common.RedoTime	translated	Translated and parity-tested packed redo timestamp
 src/common/types/Types.h	io.github.arlowen.redoreplicator.redo.common.RedoConstants	translated	Translated primitive aliases as Java primitives and parity-tested UBA helpers
 src/common/types/Xid.h	io.github.arlowen.redoreplicator.redo.common.Xid	translated	Translated and parity-tested fixed-width redo value type
 src/locales/CharacterSet.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet	pending	Translate Oracle character set decoder
