@@ -33,6 +33,7 @@ public final class Locales {
         register(new CharacterSetUTF8());
         register(new CharacterSetAL16UTF16());
         register(new CharacterSetZHS16GBK());
+        registerZhs32Gb18030();
     }
 
     public CharacterSet require(long id) {
@@ -179,6 +180,15 @@ public final class Locales {
         register(new CharacterSetJA16SJISTILDE(838, sjisMap));
         register(new CharacterSetKO16KSCCS(
                 845, maps.get("KO16KSCCS_2b")));
+    }
+
+    private void registerZhs32Gb18030() {
+        Map<String, String> maps = loadCharacterSetMaps(
+                "oracle-gb18030-catalog.tsv");
+        register(new CharacterSetZHS32GB18030(
+                maps.get("ZHS32GB18030_2b"),
+                maps.get("ZHS32GB18030_4b1"),
+                maps.get("ZHS32GB18030_4b2")));
     }
 
     private Map<String, String> loadCharacterSetMaps(String resourceName) {

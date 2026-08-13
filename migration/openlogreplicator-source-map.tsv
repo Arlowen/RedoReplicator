@@ -119,16 +119,16 @@ src/locales/CharacterSetUTF8.cpp	io.github.arlowen.redoreplicator.charset.Charac
 src/locales/CharacterSetUTF8.h	io.github.arlowen.redoreplicator.charset.CharacterSetUTF8	translated	Oracle character set identity and decode contract translated and parity-tested
 src/locales/CharacterSetZHS16GBK.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	translated	Direct decoder behavior plus every two-byte map entry verified against fixed C++ digest; JDK table differences explicitly overridden
 src/locales/CharacterSetZHS16GBK.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	translated	Oracle character set identity ranges and decode contract translated and parity-tested
-src/locales/CharacterSetZHS32GB18030.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	pending	Translate Oracle character set decoder
-src/locales/CharacterSetZHS32GB18030.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHS32GB18030.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	translated	Direct two-byte and four-byte decoder with all three upstream tables translated; fixed C++ digests cover every table entry plus malformed consumption
+src/locales/CharacterSetZHS32GB18030.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	translated	Oracle ZHS32GB18030 identity byte ranges group boundaries and decode contract translated and exhaustively parity-tested
 src/locales/CharacterSetZHT16HKSCS31.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT16HKSCS31	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT16HKSCS31.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT16HKSCS31	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32EUC.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32EUC	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32EUC.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32EUC	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32TRIS.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32TRIS.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
-src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Unicode core ZHS16GBK complete 7-bit 8-bit generic 16-bit and Japanese Korean registrations implemented and parity-tested; GB18030 and specialized Taiwan catalog remain
-src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Character-set id and name lookup plus complete 7-bit 8-bit generic 16-bit and Japanese Korean registration implemented; specialized Chinese multibyte catalog remains
+src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Unicode core ZHS16GBK GB18030 complete 7-bit 8-bit generic 16-bit and Japanese Korean registrations implemented and parity-tested; specialized Taiwan catalog remains
+src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Character-set id and name lookup plus all catalogs except the three specialized Taiwan identities implemented and parity-tested
 src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Picocli help/version, strict YAML, validation, continuous capture, graceful shutdown, lifecycle/status, backup/restore and rewind entry points are implemented
 src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated
 src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated

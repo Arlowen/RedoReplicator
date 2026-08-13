@@ -45,6 +45,21 @@ class CharacterSetParityTest {
         add(actual, "zhs16gbk.chinese", 852, "d6d0cec4");
         actual.setProperty("zhs16gbk.map_fnv1a64",
                 zhs16gbkMapDigest());
+        add(actual, "gb18030.ascii", 854, "41");
+        add(actual, "gb18030.two_byte", 854, "d6d0");
+        add(actual, "gb18030.four_group1", 854, "81308130");
+        add(actual, "gb18030.four_group2", 854, "90308130");
+        add(actual, "gb18030.invalid_then_ascii", 854,
+                "8130814041");
+        add(actual, "gb18030.truncated", 854, "813081");
+        actual.setProperty("gb18030.single_fnv1a64",
+                singleByteMapDigest(854));
+        actual.setProperty("gb18030.pair_fnv1a64",
+                bytePairMapDigest(854));
+        actual.setProperty("gb18030.four_group1_fnv1a64",
+                gb18030FourByteMapDigest(0x81, 0x84));
+        actual.setProperty("gb18030.four_group2_fnv1a64",
+                gb18030FourByteMapDigest(0x90, 0xE3));
         add(actual, "we8mswin1252.ascii", 178, "41");
         add(actual, "we8mswin1252.euro", 178, "80");
         add(actual, "we8mswin1252.controls", 178, "818d9d");
@@ -251,6 +266,32 @@ class CharacterSetParityTest {
                 for (int shift = 24; shift >= 0; shift -= 8) {
                     hash ^= (codePoint >> shift) & 0xFF;
                     hash *= 0x100000001B3L;
+                }
+            }
+        }
+        return String.format("%016x", hash);
+    }
+
+    private String gb18030FourByteMapDigest(
+            int byte1Min, int byte1Max) {
+        long hash = 0xCBF29CE484222325L;
+        CharacterSet characterSet = locales.require(854);
+        byte[] encoded = new byte[4];
+        for (int byte1 = byte1Min; byte1 <= byte1Max; byte1++) {
+            encoded[0] = (byte) byte1;
+            for (int byte2 = 0x30; byte2 <= 0x39; byte2++) {
+                encoded[1] = (byte) byte2;
+                for (int byte3 = 0x81; byte3 <= 0xFE; byte3++) {
+                    encoded[2] = (byte) byte3;
+                    for (int byte4 = 0x30; byte4 <= 0x39; byte4++) {
+                        encoded[3] = (byte) byte4;
+                        int codePoint = characterSet.decode(encoded)
+                                .codePointAt(0);
+                        for (int shift = 24; shift >= 0; shift -= 8) {
+                            hash ^= (codePoint >> shift) & 0xFF;
+                            hash *= 0x100000001B3L;
+                        }
+                    }
                 }
             }
         }

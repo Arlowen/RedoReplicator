@@ -7,19 +7,26 @@
 package io.github.arlowen.redoreplicator.charset;
 
 final class CharacterSetMap {
-    private static final int HEX_DIGITS_PER_CHARACTER = 4;
-
     private CharacterSetMap() {
     }
 
     static int[] decode(String encodedMap) {
+        return decode(encodedMap, 4);
+    }
+
+    static int[] decode32(String encodedMap) {
+        return decode(encodedMap, 8);
+    }
+
+    private static int[] decode(
+            String encodedMap, int hexDigitsPerCharacter) {
         int[] unicodeMap = new int[
-                encodedMap.length() / HEX_DIGITS_PER_CHARACTER];
+                encodedMap.length() / hexDigitsPerCharacter];
         for (int index = 0; index < unicodeMap.length; index++) {
-            int start = index * HEX_DIGITS_PER_CHARACTER;
+            int start = index * hexDigitsPerCharacter;
             unicodeMap[index] = Integer.parseInt(
                     encodedMap, start,
-                    start + HEX_DIGITS_PER_CHARACTER, 16);
+                    start + hexDigitsPerCharacter, 16);
         }
         return unicodeMap;
     }

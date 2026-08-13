@@ -22,7 +22,8 @@ for both user JSON and SYS dictionary transactions. Text values retain their
 dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK,
 all 14 upstream 7-bit character sets, all 101 upstream 8-bit character sets and
 all eight generic 16-bit character sets, all six Japanese EUC/SJIS identities
-and KO16KSCCS use upstream-compatible decoders across user values, DDL and SYS
+and KO16KSCCS plus ZHS32GB18030 use upstream-compatible decoders across user
+values, DDL and SYS
 dictionary changes, including NCHAR/NVARCHAR values. Inline BLOB/CLOB locators
 are decoded directly. In-index and classic out-of-row locators reconstruct
 direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
@@ -200,6 +201,14 @@ The Japanese EUC/SJIS and Korean KSCCS tables are regenerated together:
 scripts/baseline/generate-character-set-east-asian-catalog.py \
   /Users/pika/codex-cli-worker/OpenLogReplicator \
   src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-east-asian-catalog.tsv
+```
+
+The ZHS32GB18030 two-byte and four-byte tables use their dedicated generator:
+
+```bash
+scripts/baseline/generate-character-set-gb18030-catalog.py \
+  /Users/pika/codex-cli-worker/OpenLogReplicator \
+  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-gb18030-catalog.tsv
 ```
 
 ## Source migration coverage

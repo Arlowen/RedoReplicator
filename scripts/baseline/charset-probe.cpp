@@ -20,7 +20,8 @@ using namespace OpenLogReplicator;
 
 namespace {
     std::string decode(const CharacterSet* characterSet,
-                       const std::vector<uint8_t>& bytes) {
+                       const std::vector<uint8_t>& bytes,
+                       const Ctx* ctx = nullptr) {
         const uint8_t* current = bytes.data();
         uint64_t remaining = bytes.size();
         std::ostringstream value;
@@ -29,7 +30,7 @@ namespace {
 
         while (remaining > 0) {
             const typeUnicode codePoint = characterSet->decode(
-                    nullptr, Xid(), current, remaining);
+                    ctx, Xid(), current, remaining);
             if (!first)
                 value << '.';
             value << codePoint;
@@ -39,8 +40,10 @@ namespace {
     }
 
     void print(Locales& locales, uint64_t id, const std::string& key,
-               const std::vector<uint8_t>& bytes) {
-        std::cout << key << '=' << decode(locales.characterMap.at(id), bytes)
+               const std::vector<uint8_t>& bytes,
+               const Ctx* ctx = nullptr) {
+        std::cout << key << '=' << decode(
+                locales.characterMap.at(id), bytes, ctx)
                   << '\n';
     }
 
@@ -128,6 +131,35 @@ namespace {
         }
         return hash;
     }
+
+    uint64_t gb18030FourByteMapDigest(
+            const CharacterSet* characterSet, const Ctx* ctx,
+            uint64_t byte1Min, uint64_t byte1Max) {
+        uint64_t hash = 14695981039346656037ULL;
+        for (uint64_t byte1 = byte1Min; byte1 <= byte1Max; ++byte1) {
+            for (uint64_t byte2 = 0x30; byte2 <= 0x39; ++byte2) {
+                for (uint64_t byte3 = 0x81; byte3 <= 0xFE; ++byte3) {
+                    for (uint64_t byte4 = 0x30; byte4 <= 0x39; ++byte4) {
+                        const uint8_t encoded[]{
+                            static_cast<uint8_t>(byte1),
+                            static_cast<uint8_t>(byte2),
+                            static_cast<uint8_t>(byte3),
+                            static_cast<uint8_t>(byte4)
+                        };
+                        const uint8_t* current = encoded;
+                        uint64_t remaining = 4;
+                        const typeUnicode codePoint = characterSet->decode(
+                                ctx, Xid(), current, remaining);
+                        for (int shift = 24; shift >= 0; shift -= 8) {
+                            hash ^= (codePoint >> shift) & 0xFF;
+                            hash *= 1099511628211ULL;
+                        }
+                    }
+                }
+            }
+        }
+        return hash;
+    }
 }
 
 int main(int argc, char** argv) {
@@ -174,6 +206,29 @@ int main(int argc, char** argv) {
     std::cout << "zhs16gbk.map_fnv1a64=" << std::hex << std::setfill('0')
               << std::setw(16)
               << zhs16gbkMapDigest(locales.characterMap.at(852)) << '\n';
+
+    print(locales, 854, "gb18030.ascii", {0x41});
+    print(locales, 854, "gb18030.two_byte", {0xD6, 0xD0});
+    print(locales, 854, "gb18030.four_group1", {0x81, 0x30, 0x81, 0x30});
+    print(locales, 854, "gb18030.four_group2", {0x90, 0x30, 0x81, 0x30});
+    print(locales, 854, "gb18030.invalid_then_ascii",
+          {0x81, 0x30, 0x81, 0x40, 0x41}, &ctx);
+    print(locales, 854, "gb18030.truncated", {0x81, 0x30, 0x81}, &ctx);
+    const CharacterSet* gb18030 = locales.characterMap.at(854);
+    std::cout << "gb18030.single_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << singleByteMapDigest(gb18030, &ctx) << '\n';
+    std::cout << "gb18030.pair_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << bytePairMapDigest(gb18030, &ctx) << '\n';
+    std::cout << "gb18030.four_group1_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << gb18030FourByteMapDigest(
+                      gb18030, &ctx, 0x81, 0x84) << '\n';
+    std::cout << "gb18030.four_group2_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << gb18030FourByteMapDigest(
+                      gb18030, &ctx, 0x90, 0xE3) << '\n';
 
     print(locales, 178, "we8mswin1252.ascii", {0x41});
     print(locales, 178, "we8mswin1252.euro", {0x80});
