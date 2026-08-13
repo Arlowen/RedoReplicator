@@ -8,8 +8,8 @@ src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	
 src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
 src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope
 src/builder/BuilderProtobuf.h	-	excluded	Protobuf output is out of scope
-src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families have transaction overlay commit rollback conflict handling and schema assembly; raw redo row bridge and XDB families remain
-src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families have transaction overlay commit rollback conflict handling and schema assembly; raw redo row bridge and XDB families remain
+src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families and the parsed redo row bridge have transaction replay tests; transaction routing and XDB families remain
+src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families and the parsed redo row bridge have transaction replay tests; transaction routing and XDB families remain
 src/common/Attribute.h	io.github.arlowen.redoreplicator.redo.common.Attribute	translated	Translated and parity-tested transaction attribute mapping
 src/common/Clock.h	io.github.arlowen.redoreplicator.runtime.ReplicatorClock	translated	Translated wall-clock contract
 src/common/ClockHW.cpp	io.github.arlowen.redoreplicator.runtime.SystemClock	translated	Translated JDK wall-clock implementation

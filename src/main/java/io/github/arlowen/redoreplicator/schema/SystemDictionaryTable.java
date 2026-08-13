@@ -32,4 +32,8 @@ public enum SystemDictionaryTable {
     public String qualifiedName() {
         return qualifiedName;
     }
+
+    public String tableName() {
+        return qualifiedName.substring(qualifiedName.indexOf('.') + 1);
+    }
 }

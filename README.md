@@ -5,9 +5,12 @@ RedoReplicator is an in-progress JDK 17 translation of OpenLogReplicator's Oracl
 The project is currently implementing stage 3: initial Oracle dictionary loading,
 schema history, H2 recovery state and transactional replay for all fifteen SYS
 dictionary families used by OpenLogReplicator. LOB, partition, guard-column and
-delayed-segment relationships are rebuilt into complete schema versions. The raw
-redo row bridge and XDB dictionary families are not complete, so the project is
-not ready to capture Oracle redo yet.
+delayed-segment relationships are rebuilt into complete schema versions. Parsed
+undo/redo row pairs can now be converted into transactional SYS dictionary
+inserts, updates and deletes, including column fragments and supplemental
+after-images. Transaction buffering, online redo routing and XDB dictionary
+families are not complete, so the project is not ready to capture Oracle redo
+yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
