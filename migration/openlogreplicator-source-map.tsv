@@ -4,8 +4,8 @@ src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorComma
 src/StreamClient.cpp	-	excluded	Network stream client is out of scope
 src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.OracleJsonValueDecoder	pending	Row grouping, typed before/after assembly and native JSON scalar conversion translated; compressed rows, LOB reconstruction and message construction remain
 src/builder/Builder.h	io.github.arlowen.redoreplicator.output.OracleJsonValueDecoder	pending	Oracle NUMBER, timestamp, RAW, binary float, interval, UROWID and BOOLEAN conversion translated; charset catalog, LOB and JSON messages remain
-src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
-src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
+src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	translated	Fixed message=0 begin, ordered DML and DDL, commit and checkpoint JSON messages translated with native scalar formatting
+src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	translated	Fixed numeric SCN and timestamp headers, classic XID, schema, before and after payloads translated; db is always included by project contract
 src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope
 src/builder/BuilderProtobuf.h	-	excluded	Protobuf output is out of scope
 src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families and the parsed redo row bridge have transaction replay tests; automatic system routing and XDB families remain

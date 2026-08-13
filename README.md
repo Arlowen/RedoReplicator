@@ -44,17 +44,20 @@ waits for online redo growth and advances to the exact next sequence only after
 the current file finishes. Startup uses the configured/current SCN only when H2
 has no state; recovery ignores YAML, validates the Oracle identity and replays
 from the earliest open-transaction low-watermark or the durable file offset.
-Multi-thread scheduling, JSONL output and the full capture lifecycle are not
-wired yet. The JSONL file layer itself now writes `redo-000001.jsonl` style
-files, rolls only between complete messages, fsyncs each LWN batch, truncates an
-uncommitted tail to H2's safe byte offset, and refuses to start when the file is
-shorter than that offset. User-table redo pairs can now be assembled into
+Multi-thread scheduling and the full capture lifecycle are not wired yet. The
+JSONL file layer itself now writes `redo-000001.jsonl` style files, rolls only
+between complete messages, fsyncs each LWN batch, truncates an uncommitted tail
+to H2's safe byte offset, and refuses to start when the file is shorter than
+that offset. User-table redo pairs can now be assembled into
 typed before/after column bytes with row identity, supplemental images,
 multi-piece value merging and primary-key placeholders; compressed rows remain
 an explicit unsupported boundary until their decoder is translated. Those
 typed bytes can now be converted to the fixed native JSON scalar forms for
 text, NUMBER, DATE/TIMESTAMP, RAW, binary floating point, intervals, UROWID and
-BOOLEAN. LOB reconstruction and runtime JSON message construction remain
+BOOLEAN. The fixed native JSON Builder emits separate begin, ordered DML/DDL
+and commit messages plus optional checkpoint heartbeats, always including the
+database name, and its byte messages are covered through JSONL fsync. LOB
+reconstruction and the runtime transaction-to-change orchestration remain
 separate incomplete steps.
 
 Oracle accounts are never created by the application or Docker Compose. Review
