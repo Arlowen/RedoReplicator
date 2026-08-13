@@ -99,8 +99,8 @@ src/locales/CharacterSet16bit.cpp	io.github.arlowen.redoreplicator.charset.Chara
 src/locales/CharacterSet16bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	pending	Translate Oracle character set decoder
 src/locales/CharacterSet7bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet7bit	pending	Translate Oracle character set decoder
 src/locales/CharacterSet7bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet7bit	pending	Translate Oracle character set decoder
-src/locales/CharacterSet8bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet8bit	pending	Translate Oracle character set decoder
-src/locales/CharacterSet8bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet8bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSet8bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetWE8MSWIN1252	pending	Generic one-byte behavior and complete WE8MSWIN1252 table are parity-tested; remaining one-byte catalog is pending
+src/locales/CharacterSet8bit.h	io.github.arlowen.redoreplicator.charset.CharacterSetWE8MSWIN1252	pending	WE8MSWIN1252 identity and one-byte decode contract implemented; remaining one-byte catalog is pending
 src/locales/CharacterSetAL16UTF16.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetAL16UTF16	translated	Direct decoder translation with fixed C++ code-point parity fixture and malformed-sequence tests
 src/locales/CharacterSetAL16UTF16.h	io.github.arlowen.redoreplicator.charset.CharacterSetAL16UTF16	translated	Oracle character set identity and decode contract translated and parity-tested
 src/locales/CharacterSetAL32UTF8.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetAL32UTF8	translated	Direct decoder translation with fixed C++ code-point parity fixture and malformed-sequence tests
@@ -117,8 +117,8 @@ src/locales/CharacterSetKO16KSCCS.cpp	io.github.arlowen.redoreplicator.charset.C
 src/locales/CharacterSetKO16KSCCS.h	io.github.arlowen.redoreplicator.charset.CharacterSetKO16KSCCS	pending	Translate Oracle character set decoder
 src/locales/CharacterSetUTF8.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetUTF8	translated	Direct Oracle UTF8 CESU-8 decoder translation with fixed C++ code-point parity fixture and malformed-sequence tests
 src/locales/CharacterSetUTF8.h	io.github.arlowen.redoreplicator.charset.CharacterSetUTF8	translated	Oracle character set identity and decode contract translated and parity-tested
-src/locales/CharacterSetZHS16GBK.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	pending	Translate Oracle character set decoder
-src/locales/CharacterSetZHS16GBK.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	pending	Translate Oracle character set decoder
+src/locales/CharacterSetZHS16GBK.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	translated	Direct decoder behavior plus every two-byte map entry verified against fixed C++ digest; JDK table differences explicitly overridden
+src/locales/CharacterSetZHS16GBK.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK	translated	Oracle character set identity ranges and decode contract translated and parity-tested
 src/locales/CharacterSetZHS32GB18030.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHS32GB18030.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHS32GB18030	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT16HKSCS31.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT16HKSCS31	pending	Translate Oracle character set decoder
@@ -127,7 +127,7 @@ src/locales/CharacterSetZHT32EUC.cpp	io.github.arlowen.redoreplicator.charset.Ch
 src/locales/CharacterSetZHT32EUC.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32EUC	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32TRIS.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32TRIS.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
-src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Unicode core plus existing GBK and Windows-1252 registrations implemented; complete Oracle character-set catalog remains
+src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Unicode core ZHS16GBK and WE8MSWIN1252 registrations implemented and parity-tested; complete Oracle character-set catalog remains
 src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Character-set id and name lookup implemented; complete Oracle character-set catalog remains
 src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Picocli help/version, strict YAML, validation, continuous capture, graceful shutdown, lifecycle/status, backup/restore and rewind entry points are implemented
 src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated

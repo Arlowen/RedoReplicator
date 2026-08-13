@@ -10,6 +10,7 @@
  */
 package io.github.arlowen.redoreplicator.output;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
@@ -18,12 +19,11 @@ import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.Charset;
 import java.util.Objects;
 import java.util.Optional;
 
 final class RedoDdlAssembler {
-    private final Charset databaseCharacterSet;
+    private final CharacterSet databaseCharacterSet;
     private final ByteArrayOutputStream sql = new ByteArrayOutputStream();
 
     private int nextSequence;
@@ -32,7 +32,7 @@ final class RedoDdlAssembler {
     private long objectId;
     private String owner;
 
-    RedoDdlAssembler(Charset databaseCharacterSet) {
+    RedoDdlAssembler(CharacterSet databaseCharacterSet) {
         this.databaseCharacterSet = Objects.requireNonNull(
                 databaseCharacterSet, "databaseCharacterSet");
     }
@@ -105,7 +105,7 @@ final class RedoDdlAssembler {
                 record, record.ddlPayload1, record.ddlPayload1Size,
                 "DDL field 2");
         if (sequence == 1) {
-            owner = new String(payload1, databaseCharacterSet);
+            owner = databaseCharacterSet.decode(payload1);
         } else {
             sql.write(payload1, 0, payload1.length);
         }
@@ -140,7 +140,7 @@ final class RedoDdlAssembler {
         }
         DdlSchemaChange change = new DdlSchemaChange(
                 table.container(), table.owner(), table.name(), ddlType,
-                sql.toString(databaseCharacterSet), commitScn);
+                databaseCharacterSet.decode(sql.toByteArray()), commitScn);
         return new RedoJsonDdlChange(change);
     }
 

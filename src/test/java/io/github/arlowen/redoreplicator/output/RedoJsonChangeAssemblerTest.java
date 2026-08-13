@@ -8,6 +8,7 @@ package io.github.arlowen.redoreplicator.output;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.RedoBinaryTestSupport;
@@ -126,6 +127,29 @@ class RedoJsonChangeAssemblerTest {
 
         RedoJsonDdlChange ddl = (RedoJsonDdlChange) changes.get(0);
         assertEquals("TRUNCATE TABLE APP.USERS", ddl.change().ddlText());
+    }
+
+    @Test
+    void decodesDdlWithTheOracleCharacterSet() {
+        RedoJsonChangeAssembler zhsAssembler = new RedoJsonChangeAssembler(
+                ByteOrder.LITTLE_ENDIAN,
+                new CharacterSetZHS16GBK(), ignored -> true);
+        byte[] data = {
+                0x41, 0x50, 0x50,
+                (byte) 0xA2, (byte) 0xE3, 0};
+        RedoLogRecord ddl = ddlFragment(1, 1, "APP", 1200);
+        ddl.attachData(data, 0, data.length);
+        ddl.ddlPayload1 = 0;
+        ddl.ddlPayload1Size = 3;
+        ddl.ddlPayload2 = 3;
+        ddl.ddlPayload2Size = 3;
+
+        List<RedoJsonChange> changes = zhsAssembler.assemble(
+                transaction(List.of(RedoTransactionEntry.single(ddl))),
+                catalog(table("APP")));
+
+        RedoJsonDdlChange change = (RedoJsonDdlChange) changes.get(0);
+        assertEquals("\uE76C", change.change().ddlText());
     }
 
     @Test

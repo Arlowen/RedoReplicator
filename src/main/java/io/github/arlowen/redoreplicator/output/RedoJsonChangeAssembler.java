@@ -10,6 +10,8 @@
  */
 package io.github.arlowen.redoreplicator.output;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
+import io.github.arlowen.redoreplicator.charset.CharacterSetJdk;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
@@ -50,7 +52,7 @@ import java.util.function.Predicate;
 public final class RedoJsonChangeAssembler {
     private final RedoRowDecoder rowDecoder;
     private final RedoMultiRowDecoder multiRowDecoder;
-    private final Charset databaseCharacterSet;
+    private final CharacterSet databaseCharacterSet;
     private final SystemDictionaryRedoBridge systemDictionaryBridge;
     private final TableSchemaJsonCodec tableSchemaJsonCodec;
     private final Predicate<String> outputTableFilter;
@@ -63,6 +65,16 @@ public final class RedoJsonChangeAssembler {
     public RedoJsonChangeAssembler(
             ByteOrder byteOrder,
             Charset databaseCharacterSet,
+            Predicate<String> outputTableFilter) {
+        this(byteOrder,
+                new CharacterSetJdk(0, databaseCharacterSet.name(),
+                        databaseCharacterSet),
+                outputTableFilter);
+    }
+
+    public RedoJsonChangeAssembler(
+            ByteOrder byteOrder,
+            CharacterSet databaseCharacterSet,
             Predicate<String> outputTableFilter) {
         rowDecoder = new RedoRowDecoder(Objects.requireNonNull(
                 byteOrder, "byteOrder"));

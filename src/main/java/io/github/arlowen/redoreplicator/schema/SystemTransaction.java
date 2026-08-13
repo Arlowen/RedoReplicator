@@ -10,6 +10,8 @@
  */
 package io.github.arlowen.redoreplicator.schema;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
+import io.github.arlowen.redoreplicator.charset.CharacterSetJdk;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
 
@@ -30,6 +32,12 @@ final class SystemTransaction {
 
     SystemTransaction(Xid xid, SystemDictionaryState baseState,
                       Charset characterSet) {
+        this(xid, baseState, new CharacterSetJdk(
+                0, characterSet.name(), characterSet));
+    }
+
+    SystemTransaction(Xid xid, SystemDictionaryState baseState,
+                      CharacterSet characterSet) {
         this.xid = Objects.requireNonNull(xid, "xid");
         this.baseState = Objects.requireNonNull(baseState, "baseState");
         rowPatcher = new SystemDictionaryRowPatcher(characterSet);

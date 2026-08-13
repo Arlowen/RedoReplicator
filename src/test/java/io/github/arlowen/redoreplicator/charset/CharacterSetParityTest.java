@@ -40,6 +40,16 @@ class CharacterSetParityTest {
         add(actual, "al16.bmp", 2000, "4e2d");
         add(actual, "al16.supplementary", 2000, "d83dde00");
         add(actual, "al16.sequence", 2000, "00414e2d");
+        add(actual, "zhs16gbk.ascii", 852, "41");
+        add(actual, "zhs16gbk.euro", 852, "80");
+        add(actual, "zhs16gbk.chinese", 852, "d6d0cec4");
+        actual.setProperty("zhs16gbk.map_fnv1a64",
+                zhs16gbkMapDigest());
+        add(actual, "we8mswin1252.ascii", 178, "41");
+        add(actual, "we8mswin1252.euro", 178, "80");
+        add(actual, "we8mswin1252.controls", 178, "818d9d");
+        actual.setProperty("we8mswin1252.map_fnv1a64",
+                singleByteMapDigest(178));
 
         assertEquals(expected, actual);
     }
@@ -64,6 +74,18 @@ class CharacterSetParityTest {
                 HexFormat.of().parseHex("d83d")));
         assertEquals("\uFFFD", locales.require(2000).decode(
                 HexFormat.of().parseHex("41")));
+
+        assertEquals("\uFFFD", locales.require(852).decode(
+                HexFormat.of().parseHex("81")));
+        assertEquals("\uFFFD", locales.require(852).decode(
+                HexFormat.of().parseHex("8130")));
+        assertEquals("\uE76C", locales.require(852).decode(
+                HexFormat.of().parseHex("a2e3")));
+        assertEquals("\u2295", locales.require(852).decode(
+                HexFormat.of().parseHex("a892")));
+        assertEquals("\u0081\u008D\u008F\u0090\u009D",
+                locales.require(178).decode(
+                        HexFormat.of().parseHex("818d8f909d")));
     }
 
     @Test
@@ -94,5 +116,37 @@ class CharacterSetParityTest {
             codePoints.append(Integer.toHexString(codePoint));
         });
         actual.setProperty(key, codePoints.toString());
+    }
+
+    private String zhs16gbkMapDigest() {
+        long hash = 0xCBF29CE484222325L;
+        CharacterSet characterSet = locales.require(852);
+        byte[] encoded = new byte[2];
+        for (int byte1 = 0x81; byte1 <= 0xFE; byte1++) {
+            encoded[0] = (byte) byte1;
+            for (int byte2 = 0x40; byte2 <= 0xFE; byte2++) {
+                encoded[1] = (byte) byte2;
+                int codePoint = characterSet.decode(encoded).codePointAt(0);
+                for (int shift = 24; shift >= 0; shift -= 8) {
+                    hash ^= (codePoint >> shift) & 0xFF;
+                    hash *= 0x100000001B3L;
+                }
+            }
+        }
+        return String.format("%016x", hash);
+    }
+
+    private String singleByteMapDigest(long id) {
+        long hash = 0xCBF29CE484222325L;
+        CharacterSet characterSet = locales.require(id);
+        for (int value = 0; value <= 0xFF; value++) {
+            int codePoint = characterSet.decode(
+                    new byte[]{(byte) value}).codePointAt(0);
+            for (int shift = 24; shift >= 0; shift -= 8) {
+                hash ^= (codePoint >> shift) & 0xFF;
+                hash *= 0x100000001B3L;
+            }
+        }
+        return String.format("%016x", hash);
     }
 }

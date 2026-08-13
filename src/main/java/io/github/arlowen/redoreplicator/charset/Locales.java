@@ -10,7 +10,6 @@
  */
 package io.github.arlowen.redoreplicator.charset;
 
-import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -24,10 +23,8 @@ public final class Locales {
         register(new CharacterSetAL32UTF8());
         register(new CharacterSetUTF8());
         register(new CharacterSetAL16UTF16());
-        register(new CharacterSetJdk(
-                852, "ZHS16GBK", Charset.forName("GBK")));
-        register(new CharacterSetJdk(
-                178, "WE8MSWIN1252", Charset.forName("windows-1252")));
+        register(new CharacterSetZHS16GBK());
+        register(new CharacterSetWE8MSWIN1252());
     }
 
     public CharacterSet require(long id) {

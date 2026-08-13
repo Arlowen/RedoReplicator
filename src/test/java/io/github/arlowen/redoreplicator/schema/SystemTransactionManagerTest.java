@@ -6,6 +6,7 @@
  */
 package io.github.arlowen.redoreplicator.schema;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSetZHS16GBK;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.redo.common.IntX;
 import io.github.arlowen.redoreplicator.redo.common.RowId;
@@ -63,6 +64,27 @@ class SystemTransactionManagerTest {
                 schema.columns().stream().map(ColumnSchema::name).toList());
         assertEquals(-1, schema.columns().get(1).precision());
         assertEquals(-1, schema.columns().get(1).scale());
+    }
+
+    @Test
+    void decodesDictionaryTextWithTheOracleCharacterSet() {
+        SystemTransaction transaction = new SystemTransaction(
+                XID_1, SystemDictionaryState.empty(),
+                new CharacterSetZHS16GBK());
+        transaction.apply(insert(
+                SystemDictionaryTable.USER,
+                rowId(0),
+                Map.of(
+                        "USER#", number(USER_ID),
+                        "NAME", SystemDictionaryValue.of(
+                                OracleColumnType.VARCHAR,
+                                new byte[]{(byte) 0xA2, (byte) 0xE3}),
+                        "SPARE1", number(0))));
+
+        SystemDictionaryState state = transaction.commitAgainst(
+                SystemDictionaryState.empty());
+
+        assertEquals("\uE76C", state.users().get(0).name());
     }
 
     @Test

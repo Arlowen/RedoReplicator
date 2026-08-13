@@ -12,4 +12,7 @@ scripts/baseline/run-charset-probe.sh \
 
 Each value is the dot-separated lowercase hexadecimal Unicode code point
 sequence emitted by the upstream decoder. The fixture covers AL32UTF8 (873),
-Oracle UTF8/CESU-8 (871) and AL16UTF16 (2000).
+Oracle UTF8/CESU-8 (871), AL16UTF16 (2000), and ZHS16GBK (852). The
+`zhs16gbk.map_fnv1a64` value covers every upstream two-byte table entry in
+byte order. The WE8MSWIN1252 (178) digest covers all 256 byte values, so the
+compact fixture detects mapping-table drift without committing large tables.

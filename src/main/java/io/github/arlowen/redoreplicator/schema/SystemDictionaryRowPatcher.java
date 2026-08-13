@@ -10,17 +10,17 @@
  */
 package io.github.arlowen.redoreplicator.schema;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.redo.common.IntX;
 import io.github.arlowen.redoreplicator.redo.common.RowId;
 
-import java.nio.charset.Charset;
 import java.util.Map;
 
 final class SystemDictionaryRowPatcher {
     private final SystemDictionaryValueDecoder decoder;
 
-    SystemDictionaryRowPatcher(Charset characterSet) {
+    SystemDictionaryRowPatcher(CharacterSet characterSet) {
         decoder = new SystemDictionaryValueDecoder(characterSet);
     }
 

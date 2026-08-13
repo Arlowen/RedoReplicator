@@ -10,11 +10,10 @@
  */
 package io.github.arlowen.redoreplicator.source;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
 import io.github.arlowen.redoreplicator.charset.Locales;
 import io.github.arlowen.redoreplicator.error.ConfigurationException;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,29 +36,25 @@ public final class OracleRuntimePropertiesReader {
         OracleCharacterSet national = readCharacterSet(
                 connection, "NLS_NCHAR_CHARACTERSET");
         Locales locales = new Locales();
-        validateCharacterSet(locales, database);
+        CharacterSet databaseDecoder = validateCharacterSet(
+                locales, database);
         validateCharacterSet(locales, national);
-        Charset charset;
-        if (database.name().equals("AL32UTF8")) {
-            charset = StandardCharsets.UTF_8;
-        } else if (database.name().equals("ZHS16GBK")) {
-            charset = Charset.forName("GBK");
-        } else if (database.name().equals("WE8MSWIN1252")) {
-            charset = Charset.forName("windows-1252");
-        } else {
+        if (!database.name().equals("AL32UTF8")
+                && !database.name().equals("ZHS16GBK")
+                && !database.name().equals("WE8MSWIN1252")) {
             throw new ConfigurationException(10002,
                     "Oracle database character set is not translated: "
                             + database.name());
         }
         return new OracleRuntimeProperties(
-                database.id(), national.id(), charset, locales,
+                database.id(), national.id(), databaseDecoder, locales,
                 readDatabaseTimeZone(connection));
     }
 
-    private static void validateCharacterSet(
+    private static CharacterSet validateCharacterSet(
             Locales locales, OracleCharacterSet characterSet) {
         try {
-            locales.require(characterSet.id(), characterSet.name());
+            return locales.require(characterSet.id(), characterSet.name());
         } catch (IllegalArgumentException e) {
             throw new ConfigurationException(10002, e.getMessage());
         }

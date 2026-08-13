@@ -3,8 +3,8 @@ set -euo pipefail
 
 expected_commit=6bc92bc1b89255fbc491e3080cb12a4c1dd8e832
 
-if [[ $# -ne 3 ]]; then
-    echo "Usage: $0 <isolated OpenLogReplicator source> <RapidJSON root> <output file>" >&2
+if [[ $# -lt 3 || $# -gt 4 ]]; then
+    echo "Usage: $0 <isolated OpenLogReplicator source> <RapidJSON root> <output file> [probe option]" >&2
     exit 2
 fi
 
@@ -50,5 +50,9 @@ c++ -std=c++17 -DCTXASSERT=0 \
     -pthread \
     -o "$probe_binary"
 
-"$probe_binary" > "$output_file"
+if [[ $# -eq 4 ]]; then
+    "$probe_binary" "$4" > "$output_file"
+else
+    "$probe_binary" > "$output_file"
+fi
 echo "Character-set parity output: $output_file"

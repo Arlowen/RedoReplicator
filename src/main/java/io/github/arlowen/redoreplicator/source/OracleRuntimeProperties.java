@@ -6,16 +6,16 @@
  */
 package io.github.arlowen.redoreplicator.source;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
 import io.github.arlowen.redoreplicator.charset.Locales;
 
-import java.nio.charset.Charset;
 import java.time.ZoneId;
 import java.util.Objects;
 
 public record OracleRuntimeProperties(
         long databaseCharacterSetId,
         long nationalCharacterSetId,
-        Charset databaseCharacterSet,
+        CharacterSet databaseCharacterSet,
         Locales locales,
         ZoneId databaseTimeZone) {
     public OracleRuntimeProperties {

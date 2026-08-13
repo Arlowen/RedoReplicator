@@ -6,19 +6,19 @@
  */
 package io.github.arlowen.redoreplicator.schema;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.redo.common.IntX;
 import io.github.arlowen.redoreplicator.redo.value.OracleNumberDecoder;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.charset.Charset;
 
 final class SystemDictionaryValueDecoder {
     private final OracleNumberDecoder numberDecoder;
-    private final Charset characterSet;
+    private final CharacterSet characterSet;
 
-    SystemDictionaryValueDecoder(Charset characterSet) {
+    SystemDictionaryValueDecoder(CharacterSet characterSet) {
         numberDecoder = new OracleNumberDecoder();
         this.characterSet = characterSet;
     }
@@ -67,7 +67,7 @@ final class SystemDictionaryValueDecoder {
             return "";
         }
         requireType(value, OracleColumnType.VARCHAR, column);
-        String text = new String(value.data(), characterSet);
+        String text = characterSet.decode(value.data());
         if (text.length() > maxLength) {
             throw new DataException(50020,
                     "Dictionary value is too long for column " + column);

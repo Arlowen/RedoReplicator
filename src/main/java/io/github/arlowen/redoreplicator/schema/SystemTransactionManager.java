@@ -9,6 +9,8 @@
  */
 package io.github.arlowen.redoreplicator.schema;
 
+import io.github.arlowen.redoreplicator.charset.CharacterSet;
+import io.github.arlowen.redoreplicator.charset.CharacterSetJdk;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
@@ -26,7 +28,7 @@ public final class SystemTransactionManager {
     private final String container;
     private final long defaultCharacterSetId;
     private final long defaultNationalCharacterSetId;
-    private final Charset dictionaryCharacterSet;
+    private final CharacterSet dictionaryCharacterSet;
     private final SystemDictionarySchemaAssembler schemaAssembler;
     private final TableSchemaJsonCodec jsonCodec;
     private final Map<Xid, SystemTransaction> transactions;
@@ -38,6 +40,19 @@ public final class SystemTransactionManager {
                                     long defaultCharacterSetId,
                                     long defaultNationalCharacterSetId,
                                     Charset dictionaryCharacterSet,
+                                    TableSchemaJsonCodec jsonCodec) {
+        this(dictionaryState, container, defaultCharacterSetId,
+                defaultNationalCharacterSetId,
+                new CharacterSetJdk(0, dictionaryCharacterSet.name(),
+                        dictionaryCharacterSet),
+                jsonCodec);
+    }
+
+    public SystemTransactionManager(SystemDictionaryState dictionaryState,
+                                    String container,
+                                    long defaultCharacterSetId,
+                                    long defaultNationalCharacterSetId,
+                                    CharacterSet dictionaryCharacterSet,
                                     TableSchemaJsonCodec jsonCodec) {
         this.dictionaryState = dictionaryState;
         this.container = container;
