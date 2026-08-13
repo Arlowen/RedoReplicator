@@ -14,15 +14,8 @@
  */
 package io.github.arlowen.redoreplicator.error;
 
-public final class DataException extends IllegalArgumentException {
-    private final int errorCode;
-
+public final class DataException extends RedoReplicatorException {
     public DataException(int errorCode, String message) {
-        super(message);
-        this.errorCode = errorCode;
-    }
-
-    public int getErrorCode() {
-        return errorCode;
+        super(errorCode, message);
     }
 }

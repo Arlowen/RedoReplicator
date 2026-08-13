@@ -10,14 +10,14 @@ src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope
 src/builder/BuilderProtobuf.h	-	excluded	Protobuf output is out of scope
 src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	Translate committed dictionary changes
 src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	Translate committed dictionary changes
-src/common/Attribute.h	io.github.arlowen.redoreplicator.redo.common.Attribute	pending	Translate redo domain model
-src/common/Clock.h	io.github.arlowen.redoreplicator.runtime.SystemClock	pending	Translate clock contract using java.time.Clock
-src/common/ClockHW.cpp	io.github.arlowen.redoreplicator.runtime.SystemClock	pending	Translate wall clock behavior using java.time.Clock
-src/common/ClockHW.h	io.github.arlowen.redoreplicator.runtime.SystemClock	pending	Translate wall clock behavior using java.time.Clock
+src/common/Attribute.h	io.github.arlowen.redoreplicator.redo.common.Attribute	translated	Translated and parity-tested transaction attribute mapping
+src/common/Clock.h	io.github.arlowen.redoreplicator.runtime.ReplicatorClock	translated	Translated wall-clock contract
+src/common/ClockHW.cpp	io.github.arlowen.redoreplicator.runtime.SystemClock	translated	Translated JDK wall-clock implementation
+src/common/ClockHW.h	io.github.arlowen.redoreplicator.runtime.SystemClock	translated	Translated JDK wall-clock implementation
 src/common/Ctx.cpp	io.github.arlowen.redoreplicator.runtime.RedoContext	pending	Translate redo domain model
 src/common/Ctx.h	io.github.arlowen.redoreplicator.runtime.RedoContext	pending	Translate redo domain model
 src/common/DbColumn.h	io.github.arlowen.redoreplicator.redo.common.DbColumn	pending	Translate redo domain model
-src/common/DbIncarnation.h	io.github.arlowen.redoreplicator.redo.common.DbIncarnation	pending	Translate redo domain model
+src/common/DbIncarnation.h	io.github.arlowen.redoreplicator.redo.common.DbIncarnation	translated	Translated and parity-tested database incarnation identity
 src/common/DbLob.cpp	io.github.arlowen.redoreplicator.redo.common.DbLob	pending	Translate redo domain model
 src/common/DbLob.h	io.github.arlowen.redoreplicator.redo.common.DbLob	pending	Translate redo domain model
 src/common/DbTable.cpp	io.github.arlowen.redoreplicator.redo.common.DbTable	pending	Translate redo domain model
@@ -38,18 +38,18 @@ src/common/Thread.cpp	io.github.arlowen.redoreplicator.runtime.ReplicatorTask	pe
 src/common/Thread.h	io.github.arlowen.redoreplicator.runtime.ReplicatorTask	pending	Translate lifecycle and wakeup contract using JDK threads
 src/common/XmlCtx.cpp	io.github.arlowen.redoreplicator.redo.common.XmlCtx	pending	Translate redo domain model
 src/common/XmlCtx.h	io.github.arlowen.redoreplicator.redo.common.XmlCtx	pending	Translate redo domain model
-src/common/exception/BootException.cpp	io.github.arlowen.redoreplicator.error.BootException	pending	Translate domain error
-src/common/exception/BootException.h	io.github.arlowen.redoreplicator.error.BootException	pending	Translate domain error
-src/common/exception/ConfigurationException.cpp	io.github.arlowen.redoreplicator.error.ConfigurationException	pending	Translate domain error
-src/common/exception/ConfigurationException.h	io.github.arlowen.redoreplicator.error.ConfigurationException	pending	Translate domain error
+src/common/exception/BootException.cpp	io.github.arlowen.redoreplicator.error.BootException	translated	Translated and parity-tested boot error
+src/common/exception/BootException.h	io.github.arlowen.redoreplicator.error.BootException	translated	Translated and parity-tested boot error
+src/common/exception/ConfigurationException.cpp	io.github.arlowen.redoreplicator.error.ConfigurationException	translated	Translated and parity-tested configuration error
+src/common/exception/ConfigurationException.h	io.github.arlowen.redoreplicator.error.ConfigurationException	translated	Translated and parity-tested configuration error
 src/common/exception/DataException.cpp	io.github.arlowen.redoreplicator.error.DataException	translated	Translated domain error
 src/common/exception/DataException.h	io.github.arlowen.redoreplicator.error.DataException	translated	Translated domain error
 src/common/exception/NetworkException.cpp	-	excluded	Network output is out of scope
 src/common/exception/NetworkException.h	-	excluded	Network output is out of scope
 src/common/exception/RedoLogException.cpp	io.github.arlowen.redoreplicator.error.RedoLogException	translated	Translated redo format error
 src/common/exception/RedoLogException.h	io.github.arlowen.redoreplicator.error.RedoLogException	translated	Translated redo format error
-src/common/exception/RuntimeException.cpp	io.github.arlowen.redoreplicator.error.RedoRuntimeException	pending	Translate domain error
-src/common/exception/RuntimeException.h	io.github.arlowen.redoreplicator.error.RedoRuntimeException	pending	Translate domain error
+src/common/exception/RuntimeException.cpp	io.github.arlowen.redoreplicator.error.RedoRuntimeException	translated	Translated and parity-tested runtime error
+src/common/exception/RuntimeException.h	io.github.arlowen.redoreplicator.error.RedoRuntimeException	translated	Translated and parity-tested runtime error
 src/common/expression/BoolValue.cpp	-	excluded	Configuration expressions are replaced by Java regular expressions
 src/common/expression/BoolValue.h	-	excluded	Configuration expressions are replaced by Java regular expressions
 src/common/expression/Expression.cpp	-	excluded	Configuration expressions are replaced by Java regular expressions

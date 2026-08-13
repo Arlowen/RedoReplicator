@@ -8,7 +8,13 @@
 #include <limits>
 #include <sstream>
 
+#include "src/common/Attribute.h"
+#include "src/common/DbIncarnation.h"
 #include "src/common/RedoLogRecord.h"
+#include "src/common/exception/BootException.h"
+#include "src/common/exception/ConfigurationException.h"
+#include "src/common/exception/RedoLogException.h"
+#include "src/common/exception/RuntimeException.h"
 #include "src/common/types/IntX.h"
 #include "src/common/types/FileOffset.h"
 #include "src/common/types/LobId.h"
@@ -115,5 +121,22 @@ int main() {
     record.flags = 0xA0;
     record.fb = 0x0C;
     std::cout << "record.formatted=" << record.toString() << '\n';
+
+    std::cout << "attribute.count=" << Attribute::fromString().size() << '\n';
+    std::cout << "attribute.first=" << Attribute::toString(Attribute::KEY::VERSION) << '\n';
+    std::cout << "attribute.last=" << Attribute::toString(Attribute::KEY::SEQ_UPDATE_TRANSACTION) << '\n';
+    std::cout << "attribute.reverse=" << std::dec << static_cast<uint>(Attribute::fromString().at("client id")) << '\n';
+
+    const DbIncarnation incarnation{0xFFFFFFFFU, Scn{100}, Scn{50}, "CURRENT", 200, 0xFFFFFFFEU};
+    std::cout << "incarnation.formatted=" << incarnation << '\n';
+
+    const BootException bootException{10001, "boot failed"};
+    const ConfigurationException configurationException{10002, "configuration failed"};
+    const RedoLogException redoLogException{10003, "redo failed"};
+    const RuntimeException runtimeException{10004, "runtime failed", 55};
+    std::cout << "exception.boot=" << bootException.code << ":" << bootException << '\n';
+    std::cout << "exception.configuration=" << configurationException.code << ":" << configurationException << '\n';
+    std::cout << "exception.redo=" << redoLogException.code << ":" << redoLogException << '\n';
+    std::cout << "exception.runtime=" << runtimeException.code << ":" << runtimeException.supCode << ":" << runtimeException << '\n';
     return 0;
 }

@@ -1,6 +1,6 @@
 /*
  * Java translation derived from OpenLogReplicator:
- * src/common/exception/RedoLogException.h and RedoLogException.cpp
+ * src/common/exception/ConfigurationException.h and ConfigurationException.cpp
  *
  * Copyright (C) 2018-2026 Adam Leszczynski (aleszczynski@bersler.com)
  * Copyright (C) 2026 RedoReplicator contributors
@@ -10,8 +10,8 @@
  */
 package io.github.arlowen.redoreplicator.error;
 
-public final class RedoLogException extends RedoReplicatorException {
-    public RedoLogException(int errorCode, String message) {
+public final class ConfigurationException extends RedoReplicatorException {
+    public ConfigurationException(int errorCode, String message) {
         super(errorCode, message);
     }
 }

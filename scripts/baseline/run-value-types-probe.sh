@@ -38,7 +38,10 @@ c++ -std=c++17 -DCTXASSERT=0 \
     "${include_args[@]}" \
     "$project_dir/scripts/baseline/value-types-probe.cpp" \
     "$source_dir/src/common/types/Data.cpp" \
+    "$source_dir/src/common/exception/BootException.cpp" \
+    "$source_dir/src/common/exception/ConfigurationException.cpp" \
     "$source_dir/src/common/exception/DataException.cpp" \
+    "$source_dir/src/common/exception/RedoLogException.cpp" \
     "$source_dir/src/common/exception/RuntimeException.cpp" \
     -o "$probe_binary"
 
