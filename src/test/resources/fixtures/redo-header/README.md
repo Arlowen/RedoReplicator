@@ -10,4 +10,5 @@ deterministic synthetic Oracle 19c little-endian header. It records the file,
 block, redo record and LWN fields used by the Java parsers. A second synthetic
 big-endian header pins the native-word checksum behavior used by `Reader.cpp`.
 The fixture also records the record member ordering key and vector field-list
-layout produced by the corresponding `Parser.cpp` formulas.
+layout produced by the corresponding `Parser.cpp` formulas. Transaction-control
+fields pin the state extracted by opcode 5.2, 5.4, 5.6 and 5.11 handlers.

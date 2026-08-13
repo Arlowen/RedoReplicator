@@ -137,6 +137,40 @@ int main() {
     std::cout << "vector.size=" << vectorSize << '\n';
     std::cout << "vector.fileOffset=" << (100 * blockSize + 16 + 68) << '\n';
 
+    std::array<uint8_t, 36> beginTransaction{};
+    Ctx::write16Little(beginTransaction.data(), 0x1234);
+    Ctx::write32Little(beginTransaction.data() + 4, 0x89ABCDEF);
+    Ctx::write16Little(beginTransaction.data() + 16, 0x0108);
+    std::array<uint8_t, 4> pdb{};
+    Ctx::write32Little(pdb.data(), 0xF0000001);
+    const Xid beginXid{7, Ctx::read16Little(beginTransaction.data()),
+            Ctx::read32Little(beginTransaction.data() + 4)};
+    std::cout << "opcode0502.xid=" << beginXid.toString() << '\n';
+    std::cout << "opcode0502.flags=" << Ctx::read16Little(beginTransaction.data() + 16) << '\n';
+    std::cout << "opcode0502.databaseId=" << Ctx::read32Little(pdb.data()) << '\n';
+
+    std::array<uint8_t, 20> commit{};
+    Ctx::write16Little(commit.data(), 0x5678);
+    Ctx::write32Little(commit.data() + 4, 0x10203040);
+    commit[16] = 0x06;
+    const Xid commitXid{8, Ctx::read16Little(commit.data()),
+            Ctx::read32Little(commit.data() + 4)};
+    std::cout << "opcode0504.xid=" << commitXid.toString() << '\n';
+    std::cout << "opcode0504.flags=" << static_cast<uint32_t>(commit[16]) << '\n';
+
+    std::array<uint8_t, 24> ktuBlock{};
+    Ctx::write32Little(ktuBlock.data(), 0xF1000001);
+    Ctx::write32Little(ktuBlock.data() + 4, 0xE2000002);
+    ktuBlock[16] = 0x0B;
+    ktuBlock[17] = 0x01;
+    ktuBlock[18] = 0x22;
+    Ctx::write16Little(ktuBlock.data() + 20, 0x010C);
+    std::cout << "opcodeKtu.objectId=" << Ctx::read32Little(ktuBlock.data()) << '\n';
+    std::cout << "opcodeKtu.dataObjectId=" << Ctx::read32Little(ktuBlock.data() + 4) << '\n';
+    std::cout << "opcodeKtu.opCode=" << ((static_cast<uint16_t>(ktuBlock[16]) << 8) | ktuBlock[17]) << '\n';
+    std::cout << "opcodeKtu.slot=" << static_cast<uint32_t>(ktuBlock[18]) << '\n';
+    std::cout << "opcodeKtu.flags=" << Ctx::read16Little(ktuBlock.data() + 20) << '\n';
+
     alignas(8) std::array<uint8_t, blockSize * 2> bigHeader{};
     bigHeader[1] = 0x22;
     Ctx::write32Big(bigHeader.data() + 20, blockSize);
