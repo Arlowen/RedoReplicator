@@ -7,9 +7,11 @@
 package io.github.arlowen.redoreplicator.redo;
 
 import io.github.arlowen.redoreplicator.redo.reader.RedoBlockHeaderParser;
+import io.github.arlowen.redoreplicator.redo.common.Scn;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 public final class RedoBinaryTestSupport {
@@ -52,6 +54,58 @@ public final class RedoBinaryTestSupport {
         checksum = blockParser.calculateChecksum(data, header);
         writeUnsignedShort(data, header + 14, checksum, byteOrder);
         return data;
+    }
+
+    public static byte[] redoFile(
+            ByteOrder byteOrder,
+            int blockSize,
+            long version,
+            long blockCount,
+            Scn nextScn,
+            long sequence,
+            List<byte[]> dataBlocks,
+            int physicalBlockCount) {
+        byte[] file = new byte[physicalBlockCount * blockSize];
+        byte[] header = fileHeader(byteOrder, blockSize, version);
+        System.arraycopy(header, 0, file, 0, header.length);
+        int metadata = blockSize;
+        writeUnsignedInt(file, metadata + 8, sequence, byteOrder);
+        writeUnsignedInt(file, metadata + 156, blockCount, byteOrder);
+        if (nextScn.isNone()) {
+            Arrays.fill(file, metadata + 192, metadata + 198,
+                    (byte) 0xFF);
+        } else {
+            writeScn(file, metadata + 192, nextScn.rawValue(), byteOrder);
+        }
+        rewriteChecksum(file, metadata, byteOrder, blockSize);
+        for (int index = 0; index < dataBlocks.size(); index++) {
+            System.arraycopy(dataBlocks.get(index), 0, file,
+                    (index + 2) * blockSize, blockSize);
+        }
+        return file;
+    }
+
+    public static byte[] redoBlock(
+            ByteOrder byteOrder,
+            int blockSize,
+            long blockNumber,
+            long sequence,
+            byte[] payload) {
+        if (payload.length > blockSize - 16) {
+            throw new IllegalArgumentException(
+                    "Redo block payload is too large");
+        }
+        byte[] block = new byte[blockSize];
+        block[0] = 1;
+        block[1] = 0x22;
+        if (blockSize == 4096) {
+            block[1] = (byte) 0x82;
+        }
+        writeUnsignedInt(block, 4, blockNumber, byteOrder);
+        writeUnsignedInt(block, 8, sequence, byteOrder);
+        System.arraycopy(payload, 0, block, 16, payload.length);
+        rewriteChecksum(block, 0, byteOrder, blockSize);
+        return block;
     }
 
     public static byte[] extendedRecord(int recordSize) {
@@ -140,6 +194,17 @@ public final class RedoBinaryTestSupport {
             data[offset + 2] = (byte) (value >>> 16);
             data[offset + 3] = (byte) (value >>> 24);
         }
+    }
+
+    private static void rewriteChecksum(
+            byte[] bytes, int offset, ByteOrder byteOrder, int blockSize) {
+        writeUnsignedShort(bytes, offset + 14, 0, byteOrder);
+        RedoBlockHeaderParser parser = new RedoBlockHeaderParser(
+                byteOrder, blockSize);
+        int checksum = parser.calculateChecksum(bytes, offset);
+        writeUnsignedShort(bytes, offset + 14, checksum, byteOrder);
+        checksum = parser.calculateChecksum(bytes, offset);
+        writeUnsignedShort(bytes, offset + 14, checksum, byteOrder);
     }
 
     private static void writeEndianMarker(byte[] data, ByteOrder byteOrder) {

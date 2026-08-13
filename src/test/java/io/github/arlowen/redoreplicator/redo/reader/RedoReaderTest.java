@@ -23,7 +23,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -275,56 +274,15 @@ class RedoReaderTest {
             long sequence,
             List<byte[]> dataBlocks,
             int physicalBlockCount) {
-        byte[] file = new byte[physicalBlockCount * BLOCK_SIZE];
-        byte[] header = RedoBinaryTestSupport.fileHeader(
-                ByteOrder.LITTLE_ENDIAN, BLOCK_SIZE, 0x1300_0000L);
-        System.arraycopy(header, 0, file, 0, header.length);
-        int metadata = BLOCK_SIZE;
-        RedoBinaryTestSupport.writeUnsignedInt(
-                file, metadata + 8, sequence, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedInt(
-                file, metadata + 156, blockCount, ByteOrder.LITTLE_ENDIAN);
-        writeScn(file, metadata + 192, nextScn);
-        rewriteChecksum(file, metadata);
-        for (int index = 0; index < dataBlocks.size(); index++) {
-            System.arraycopy(dataBlocks.get(index), 0, file,
-                    (index + 2) * BLOCK_SIZE, BLOCK_SIZE);
-        }
-        return file;
+        return RedoBinaryTestSupport.redoFile(
+                ByteOrder.LITTLE_ENDIAN, BLOCK_SIZE, 0x1300_0000L,
+                blockCount, nextScn, sequence, dataBlocks,
+                physicalBlockCount);
     }
 
     private static byte[] block(long blockNumber, long sequence) {
-        byte[] block = new byte[BLOCK_SIZE];
-        block[0] = 1;
-        block[1] = 0x22;
-        RedoBinaryTestSupport.writeUnsignedInt(
-                block, 4, blockNumber, ByteOrder.LITTLE_ENDIAN);
-        RedoBinaryTestSupport.writeUnsignedInt(
-                block, 8, sequence, ByteOrder.LITTLE_ENDIAN);
-        block[32] = (byte) blockNumber;
-        rewriteChecksum(block, 0);
-        return block;
-    }
-
-    private static void writeScn(byte[] bytes, int offset, Scn scn) {
-        if (scn.isNone()) {
-            Arrays.fill(bytes, offset, offset + 6, (byte) 0xFF);
-            return;
-        }
-        RedoBinaryTestSupport.writeScn(
-                bytes, offset, scn.rawValue(), ByteOrder.LITTLE_ENDIAN);
-    }
-
-    private static void rewriteChecksum(byte[] bytes, int offset) {
-        RedoBinaryTestSupport.writeUnsignedShort(
-                bytes, offset + 14, 0, ByteOrder.LITTLE_ENDIAN);
-        RedoBlockHeaderParser parser = new RedoBlockHeaderParser(
-                ByteOrder.LITTLE_ENDIAN, BLOCK_SIZE);
-        int checksum = parser.calculateChecksum(bytes, offset);
-        RedoBinaryTestSupport.writeUnsignedShort(
-                bytes, offset + 14, checksum, ByteOrder.LITTLE_ENDIAN);
-        checksum = parser.calculateChecksum(bytes, offset);
-        RedoBinaryTestSupport.writeUnsignedShort(
-                bytes, offset + 14, checksum, ByteOrder.LITTLE_ENDIAN);
+        return RedoBinaryTestSupport.redoBlock(
+                ByteOrder.LITTLE_ENDIAN, BLOCK_SIZE,
+                blockNumber, sequence, new byte[0]);
     }
 }

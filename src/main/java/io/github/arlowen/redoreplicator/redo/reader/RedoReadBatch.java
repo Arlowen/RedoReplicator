@@ -19,5 +19,13 @@ public record RedoReadBatch(
         Objects.requireNonNull(status, "status");
         Objects.requireNonNull(startOffset, "startOffset");
         blocks = List.copyOf(blocks);
+        if (status == RedoReadStatus.DATA && blocks.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "DATA redo batch must contain blocks");
+        }
+        if (status != RedoReadStatus.DATA && !blocks.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Only DATA redo batch can contain blocks");
+        }
     }
 }

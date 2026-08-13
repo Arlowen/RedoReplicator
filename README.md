@@ -36,8 +36,10 @@ missing files, and stops on a proven gap, timeout or database identity change.
 A synchronous JDK `FileChannel` reader validates the selected file identity,
 header, block number, sequence and checksum, resumes at a block-aligned offset,
 distinguishes archive completion from online wait, and stops on truncation or
-online overwrite. Parser buffering and the capture lifecycle are not wired to
-the reader yet.
+online overwrite. A streaming parser retains incomplete LWN blocks across read
+batches, advances only at a complete LWN boundary, preserves pre-start
+transaction state and filters output by commit SCN. Multi-thread scheduling,
+JSONL output and the capture lifecycle are not wired yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
