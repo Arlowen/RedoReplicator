@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
+import io.github.arlowen.redoreplicator.redo.RedoBinaryTestSupport;
 import io.github.arlowen.redoreplicator.redo.common.FileOffset;
 import io.github.arlowen.redoreplicator.redo.common.IntX;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
@@ -20,6 +21,8 @@ import io.github.arlowen.redoreplicator.redo.common.Seq;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
 import io.github.arlowen.redoreplicator.redo.transaction.CommittedRedoTransaction;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
+import io.github.arlowen.redoreplicator.redo.parser.RedoOpCodeDispatcher;
+import io.github.arlowen.redoreplicator.redo.parser.RedoOpCodeTestSupport;
 import io.github.arlowen.redoreplicator.schema.ColumnSchema;
 import io.github.arlowen.redoreplicator.schema.OracleColumnType;
 import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
@@ -140,17 +143,7 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
-    void stopsForMultiRowAndIncompleteDdl() {
-        RedoLogRecord undo = undo();
-        RedoLogRecord multiple = redo(0x0B0B);
-        RedoLogException multiRow = assertThrows(
-                RedoLogException.class,
-                () -> assembler.assemble(
-                        transaction(List.of(RedoTransactionEntry.pair(
-                                undo, multiple))),
-                        catalog(table("APP"))));
-        assertEquals(50057, multiRow.getErrorCode());
-
+    void stopsForIncompleteDdl() {
         RedoLogException incompleteDdl = assertThrows(
                 RedoLogException.class,
                 () -> assembler.assemble(
@@ -158,6 +151,40 @@ class RedoJsonChangeAssemblerTest {
                                 ddlFragment(1, 2, "APP", 1000)))),
                         catalog(table("APP"))));
         assertEquals(50057, incompleteDdl.getErrorCode());
+    }
+
+    @Test
+    void assemblesEveryQuickMultiRowInsertInOrder() throws Exception {
+        CommittedRedoTransaction transaction =
+                transaction(List.of(multiInsertEntry()));
+        List<RedoJsonChange> changes = assembler.assemble(
+                transaction,
+                catalog(table("APP")));
+
+        assertEquals(2, changes.size());
+        RedoJsonDmlChange first =
+                (RedoJsonDmlChange) changes.get(0);
+        RedoJsonDmlChange second =
+                (RedoJsonDmlChange) changes.get(1);
+        assertEquals(RowId.of(DATA_OBJECT_ID, 100, 7),
+                first.row().rowId());
+        assertEquals(RowId.of(DATA_OBJECT_ID, 100, 9),
+                second.row().rowId());
+        assertEquals(2, first.row().after().get("ID").data()[1]);
+        assertEquals(3, second.row().after().get("ID").data()[1]);
+
+        BuilderJson builder = new BuilderJson(
+                new OracleJsonValueDecoder(
+                        StandardCharsets.UTF_8, ZoneOffset.UTC),
+                "FREEPDB1", 0);
+        List<byte[]> messages = builder.buildTransaction(
+                transaction, changes);
+        assertEquals(4, messages.size());
+        ObjectMapper objectMapper = new ObjectMapper();
+        assertEquals(1, objectMapper.readTree(messages.get(1))
+                .at("/payload/0/after/ID").intValue());
+        assertEquals(2, objectMapper.readTree(messages.get(2))
+                .at("/payload/0/after/ID").intValue());
     }
 
     @Test
@@ -177,6 +204,26 @@ class RedoJsonChangeAssemblerTest {
     }
 
     @Test
+    void skipsUnselectedQuickMultiRowsWithoutTheirFullSchema()
+            throws Exception {
+        RedoJsonChangeAssembler filtered = new RedoJsonChangeAssembler(
+                ByteOrder.LITTLE_ENDIAN, StandardCharsets.UTF_8,
+                qualifiedName -> qualifiedName.endsWith(".ORDERS"));
+        TableSchema identity = new TableSchema(
+                "FREEPDB1", "APP", "USERS",
+                OBJECT_ID, DATA_OBJECT_ID, 10, 0, 0,
+                List.of(), List.of(), List.of());
+
+        AssembledRedoTransaction assembled = filtered.assembleCommitted(
+                transaction(List.of(multiInsertEntry())),
+                catalog(identity), catalog(identity),
+                systemManager(SystemDictionaryState.empty()));
+
+        assertTrue(assembled.jsonChanges().isEmpty());
+        assertTrue(assembled.schemaVersions().isEmpty());
+    }
+
+    @Test
     void routesCommittedSystemRowsWithoutWritingUserJson() throws Exception {
         RowId rowId = RowId.of(SYS_DATA_OBJECT_ID, 100, 3);
         SystemTransactionManager manager = systemManager(
@@ -191,6 +238,46 @@ class RedoJsonChangeAssemblerTest {
         assertTrue(assembled.schemaVersions().isEmpty());
         assertTrue(manager.dictionaryState().users().isEmpty());
         assertEquals(0, manager.openTransactionCount());
+    }
+
+    @Test
+    void routesEveryQuickMultiRowSystemDelete() throws Exception {
+        SystemTransactionManager manager = systemManager(
+                SystemDictionaryState.of(List.of(
+                        new SysUser(
+                                RowId.of(SYS_DATA_OBJECT_ID, 100, 7),
+                                12, "APP", IntX.zero()),
+                        new SysUser(
+                                RowId.of(SYS_DATA_OBJECT_ID, 100, 9),
+                                13, "AUDIT", IntX.zero()))));
+
+        AssembledRedoTransaction assembled = assembler.assembleCommitted(
+                transaction(List.of(multiSystemDeleteEntry())),
+                catalog(systemTable()), catalog(systemTable()), manager);
+
+        assertTrue(assembled.jsonChanges().isEmpty());
+        assertTrue(assembled.schemaVersions().isEmpty());
+        assertTrue(manager.dictionaryState().users().isEmpty());
+    }
+
+    @Test
+    void routesEveryQuickMultiRowSystemInsert() throws Exception {
+        SystemTransactionManager manager = systemManager(
+                SystemDictionaryState.empty());
+
+        AssembledRedoTransaction assembled = assembler.assembleCommitted(
+                transaction(List.of(multiSystemInsertEntry())),
+                catalog(systemUserTable()), catalog(systemUserTable()),
+                manager);
+
+        assertTrue(assembled.jsonChanges().isEmpty());
+        assertEquals(2, manager.dictionaryState().users().size());
+        assertTrue(manager.dictionaryState().users().stream()
+                .anyMatch(user -> user.userId() == 12
+                        && "APP".equals(user.name())));
+        assertTrue(manager.dictionaryState().users().stream()
+                .anyMatch(user -> user.userId() == 13
+                        && "AUDIT".equals(user.name())));
     }
 
     @Test
@@ -258,6 +345,63 @@ class RedoJsonChangeAssemblerTest {
         return RedoTransactionEntry.pair(undo(), redo(0x0B02));
     }
 
+    private static RedoTransactionEntry multiInsertEntry() {
+        byte[] first = {0, 0, 1, 2, (byte) 0xC1, 2};
+        byte[] second = {0, 0, 1, 2, (byte) 0xC1, 3};
+        return multiInsertEntry(
+                OBJECT_ID, DATA_OBJECT_ID, first, second);
+    }
+
+    private static RedoTransactionEntry multiSystemInsertEntry() {
+        byte[] first = {
+                0, 0, 2,
+                2, (byte) 0xC1, 13,
+                3, 'A', 'P', 'P'};
+        byte[] second = {
+                0, 0, 2,
+                2, (byte) 0xC1, 14,
+                5, 'A', 'U', 'D', 'I', 'T'};
+        return multiInsertEntry(
+                SYS_OBJECT_ID, SYS_DATA_OBJECT_ID, first, second);
+    }
+
+    private static RedoTransactionEntry multiInsertEntry(
+            long objectId,
+            long dataObjectId,
+            byte[] first,
+            byte[] second) {
+        byte[] rows = new byte[first.length + second.length];
+        System.arraycopy(first, 0, rows, 0, first.length);
+        System.arraycopy(second, 0, rows, first.length, second.length);
+        byte[] rowSizes = new byte[4];
+        RedoBinaryTestSupport.writeUnsignedShort(
+                rowSizes, 0, first.length, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                rowSizes, 2, second.length, ByteOrder.LITTLE_ENDIAN);
+        byte[] kdo = RedoOpCodeTestSupport.field(26);
+        kdo[10] = RedoLogRecord.OP_QMI;
+        kdo[18] = 2;
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 20, 7, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 22, 9, ByteOrder.LITTLE_ENDIAN);
+        byte[] ktb = RedoOpCodeTestSupport.field(8);
+        ktb[0] = 0x06;
+        RedoLogRecord redo = RedoOpCodeTestSupport.record(
+                0x0B0B, 0, ktb, kdo, rowSizes, rows);
+        new RedoOpCodeDispatcher(
+                ByteOrder.LITTLE_ENDIAN,
+                RedoLogRecord.REDO_VERSION_19_0).dispatch(redo);
+        redo.xid = XID;
+        redo.obj = objectId;
+        redo.dataObj = dataObjectId;
+        redo.bdba = 100;
+        RedoLogRecord undo = undo();
+        undo.obj = objectId;
+        undo.dataObj = dataObjectId;
+        return RedoTransactionEntry.pair(undo, redo);
+    }
+
     private static RedoTransactionEntry systemDeleteEntry() {
         RedoLogRecord undo = undo();
         undo.obj = SYS_OBJECT_ID;
@@ -265,6 +409,38 @@ class RedoJsonChangeAssemblerTest {
         undo.suppLogBdba = 100;
         undo.suppLogSlot = 3;
         RedoLogRecord redo = redo(0x0B03);
+        redo.obj = SYS_OBJECT_ID;
+        redo.dataObj = SYS_DATA_OBJECT_ID;
+        return RedoTransactionEntry.pair(undo, redo);
+    }
+
+    private static RedoTransactionEntry multiSystemDeleteEntry() {
+        byte[] rows = {0, 0, 0, 0, 0, 0};
+        byte[] rowSizes = new byte[4];
+        RedoBinaryTestSupport.writeUnsignedShort(
+                rowSizes, 0, 3, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                rowSizes, 2, 3, ByteOrder.LITTLE_ENDIAN);
+        byte[] kdo = RedoOpCodeTestSupport.field(26);
+        kdo[10] = RedoLogRecord.OP_QMI;
+        kdo[18] = 2;
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 20, 7, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                kdo, 22, 9, ByteOrder.LITTLE_ENDIAN);
+        byte[] ktb = RedoOpCodeTestSupport.field(8);
+        ktb[0] = 0x06;
+        RedoLogRecord undo = RedoOpCodeTestSupport.record(
+                0x0B0B, 0, ktb, kdo, rowSizes, rows);
+        new RedoOpCodeDispatcher(
+                ByteOrder.LITTLE_ENDIAN,
+                RedoLogRecord.REDO_VERSION_19_0).dispatch(undo);
+        undo.opCode = 0x0501;
+        undo.xid = XID;
+        undo.obj = SYS_OBJECT_ID;
+        undo.dataObj = SYS_DATA_OBJECT_ID;
+
+        RedoLogRecord redo = redo(0x0B0C);
         redo.obj = SYS_OBJECT_ID;
         redo.dataObj = SYS_DATA_OBJECT_ID;
         return RedoTransactionEntry.pair(undo, redo);
@@ -375,6 +551,18 @@ class RedoJsonChangeAssemblerTest {
                 10, 0, 0, List.of(), List.of(), List.of());
     }
 
+    private static TableSchema systemUserTable() {
+        return new TableSchema(
+                "FREEPDB1", "SYS", "USER$",
+                SYS_OBJECT_ID, SYS_DATA_OBJECT_ID,
+                10, 0, 0,
+                List.of(
+                        column(1, "USER#", OracleColumnType.NUMBER),
+                        column(2, "NAME", OracleColumnType.VARCHAR),
+                        column(3, "SPARE1", OracleColumnType.NUMBER)),
+                List.of(), List.of());
+    }
+
     private static TableSchema systemObjectTable() {
         return new TableSchema(
                 "FREEPDB1", "SYS", "OBJ$",
@@ -393,5 +581,16 @@ class RedoJsonChangeAssemblerTest {
                         false, false, false, false,
                         false, false, false, false, false)),
                 List.of(), List.of());
+    }
+
+    private static ColumnSchema column(
+            int segmentColumn,
+            String name,
+            OracleColumnType type) {
+        return new ColumnSchema(
+                segmentColumn, -1, segmentColumn, segmentColumn,
+                name, type, 128, -1, -1, 0, 0,
+                true, false, false, false, false,
+                false, false, false, false);
     }
 }

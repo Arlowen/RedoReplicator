@@ -17,9 +17,10 @@ through transaction spill, partial rollback and commit. Runtime YAML/CLI wiring
 now supplies the spill limit. The default CLI command opens H2, initializes the
 selected-table and SYS dictionaries at the replay SCN, discovers redo
 continuously and commits each complete LWN through JSONL fsync and the H2 safe
-position. Multi-row DML output, LOB reconstruction, the complete charset
-catalog, compressed rows and XDB dictionary families are not complete, so the
-project is not production-ready yet.
+position. Quick multi-row INSERT and DELETE are expanded in original slot order
+for both user JSON and SYS dictionary transactions. LOB reconstruction, the
+complete charset catalog, compressed rows and XDB dictionary families are not
+complete, so the project is not production-ready yet.
 
 Strict YAML loading and the Picocli startup preflight are available. The loader
 rejects unknown or duplicate keys, invalid table regular expressions, duplicate
@@ -66,7 +67,7 @@ can now retain DML/DDL order from their redo entries, assemble supplemental row
 pieces, aggregate numbered DDL fragments and feed the Builder directly. Their
 table catalog is loaded from the latest live H2 schema versions at the requested
 SCN, with pre-commit fallback for dropped objects. Missing schema, incomplete
-DDL and untranslated multi-row DML stop processing instead of silently losing a
+DDL and unsupported row formats stop processing instead of silently losing a
 change. Committed rows for all fifteen translated SYS dictionary tables are
 routed through the system transaction overlay, never emitted as user JSON, and
 publish complete schema versions or drop tombstones at commit. Startup-side

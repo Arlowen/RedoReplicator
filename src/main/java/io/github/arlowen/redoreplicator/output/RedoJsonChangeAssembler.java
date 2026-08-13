@@ -14,14 +14,22 @@ import io.github.arlowen.redoreplicator.error.DataException;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.RedoRecordPair;
+import io.github.arlowen.redoreplicator.redo.common.Xid;
 import io.github.arlowen.redoreplicator.redo.transaction.CommittedRedoTransaction;
+import io.github.arlowen.redoreplicator.redo.transaction.DecodedRedoRow;
+import io.github.arlowen.redoreplicator.redo.transaction.RedoColumnValue;
+import io.github.arlowen.redoreplicator.redo.transaction.RedoMultiRowDecoder;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoRowDecoder;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoRowGroupAssembler;
+import io.github.arlowen.redoreplicator.redo.transaction.RedoRowOperation;
 import io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionEntry;
 import io.github.arlowen.redoreplicator.schema.SchemaCatalog;
 import io.github.arlowen.redoreplicator.schema.SystemDictionaryRedoBridge;
 import io.github.arlowen.redoreplicator.schema.SystemDictionaryRedoChange;
+import io.github.arlowen.redoreplicator.schema.SystemDictionaryChange;
+import io.github.arlowen.redoreplicator.schema.SystemDictionaryOperation;
 import io.github.arlowen.redoreplicator.schema.SystemDictionaryTable;
+import io.github.arlowen.redoreplicator.schema.SystemDictionaryValue;
 import io.github.arlowen.redoreplicator.schema.SystemTransactionCommit;
 import io.github.arlowen.redoreplicator.schema.SystemTransactionManager;
 import io.github.arlowen.redoreplicator.schema.TableSchema;
@@ -32,13 +40,16 @@ import java.io.IOException;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 
 public final class RedoJsonChangeAssembler {
     private final RedoRowDecoder rowDecoder;
+    private final RedoMultiRowDecoder multiRowDecoder;
     private final Charset databaseCharacterSet;
     private final SystemDictionaryRedoBridge systemDictionaryBridge;
     private final TableSchemaJsonCodec tableSchemaJsonCodec;
@@ -55,6 +66,7 @@ public final class RedoJsonChangeAssembler {
             Predicate<String> outputTableFilter) {
         rowDecoder = new RedoRowDecoder(Objects.requireNonNull(
                 byteOrder, "byteOrder"));
+        multiRowDecoder = new RedoMultiRowDecoder(byteOrder);
         systemDictionaryBridge = new SystemDictionaryRedoBridge(byteOrder);
         tableSchemaJsonCodec = new TableSchemaJsonCodec();
         this.databaseCharacterSet = Objects.requireNonNull(
@@ -168,9 +180,14 @@ public final class RedoJsonChangeAssembler {
             return;
         }
         if (operation == 0x05010B0B || operation == 0x05010B0C) {
-            throw new RedoLogException(50057,
-                    "Multi-row DML is not translated at offset "
-                            + entry.first().fileOffset);
+            if (rowAssembler.hasPendingRow()) {
+                throw new RedoLogException(50057,
+                        "Multi-row DML interrupts an incomplete row group at offset "
+                                + entry.first().fileOffset);
+            }
+            appendMultiRows(
+                    schemaCatalog, changes, entry, skipSystemRows);
+            return;
         }
         if (operation == 0x18010000) {
             if (rowAssembler.hasPendingRow()) {
@@ -192,6 +209,32 @@ public final class RedoJsonChangeAssembler {
                     "Unknown committed operation 0x"
                             + Integer.toHexString(operation)
                             + " at offset " + entry.first().fileOffset);
+        }
+    }
+
+    private void appendMultiRows(
+            SchemaCatalog schemaCatalog,
+            List<RedoJsonChange> changes,
+            RedoTransactionEntry entry,
+            boolean skipSystemRows) {
+        RedoLogRecord redo = entry.second().orElseThrow();
+        RedoRecordPair pair = new RedoRecordPair(entry.first(), redo);
+        TableSchema table = resolveTable(List.of(pair), schemaCatalog);
+        if ("SYS".equals(table.owner())) {
+            if (skipSystemRows) {
+                return;
+            }
+            throw new DataException(50071,
+                    "System dictionary redo for "
+                            + table.qualifiedName()
+                            + " must use the system transaction pipeline");
+        }
+        if (!outputTableFilter.test(table.qualifiedName())) {
+            return;
+        }
+        for (DecodedRedoRow row : multiRowDecoder.decode(
+                table, entry.first(), redo)) {
+            changes.add(new RedoJsonDmlChange(row));
         }
     }
 
@@ -259,9 +302,32 @@ public final class RedoJsonChangeAssembler {
                 continue;
             }
             if (operation == 0x05010B0B || operation == 0x05010B0C) {
-                throw new RedoLogException(50057,
-                        "Multi-row DML is not translated at offset "
-                                + entry.first().fileOffset);
+                if (rowAssembler.hasPendingRow()) {
+                    throw new RedoLogException(50057,
+                            "Multi-row DML interrupts an incomplete row group at offset "
+                                    + entry.first().fileOffset);
+                }
+                RedoLogRecord redo = entry.second().orElseThrow();
+                RedoRecordPair pair = new RedoRecordPair(
+                        entry.first(), redo);
+                TableSchema table = resolveTable(
+                        List.of(pair), schemaCatalog);
+                if (!"SYS".equals(table.owner())) {
+                    userRows = true;
+                    continue;
+                }
+                List<DecodedRedoRow> rows = multiRowDecoder.decode(
+                        table, entry.first(), redo);
+                SystemDictionaryTable dictionaryTable =
+                        SystemDictionaryTable.findByTableName(table.name())
+                                .orElseThrow(() -> new DataException(50071,
+                                        "SYS redo table is not translated: "
+                                                + table.qualifiedName()));
+                for (DecodedRedoRow row : rows) {
+                    changes.add(toSystemChange(
+                            transaction.xid(), dictionaryTable, row));
+                }
+                continue;
             }
             if (!isNonOutputOperation(operation)
                     && operation != 0x18010000) {
@@ -278,6 +344,40 @@ public final class RedoJsonChangeAssembler {
                             + transaction.xid());
         }
         return List.copyOf(changes);
+    }
+
+    private static SystemDictionaryRedoChange toSystemChange(
+            Xid xid,
+            SystemDictionaryTable table,
+            DecodedRedoRow row) {
+        if (row.operation() == RedoRowOperation.DELETE) {
+            return new SystemDictionaryRedoChange(
+                    xid, SystemDictionaryChange.delete(
+                            table, row.rowId()));
+        }
+        if (row.operation() != RedoRowOperation.INSERT) {
+            throw new RedoLogException(50057,
+                    "Unsupported multi-row dictionary operation "
+                            + row.operation());
+        }
+        Map<String, SystemDictionaryValue> values =
+                new LinkedHashMap<>();
+        for (Map.Entry<String, RedoColumnValue> entry
+                : row.after().entrySet()) {
+            RedoColumnValue value = entry.getValue();
+            if (value.nullValue()) {
+                values.put(entry.getKey(),
+                        SystemDictionaryValue.nullValue(value.type()));
+            } else {
+                values.put(entry.getKey(),
+                        SystemDictionaryValue.of(
+                                value.type(), value.data()));
+            }
+        }
+        return new SystemDictionaryRedoChange(
+                xid, new SystemDictionaryChange(
+                        SystemDictionaryOperation.INSERT,
+                        table, row.rowId(), values));
     }
 
     private static TableSchema resolveTable(
