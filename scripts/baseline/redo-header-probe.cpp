@@ -206,6 +206,43 @@ int main() {
     std::cout << "opcodeKdo.slot=" << Ctx::read16Little(kdo.data() + 42) << '\n';
     std::cout << "opcodeKdo.nullsOffset=45\n";
 
+    std::array<uint8_t, 20> undoBlock{};
+    Ctx::write16Little(undoBlock.data() + 8, 0x2345);
+    Ctx::write16Little(undoBlock.data() + 10, 0x6789);
+    Ctx::write32Little(undoBlock.data() + 12, 0xABCDEF01);
+    const Xid undoXid{static_cast<typeUsn>(Ctx::read16Little(undoBlock.data() + 8)),
+            Ctx::read16Little(undoBlock.data() + 10),
+            Ctx::read32Little(undoBlock.data() + 12)};
+    std::array<uint8_t, 24> undoKtu{};
+    Ctx::write32Little(undoKtu.data(), 0xF6000006);
+    Ctx::write32Little(undoKtu.data() + 4, 0xE7000007);
+    undoKtu[16] = 0x0B;
+    undoKtu[17] = 0x01;
+    std::array<uint8_t, 26> supplemental{};
+    supplemental[1] = 0x66;
+    Ctx::write16Little(supplemental.data() + 2, 2);
+    Ctx::write16Little(supplemental.data() + 6, 3);
+    Ctx::write16Little(supplemental.data() + 8, 4);
+    Ctx::write32Little(supplemental.data() + 20, 0xD9000009);
+    Ctx::write16Little(supplemental.data() + 24, 0x5566);
+    std::cout << "opcode0501.xid=" << undoXid.toString() << '\n';
+    std::cout << "opcode0501.objectId=" << Ctx::read32Little(undoKtu.data()) << '\n';
+    std::cout << "opcode0501.dataObjectId=" << Ctx::read32Little(undoKtu.data() + 4) << '\n';
+    std::cout << "opcode0501.operation="
+            << ((static_cast<uint16_t>(undoKtu[16]) << 8) | undoKtu[17]) << '\n';
+    std::cout << "opcode0501.supplementalFb="
+            << static_cast<uint32_t>(supplemental[1]) << '\n';
+    std::cout << "opcode0501.supplementalCc="
+            << Ctx::read16Little(supplemental.data() + 2) << '\n';
+    std::cout << "opcode0501.supplementalBefore="
+            << Ctx::read16Little(supplemental.data() + 6) << '\n';
+    std::cout << "opcode0501.supplementalAfter="
+            << Ctx::read16Little(supplemental.data() + 8) << '\n';
+    std::cout << "opcode0501.supplementalBdba="
+            << Ctx::read32Little(supplemental.data() + 20) << '\n';
+    std::cout << "opcode0501.supplementalSlot="
+            << Ctx::read16Little(supplemental.data() + 24) << '\n';
+
     std::array<uint8_t, 40> directLoader{};
     Ctx::write32Little(directLoader.data(), 0xF1000001);
     for (uint32_t index = 0; index < 10; ++index)

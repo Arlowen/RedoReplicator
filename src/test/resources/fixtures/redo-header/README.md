@@ -16,4 +16,5 @@ Session-attribute fields pin the numeric layout and transaction flags used by
 opcode 5.19 and 5.20.
 The KTB fixture pins the transaction identity reused by index and row opcodes.
 The KDO fixture pins row identity, operation, column bitmap and slot fields.
+The 5.1 fixture pins undo transaction, object and supplemental-log fields.
 Direct-loader, DDL and KDLI fixtures pin LOB payload and object identity fields.

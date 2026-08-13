@@ -143,7 +143,7 @@ src/metadata/Serializer.h	-	excluded	Checkpoint JSON serialization is replaced b
 src/metadata/SerializerJson.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
 src/metadata/SerializerJson.h	-	excluded	Checkpoint JSON serialization is replaced by H2
 src/parser/OpCode.h	io.github.arlowen.redoreplicator.parser.OpCode	pending	Translate redo and transaction parsing
-src/parser/OpCode0501.h	io.github.arlowen.redoreplicator.parser.OpCode0501	pending	Translate redo and transaction parsing
+src/parser/OpCode0501.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0501	translated	Translated undo transaction, index, row, supplemental-log and KDLI fields
 src/parser/OpCode0502.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0502	translated	Translated transaction begin fields; dump-only formatting intentionally omitted
 src/parser/OpCode0504.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0504	translated	Translated commit and rollback fields; dump-only formatting intentionally omitted
 src/parser/OpCode0506.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0506	translated	Translated partial rollback fields; dump-only formatting intentionally omitted

@@ -18,6 +18,7 @@ import java.nio.ByteOrder;
 import java.util.Map;
 
 public final class RedoOpCodeDispatcher {
+    private final OpCode0501 opCode0501;
     private final OpCode0502 opCode0502;
     private final OpCode0504 opCode0504;
     private final OpCode0506 opCode0506;
@@ -44,6 +45,7 @@ public final class RedoOpCodeDispatcher {
 
     public RedoOpCodeDispatcher(ByteOrder byteOrder, long redoVersion) {
         RedoByteReader byteReader = new RedoByteReader(byteOrder);
+        opCode0501 = new OpCode0501(byteReader);
         opCode0502 = new OpCode0502(byteReader, redoVersion);
         opCode0504 = new OpCode0504(byteReader);
         opCode0506 = new OpCode0506(byteReader);
@@ -75,6 +77,9 @@ public final class RedoOpCodeDispatcher {
 
     public boolean dispatch(RedoLogRecord record, Map<Attribute, String> transactionAttributes) {
         switch (record.opCode) {
+            case 0x0501:
+                opCode0501.process(record);
+                return true;
             case 0x0502:
                 opCode0502.process(record);
                 return true;
