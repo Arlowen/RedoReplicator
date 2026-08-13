@@ -41,8 +41,11 @@ batches, exposes each complete LWN with its safe position and low-watermark,
 preserves pre-start transaction state and filters output by commit SCN. A
 per-thread stream keeps open transactions across archive sequence switches,
 waits for online redo growth and advances to the exact next sequence only after
-the current file finishes. Multi-thread scheduling, JSONL output and the full
-capture lifecycle are not wired yet.
+the current file finishes. Startup uses the configured/current SCN only when H2
+has no state; recovery ignores YAML, validates the Oracle identity and replays
+from the earliest open-transaction low-watermark or the durable file offset.
+Multi-thread scheduling, JSONL output and the full capture lifecycle are not
+wired yet.
 
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),

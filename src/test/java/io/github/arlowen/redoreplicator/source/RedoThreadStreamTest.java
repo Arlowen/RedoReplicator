@@ -89,6 +89,50 @@ class RedoThreadStreamTest {
     }
 
     @Test
+    void replaysFromLowWatermarkOffsetBeforeLaterCommit()
+            throws Exception {
+        byte[] alreadyDurable = RedoBinaryTestSupport.transactionLwn(
+                FIRST_SCN, 1, 3, 4, 0x0502, 0x1801, 0x0504);
+        Scn beginScn = Scn.of(FIRST_SCN.rawValue() + 50);
+        byte[] openTransaction = RedoBinaryTestSupport.transactionLwn(
+                beginScn, 1, 4, 5, 0x0502, 0x1801);
+        OracleRedoLog first = archive(
+                77, "low-watermark77.arc",
+                List.of(alreadyDurable, openTransaction));
+        Scn commitScn = Scn.of(FIRST_SCN.rawValue() + 100);
+        OracleRedoLog second = archive(
+                78, "low-watermark78.arc",
+                RedoBinaryTestSupport.transactionLwn(
+                        commitScn, 1, 4, 5, 0x0504));
+        OracleRedoCatalogPoller poller = poller(
+                List.of(first, second), List.of());
+
+        try (RedoTransactionBuffer transactionBuffer =
+                     new RedoTransactionBuffer();
+             RedoThreadStream stream = new RedoThreadStream(
+                     poller, first, DATABASE_IDENTITY, beginScn,
+                     FileOffset.fromBlock(3, BLOCK_SIZE),
+                     transactionBuffer, 8, true)) {
+            RedoThreadBatch replay = stream.read();
+            assertEquals(1, replay.parsedLwns().size());
+            assertEquals(beginScn, replay.parsedLwns().get(0)
+                    .position().scn());
+            assertEquals(FileOffset.fromBlock(3, BLOCK_SIZE),
+                    replay.parsedLwns().get(0).lowWatermarkPosition()
+                            .orElseThrow().offset());
+            assertEquals(1, transactionBuffer.openTransactionCount());
+
+            assertEquals(RedoReadStatus.FINISHED, stream.read().status());
+            RedoThreadBatch commit = stream.read();
+            assertEquals(1, commit.parsedLwns().get(0)
+                    .committedTransactions().size());
+            assertEquals(commitScn, commit.parsedLwns().get(0)
+                    .committedTransactions().get(0)
+                    .commitPosition().scn());
+        }
+    }
+
+    @Test
     void waitsForOnlineGrowthThenFinishesSwitchedLog()
             throws Exception {
         long sequence = 90;
@@ -135,10 +179,21 @@ class RedoThreadStreamTest {
 
     private OracleRedoLog archive(
             long sequence, String name, byte[] payload) throws Exception {
+        return archive(sequence, name, List.of(payload));
+    }
+
+    private OracleRedoLog archive(
+            long sequence, String name, List<byte[]> payloads)
+            throws Exception {
         Path path = redoDirectory.resolve(name);
+        List<byte[]> blocks = new java.util.ArrayList<>(payloads.size());
+        for (int index = 0; index < payloads.size(); index++) {
+            blocks.add(redoBlock(index + 2L, sequence,
+                    payloads.get(index)));
+        }
         Files.write(path, redoFile(
-                sequence, 3, NEXT_SCN,
-                List.of(redoBlock(2, sequence, payload)), 3));
+                sequence, blocks.size() + 2L, NEXT_SCN,
+                blocks, blocks.size() + 2));
         return new OracleRedoLog(
                 OracleRedoLogKind.ARCHIVED, THREAD, Seq.of(sequence),
                 FIRST_SCN, NEXT_SCN, "A", path.toString(), path);
