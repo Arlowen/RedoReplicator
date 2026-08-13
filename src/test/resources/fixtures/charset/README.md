@@ -30,3 +30,8 @@ cover the complete 94 by 94 valid three-byte rectangle beginning with `8F`.
 The `gb18030.*` values fix ZHS32GB18030 identity and consumption samples, all
 single bytes and byte pairs, all 50,400 valid group-1 four-byte entries and all
 1,058,400 valid supplementary group-2 entries.
+The `taiwan.<id>` values fix ZHT32EUC, ZHT32TRIS and ZHT16HKSCS31 identities,
+all single bytes and byte pairs, every valid four-byte table entry and staged
+invalid-sequence consumption at bytes one through four.
+The 138 `catalog.<id>.name` values fix the complete upstream registration set,
+including identities that share a decoder or mapping table.

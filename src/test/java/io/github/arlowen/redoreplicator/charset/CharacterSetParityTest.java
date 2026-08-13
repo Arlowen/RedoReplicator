@@ -130,6 +130,47 @@ class CharacterSetParityTest {
                 actual.setProperty(key, japaneseEucTripleMapDigest(id));
             }
         }
+        actual.setProperty("taiwan.860.name", locales.require(860).name());
+        actual.setProperty("taiwan.860.single_fnv1a64",
+                singleByteMapDigest(860));
+        actual.setProperty("taiwan.860.pair_fnv1a64",
+                bytePairMapDigest(860));
+        actual.setProperty("taiwan.860.four_fnv1a64",
+                rectangularFourByteMapDigest(
+                        860, 0x8E, 0xA2, 0xAE,
+                        0xA1, 0xF2, 0xA1, 0xFE));
+        add(actual, "taiwan.860.invalid_byte1", 860, "8041");
+        add(actual, "taiwan.860.invalid_byte2", 860, "8ea141");
+        add(actual, "taiwan.860.invalid_byte3", 860, "8ea28041");
+        add(actual, "taiwan.860.invalid_byte4", 860,
+                "8ea2a18041");
+        actual.setProperty("taiwan.863.name", locales.require(863).name());
+        actual.setProperty("taiwan.863.single_fnv1a64",
+                singleByteMapDigest(863));
+        actual.setProperty("taiwan.863.pair_fnv1a64",
+                bytePairMapDigest(863));
+        actual.setProperty("taiwan.863.four_fnv1a64",
+                rectangularFourByteMapDigest(
+                        863, 0x8E, 0xA1, 0xAE,
+                        0xA1, 0xFE, 0xA1, 0xFE));
+        add(actual, "taiwan.863.invalid_byte3", 863, "8ea18041");
+        actual.setProperty("taiwan.992.name", locales.require(992).name());
+        actual.setProperty("taiwan.992.single_fnv1a64",
+                singleByteMapDigest(992));
+        actual.setProperty("taiwan.992.pair_fnv1a64",
+                bytePairMapDigest(992));
+        String catalogPrefix = "catalog.";
+        String catalogSuffix = ".name";
+        for (String key : expected.stringPropertyNames()) {
+            if (!key.startsWith(catalogPrefix)
+                    || !key.endsWith(catalogSuffix)) {
+                continue;
+            }
+            int end = key.length() - catalogSuffix.length();
+            long id = Long.parseLong(
+                    key.substring(catalogPrefix.length(), end));
+            actual.setProperty(key, locales.require(id).name());
+        }
 
         assertEquals(expected, actual);
     }
@@ -291,6 +332,31 @@ class CharacterSetParityTest {
                             hash ^= (codePoint >> shift) & 0xFF;
                             hash *= 0x100000001B3L;
                         }
+                    }
+                }
+            }
+        }
+        return String.format("%016x", hash);
+    }
+
+    private String rectangularFourByteMapDigest(
+            long id, int byte1, int byte2Min, int byte2Max,
+            int byte3Min, int byte3Max, int byte4Min, int byte4Max) {
+        long hash = 0xCBF29CE484222325L;
+        CharacterSet characterSet = locales.require(id);
+        byte[] encoded = new byte[4];
+        encoded[0] = (byte) byte1;
+        for (int byte2 = byte2Min; byte2 <= byte2Max; byte2++) {
+            encoded[1] = (byte) byte2;
+            for (int byte3 = byte3Min; byte3 <= byte3Max; byte3++) {
+                encoded[2] = (byte) byte3;
+                for (int byte4 = byte4Min; byte4 <= byte4Max; byte4++) {
+                    encoded[3] = (byte) byte4;
+                    int codePoint = characterSet.decode(encoded)
+                            .codePointAt(0);
+                    for (int shift = 24; shift >= 0; shift -= 8) {
+                        hash ^= (codePoint >> shift) & 0xFF;
+                        hash *= 0x100000001B3L;
                     }
                 }
             }

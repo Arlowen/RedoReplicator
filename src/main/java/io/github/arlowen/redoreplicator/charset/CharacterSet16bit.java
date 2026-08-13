@@ -22,12 +22,19 @@ public class CharacterSet16bit extends CharacterSet {
     protected CharacterSet16bit(
             long id, String name, int byte1Min, int byte1Max,
             int byte2Min, int byte2Max, String encodedMap) {
+        this(id, name, byte1Min, byte1Max, byte2Min, byte2Max,
+                CharacterSetMap.decode(encodedMap));
+    }
+
+    protected CharacterSet16bit(
+            long id, String name, int byte1Min, int byte1Max,
+            int byte2Min, int byte2Max, int[] unicodeMap) {
         super(id, name);
         this.byte1Min = byte1Min;
         this.byte1Max = byte1Max;
         this.byte2Min = byte2Min;
         this.byte2Max = byte2Max;
-        unicodeMap = CharacterSetMap.decode(encodedMap);
+        this.unicodeMap = unicodeMap;
     }
 
     @Override

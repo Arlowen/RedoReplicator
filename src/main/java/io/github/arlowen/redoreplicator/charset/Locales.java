@@ -34,6 +34,7 @@ public final class Locales {
         register(new CharacterSetAL16UTF16());
         register(new CharacterSetZHS16GBK());
         registerZhs32Gb18030();
+        registerTaiwanCharacterSets();
     }
 
     public CharacterSet require(long id) {
@@ -189,6 +190,17 @@ public final class Locales {
                 maps.get("ZHS32GB18030_2b"),
                 maps.get("ZHS32GB18030_4b1"),
                 maps.get("ZHS32GB18030_4b2")));
+    }
+
+    private void registerTaiwanCharacterSets() {
+        Map<String, String> maps = loadCharacterSetMaps(
+                "oracle-taiwan-catalog.tsv");
+        register(new CharacterSetZHT32EUC(
+                maps.get("ZHT32EUC_2b"), maps.get("ZHT32EUC_4b")));
+        register(new CharacterSetZHT32TRIS(
+                maps.get("ZHT32TRIS_4b")));
+        register(new CharacterSetZHT16HKSCS31(
+                maps.get("ZHT16HKSCS31_2b")));
     }
 
     private Map<String, String> loadCharacterSetMaps(String resourceName) {

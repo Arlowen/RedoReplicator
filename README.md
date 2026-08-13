@@ -23,14 +23,15 @@ dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK,
 all 14 upstream 7-bit character sets, all 101 upstream 8-bit character sets and
 all eight generic 16-bit character sets, all six Japanese EUC/SJIS identities
 and KO16KSCCS plus ZHS32GB18030 use upstream-compatible decoders across user
-values, DDL and SYS
-dictionary changes, including NCHAR/NVARCHAR values. Inline BLOB/CLOB locators
+values, DDL and SYS dictionary changes, including NCHAR/NVARCHAR values. The
+three specialized Taiwan identities complete all 138 upstream registrations.
+Inline BLOB/CLOB locators
 are decoded directly. In-index and classic out-of-row locators reconstruct
 direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
 including orphan pages later bound to a parent transaction and transactions
 spilled to disk. KDLI list-map chains and their incremental updates are also
-reconstructed. The complete charset catalog and XDB dictionary families are not
-complete, so the project is not production-ready yet. As in the upstream
+reconstructed. XDB dictionary families are not complete, so the project is not
+production-ready yet. As in the upstream
 Builder, Oracle compressed user rows are preserved losslessly as one RAW
 `COMPRESSED` field rather than presented as decoded logical columns.
 
@@ -209,6 +210,14 @@ The ZHS32GB18030 two-byte and four-byte tables use their dedicated generator:
 scripts/baseline/generate-character-set-gb18030-catalog.py \
   /Users/pika/codex-cli-worker/OpenLogReplicator \
   src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-gb18030-catalog.tsv
+```
+
+The three specialized Taiwan character sets are regenerated together:
+
+```bash
+scripts/baseline/generate-character-set-taiwan-catalog.py \
+  /Users/pika/codex-cli-worker/OpenLogReplicator \
+  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-taiwan-catalog.tsv
 ```
 
 ## Source migration coverage

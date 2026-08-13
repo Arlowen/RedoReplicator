@@ -160,6 +160,36 @@ namespace {
         }
         return hash;
     }
+
+    uint64_t rectangularFourByteMapDigest(
+            const CharacterSet* characterSet, const Ctx* ctx,
+            uint64_t byte1, uint64_t byte2Min, uint64_t byte2Max,
+            uint64_t byte3Min, uint64_t byte3Max,
+            uint64_t byte4Min, uint64_t byte4Max) {
+        uint64_t hash = 14695981039346656037ULL;
+        for (uint64_t byte2 = byte2Min; byte2 <= byte2Max; ++byte2) {
+            for (uint64_t byte3 = byte3Min; byte3 <= byte3Max; ++byte3) {
+                for (uint64_t byte4 = byte4Min;
+                     byte4 <= byte4Max; ++byte4) {
+                    const uint8_t encoded[]{
+                        static_cast<uint8_t>(byte1),
+                        static_cast<uint8_t>(byte2),
+                        static_cast<uint8_t>(byte3),
+                        static_cast<uint8_t>(byte4)
+                    };
+                    const uint8_t* current = encoded;
+                    uint64_t remaining = 4;
+                    const typeUnicode codePoint = characterSet->decode(
+                            ctx, Xid(), current, remaining);
+                    for (int shift = 24; shift >= 0; shift -= 8) {
+                        hash ^= (codePoint >> shift) & 0xFF;
+                        hash *= 1099511628211ULL;
+                    }
+                }
+            }
+        }
+        return hash;
+    }
 }
 
 int main(int argc, char** argv) {
@@ -292,6 +322,58 @@ int main(int argc, char** argv) {
                       << japaneseEucTripleMapDigest(
                               characterSet, &ctx) << '\n';
         }
+    }
+
+    const CharacterSet* zht32euc = locales.characterMap.at(860);
+    std::cout << "taiwan.860.name=" << zht32euc->name << '\n';
+    std::cout << "taiwan.860.single_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << singleByteMapDigest(zht32euc, &ctx) << '\n';
+    std::cout << "taiwan.860.pair_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << bytePairMapDigest(zht32euc, &ctx) << '\n';
+    std::cout << "taiwan.860.four_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << rectangularFourByteMapDigest(
+                      zht32euc, &ctx, 0x8E, 0xA2, 0xAE,
+                      0xA1, 0xF2, 0xA1, 0xFE) << '\n';
+    print(locales, 860, "taiwan.860.invalid_byte1",
+          {0x80, 0x41}, &ctx);
+    print(locales, 860, "taiwan.860.invalid_byte2",
+          {0x8E, 0xA1, 0x41}, &ctx);
+    print(locales, 860, "taiwan.860.invalid_byte3",
+          {0x8E, 0xA2, 0x80, 0x41}, &ctx);
+    print(locales, 860, "taiwan.860.invalid_byte4",
+          {0x8E, 0xA2, 0xA1, 0x80, 0x41}, &ctx);
+
+    const CharacterSet* zht32tris = locales.characterMap.at(863);
+    std::cout << "taiwan.863.name=" << zht32tris->name << '\n';
+    std::cout << "taiwan.863.single_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << singleByteMapDigest(zht32tris, &ctx) << '\n';
+    std::cout << "taiwan.863.pair_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << bytePairMapDigest(zht32tris, &ctx) << '\n';
+    std::cout << "taiwan.863.four_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << rectangularFourByteMapDigest(
+                      zht32tris, &ctx, 0x8E, 0xA1, 0xAE,
+                      0xA1, 0xFE, 0xA1, 0xFE) << '\n';
+    print(locales, 863, "taiwan.863.invalid_byte3",
+          {0x8E, 0xA1, 0x80, 0x41}, &ctx);
+
+    const CharacterSet* hkscs31 = locales.characterMap.at(992);
+    std::cout << "taiwan.992.name=" << hkscs31->name << '\n';
+    std::cout << "taiwan.992.single_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << singleByteMapDigest(hkscs31, &ctx) << '\n';
+    std::cout << "taiwan.992.pair_fnv1a64=" << std::hex
+              << std::setfill('0') << std::setw(16)
+              << bytePairMapDigest(hkscs31, &ctx) << '\n';
+
+    for (const auto& [id, characterSet] : locales.characterMap) {
+        std::cout << "catalog." << std::dec << id << ".name="
+                  << characterSet->name << '\n';
     }
     return 0;
 }
