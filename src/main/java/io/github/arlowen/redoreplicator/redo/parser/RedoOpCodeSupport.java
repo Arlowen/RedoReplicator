@@ -13,6 +13,7 @@ package io.github.arlowen.redoreplicator.redo.parser;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.RedoByteReader;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
+import io.github.arlowen.redoreplicator.redo.common.Xid;
 
 public final class RedoOpCodeSupport {
     public static final int FLG_KTUCF_0504 = 0x0002;
@@ -38,6 +39,40 @@ public final class RedoOpCodeSupport {
                 | (record.data()[absolutePosition + 17] & 0xFF);
         record.slt = record.data()[absolutePosition + 18] & 0xFF;
         record.flg = byteReader.readUnsignedShort(record.data(), absolutePosition + 20);
+    }
+
+    public static void readKtbRedo(RedoByteReader byteReader, RedoLogRecord record,
+                                   int fieldPosition, int fieldSize) {
+        if (fieldSize < 8) {
+            return;
+        }
+
+        int absolutePosition = record.dataOffset() + fieldPosition;
+        int operation = record.data()[absolutePosition] & 0x0F;
+        int flags = record.data()[absolutePosition + 1] & 0xFF;
+        int startPosition = 4;
+        if ((flags & 0x08) != 0) {
+            startPosition = 8;
+        }
+
+        if (operation == 0x02) {
+            requireSize(record, fieldSize, startPosition + 8, "KTB Redo C");
+            return;
+        }
+        if (operation == 0x04) {
+            requireSize(record, fieldSize, startPosition + 24, "KTB Redo L2");
+            return;
+        }
+        if (operation != 0x01) {
+            return;
+        }
+
+        requireSize(record, fieldSize, startPosition + 16, "KTB Redo F");
+        int xidPosition = absolutePosition + startPosition;
+        int undoSegment = byteReader.readUnsignedShort(record.data(), xidPosition);
+        int slot = byteReader.readUnsignedShort(record.data(), xidPosition + 2);
+        long sequence = byteReader.readUnsignedInt(record.data(), xidPosition + 4);
+        record.xid = Xid.of(undoSegment, slot, sequence);
     }
 
     public static void requireSize(RedoLogRecord record, int fieldSize,

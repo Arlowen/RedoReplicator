@@ -171,6 +171,17 @@ int main() {
     std::cout << "opcodeKtu.slot=" << static_cast<uint32_t>(ktuBlock[18]) << '\n';
     std::cout << "opcodeKtu.flags=" << Ctx::read16Little(ktuBlock.data() + 20) << '\n';
 
+    std::array<uint8_t, 24> ktbRedo{};
+    ktbRedo[0] = 0x01;
+    ktbRedo[1] = 0x08;
+    Ctx::write16Little(ktbRedo.data() + 8, 0x1234);
+    Ctx::write16Little(ktbRedo.data() + 10, 0x5678);
+    Ctx::write32Little(ktbRedo.data() + 12, 0x9ABCDEF0);
+    const Xid ktbXid{static_cast<typeUsn>(Ctx::read16Little(ktbRedo.data() + 8)),
+            Ctx::read16Little(ktbRedo.data() + 10),
+            Ctx::read32Little(ktbRedo.data() + 12)};
+    std::cout << "opcodeKtb.xid=" << ktbXid.toString() << '\n';
+
     std::array<uint8_t, 8> sessionAttribute{};
     Ctx::write16Little(sessionAttribute.data() + 2, 0x9ABC);
     Ctx::write32Little(sessionAttribute.data() + 4, 0xF1234567);
