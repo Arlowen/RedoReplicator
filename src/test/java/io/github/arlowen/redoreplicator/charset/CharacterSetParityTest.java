@@ -75,6 +75,24 @@ class CharacterSetParityTest {
                 actual.setProperty(key, locales.require(id).name());
             }
         }
+        String sixteenPrefix = "sixteen.";
+        for (String key : expected.stringPropertyNames()) {
+            if (!key.startsWith(sixteenPrefix)) {
+                continue;
+            }
+            int propertySeparator = key.indexOf('.', sixteenPrefix.length());
+            long id = Long.parseLong(key.substring(
+                    sixteenPrefix.length(), propertySeparator));
+            if (key.endsWith(".name")) {
+                actual.setProperty(key, locales.require(id).name());
+            }
+            if (key.endsWith(".single_fnv1a64")) {
+                actual.setProperty(key, singleByteMapDigest(id));
+            }
+            if (key.endsWith(".pair_fnv1a64")) {
+                actual.setProperty(key, bytePairMapDigest(id));
+            }
+        }
 
         assertEquals(expected, actual);
     }
@@ -170,6 +188,29 @@ class CharacterSetParityTest {
             for (int shift = 24; shift >= 0; shift -= 8) {
                 hash ^= (codePoint >> shift) & 0xFF;
                 hash *= 0x100000001B3L;
+            }
+        }
+        return String.format("%016x", hash);
+    }
+
+    private String bytePairMapDigest(long id) {
+        long hash = 0xCBF29CE484222325L;
+        CharacterSet characterSet = locales.require(id);
+        byte[] encoded = new byte[2];
+        for (int byte1 = 0; byte1 <= 0xFF; byte1++) {
+            encoded[0] = (byte) byte1;
+            for (int byte2 = 0; byte2 <= 0xFF; byte2++) {
+                encoded[1] = (byte) byte2;
+                int[] codePoints = characterSet.decode(encoded)
+                        .codePoints().toArray();
+                hash ^= codePoints.length;
+                hash *= 0x100000001B3L;
+                for (int codePoint : codePoints) {
+                    for (int shift = 24; shift >= 0; shift -= 8) {
+                        hash ^= (codePoint >> shift) & 0xFF;
+                        hash *= 0x100000001B3L;
+                    }
+                }
             }
         }
         return String.format("%016x", hash);

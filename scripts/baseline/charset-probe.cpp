@@ -9,8 +9,10 @@
 #include <string>
 #include <vector>
 
+#include "common/Ctx.h"
 #include "common/types/Xid.h"
 #include "locales/CharacterSet.h"
+#include "locales/CharacterSet16bit.h"
 #include "locales/CharacterSet8bit.h"
 #include "locales/Locales.h"
 
@@ -61,14 +63,15 @@ namespace {
         return hash;
     }
 
-    uint64_t singleByteMapDigest(const CharacterSet* characterSet) {
+    uint64_t singleByteMapDigest(
+            const CharacterSet* characterSet, const Ctx* ctx = nullptr) {
         uint64_t hash = 14695981039346656037ULL;
         for (uint64_t byte = 0; byte <= 0xFF; ++byte) {
             const uint8_t encoded[]{static_cast<uint8_t>(byte)};
             const uint8_t* current = encoded;
             uint64_t remaining = 1;
             const typeUnicode codePoint = characterSet->decode(
-                    nullptr, Xid(), current, remaining);
+                    ctx, Xid(), current, remaining);
             for (int shift = 24; shift >= 0; shift -= 8) {
                 hash ^= (codePoint >> shift) & 0xFF;
                 hash *= 1099511628211ULL;
@@ -76,9 +79,39 @@ namespace {
         }
         return hash;
     }
+
+    uint64_t bytePairMapDigest(
+            const CharacterSet* characterSet, const Ctx* ctx) {
+        uint64_t hash = 14695981039346656037ULL;
+        for (uint64_t byte1 = 0; byte1 <= 0xFF; ++byte1) {
+            for (uint64_t byte2 = 0; byte2 <= 0xFF; ++byte2) {
+                const uint8_t encoded[]{static_cast<uint8_t>(byte1),
+                                        static_cast<uint8_t>(byte2)};
+                const uint8_t* current = encoded;
+                uint64_t remaining = 2;
+                typeUnicode codePoints[2];
+                uint64_t count = 0;
+                while (remaining > 0) {
+                    codePoints[count++] = characterSet->decode(
+                            ctx, Xid(), current, remaining);
+                }
+                hash ^= count;
+                hash *= 1099511628211ULL;
+                for (uint64_t index = 0; index < count; ++index) {
+                    for (int shift = 24; shift >= 0; shift -= 8) {
+                        hash ^= (codePoints[index] >> shift) & 0xFF;
+                        hash *= 1099511628211ULL;
+                    }
+                }
+            }
+        }
+        return hash;
+    }
 }
 
 int main(int argc, char** argv) {
+    Ctx ctx;
+    ctx.logLevel = Ctx::LOG::SILENT;
     Locales locales;
     locales.initialize();
 
@@ -146,6 +179,21 @@ int main(int argc, char** argv) {
         std::cout << "eight." << std::dec << id << ".map_fnv1a64="
                   << std::hex << std::setfill('0') << std::setw(16)
                   << singleByteMapDigest(characterSet) << '\n';
+    }
+
+    const uint64_t sixteenBitIds[]{829, 840, 846, 850, 865, 866, 867, 868};
+    for (const uint64_t id : sixteenBitIds) {
+        const CharacterSet* characterSet = locales.characterMap.at(id);
+        std::cout << "sixteen." << std::dec << id << ".name="
+                  << characterSet->name << '\n';
+        std::cout << "sixteen." << std::dec << id
+                  << ".single_fnv1a64=" << std::hex << std::setfill('0')
+                  << std::setw(16) << singleByteMapDigest(
+                          characterSet, &ctx) << '\n';
+        std::cout << "sixteen." << std::dec << id
+                  << ".pair_fnv1a64=" << std::hex << std::setfill('0')
+                  << std::setw(16) << bytePairMapDigest(
+                          characterSet, &ctx) << '\n';
     }
     return 0;
 }

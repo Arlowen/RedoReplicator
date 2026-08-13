@@ -27,6 +27,7 @@ public final class Locales {
         characterSets = new HashMap<>();
         register7BitCharacterSets();
         register8BitCharacterSets();
+        register16BitCharacterSets();
         register(new CharacterSetAL32UTF8());
         register(new CharacterSetUTF8());
         register(new CharacterSetAL16UTF16());
@@ -127,6 +128,34 @@ public final class Locales {
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Failed to load Oracle 8-bit character-set catalog", e);
+        }
+    }
+
+    private void register16BitCharacterSets() {
+        InputStream input = Locales.class.getResourceAsStream(
+                "oracle-16bit-catalog.tsv");
+        if (input == null) {
+            throw new IllegalStateException(
+                    "Oracle 16-bit character-set catalog is missing");
+        }
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank() || line.startsWith("#")) {
+                    continue;
+                }
+                String[] fields = line.split("\\t", 7);
+                register(new CharacterSet16bit(
+                        Long.parseLong(fields[0]), fields[1],
+                        Integer.parseInt(fields[2]),
+                        Integer.parseInt(fields[3]),
+                        Integer.parseInt(fields[4]),
+                        Integer.parseInt(fields[5]), fields[6]));
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Failed to load Oracle 16-bit character-set catalog", e);
         }
     }
 }

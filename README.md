@@ -20,8 +20,9 @@ continuously and commits each complete LWN through JSONL fsync and the H2 safe
 position. Quick multi-row INSERT and DELETE are expanded in original slot order
 for both user JSON and SYS dictionary transactions. Text values retain their
 dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK,
-all 14 upstream 7-bit character sets and all 101 upstream 8-bit character sets
-use upstream-compatible decoders across user values, DDL and SYS
+all 14 upstream 7-bit character sets, all 101 upstream 8-bit character sets and
+all eight generic 16-bit character sets use upstream-compatible decoders across
+user values, DDL and SYS
 dictionary changes, including NCHAR/NVARCHAR values. Inline BLOB/CLOB locators
 are decoded directly. In-index and classic out-of-row locators reconstruct
 direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
@@ -183,6 +184,14 @@ fixed source checkout:
 scripts/baseline/generate-character-set-8bit-catalog.py \
   /Users/pika/codex-cli-worker/OpenLogReplicator \
   src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-8bit-catalog.tsv
+```
+
+The generic 16-bit catalog uses the corresponding generator and fixed checkout:
+
+```bash
+scripts/baseline/generate-character-set-16bit-catalog.py \
+  /Users/pika/codex-cli-worker/OpenLogReplicator \
+  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-16bit-catalog.tsv
 ```
 
 ## Source migration coverage

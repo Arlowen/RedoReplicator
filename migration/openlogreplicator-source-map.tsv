@@ -95,8 +95,8 @@ src/common/types/Types.h	io.github.arlowen.redoreplicator.redo.common.RedoConsta
 src/common/types/Xid.h	io.github.arlowen.redoreplicator.redo.common.Xid	translated	Translated and parity-tested fixed-width redo value type
 src/locales/CharacterSet.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet	pending	Base identity and replacement behavior implemented; remaining concrete catalog and warning diagnostics are pending
 src/locales/CharacterSet.h	io.github.arlowen.redoreplicator.charset.CharacterSet	pending	Base identity and decode contract implemented; remaining concrete catalog is pending
-src/locales/CharacterSet16bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	pending	Translate Oracle character set decoder
-src/locales/CharacterSet16bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	pending	Translate Oracle character set decoder
+src/locales/CharacterSet16bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	translated	All eight generic mapping tables plus ASCII malformed and truncated consumption behavior translated and verified against fixed C++ exhaustive byte-pair digests
+src/locales/CharacterSet16bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	translated	Oracle identities byte ranges rectangular lookup and decode contract translated and parity-tested for the complete generic 16-bit catalog
 src/locales/CharacterSet7bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet7bit	translated	All 14 upstream mapping tables and high-bit masking behavior translated and verified by fixed C++ digests over every input byte
 src/locales/CharacterSet7bit.h	io.github.arlowen.redoreplicator.charset.CharacterSet7bit	translated	Oracle character-set identity and one-byte decode contract translated and parity-tested for the complete 7-bit catalog
 src/locales/CharacterSet8bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet8bit	translated	All 101 registered upstream maps including four custom ASCII tables are mechanically translated and verified by fixed C++ digests over every input byte
@@ -127,8 +127,8 @@ src/locales/CharacterSetZHT32EUC.cpp	io.github.arlowen.redoreplicator.charset.Ch
 src/locales/CharacterSetZHT32EUC.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32EUC	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32TRIS.cpp	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
 src/locales/CharacterSetZHT32TRIS.h	io.github.arlowen.redoreplicator.charset.CharacterSetZHT32TRIS	pending	Translate Oracle character set decoder
-src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Unicode core ZHS16GBK and complete 7-bit and 8-bit registrations implemented and parity-tested; remaining multibyte Oracle catalog is pending
-src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Character-set id and name lookup plus complete 7-bit and 8-bit registration implemented; remaining multibyte catalog is pending
+src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	pending	Unicode core ZHS16GBK and complete 7-bit 8-bit and generic 16-bit registrations implemented and parity-tested; specialized multibyte catalog remains
+src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	pending	Character-set id and name lookup plus complete 7-bit 8-bit and generic 16-bit registration implemented; specialized multibyte catalog remains
 src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Picocli help/version, strict YAML, validation, continuous capture, graceful shutdown, lifecycle/status, backup/restore and rewind entry points are implemented
 src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated
 src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated

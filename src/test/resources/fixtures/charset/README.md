@@ -22,3 +22,5 @@ The `eight.<id>.map_fnv1a64` values cover all 101 registered upstream 8-bit
 character sets across every possible input byte, including the four custom
 ASCII maps. The adjacent `eight.<id>.name` values also fix every Oracle
 registration identity.
+The `sixteen.<id>` values fix all eight generic 16-bit identities, every
+single-byte truncated input and all 65,536 possible byte pairs per identity.
