@@ -8,8 +8,8 @@ src/builder/BuilderJson.cpp	io.github.arlowen.redoreplicator.output.BuilderJson	
 src/builder/BuilderJson.h	io.github.arlowen.redoreplicator.output.BuilderJson	pending	Translate native JSON construction
 src/builder/BuilderProtobuf.cpp	-	excluded	Protobuf output is out of scope
 src/builder/BuilderProtobuf.h	-	excluded	Protobuf output is out of scope
-src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families and the parsed redo row bridge have transaction replay tests; transaction routing and XDB families remain
-src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families and the parsed redo row bridge have transaction replay tests; transaction routing and XDB families remain
+src/builder/SystemTransaction.cpp	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families and the parsed redo row bridge have transaction replay tests; automatic system routing and XDB families remain
+src/builder/SystemTransaction.h	io.github.arlowen.redoreplicator.schema.SystemTransaction	pending	All fifteen SYS families and the parsed redo row bridge have transaction replay tests; automatic system routing and XDB families remain
 src/common/Attribute.h	io.github.arlowen.redoreplicator.redo.common.Attribute	translated	Translated and parity-tested transaction attribute mapping
 src/common/Clock.h	io.github.arlowen.redoreplicator.runtime.ReplicatorClock	translated	Translated wall-clock contract
 src/common/ClockHW.cpp	io.github.arlowen.redoreplicator.runtime.SystemClock	translated	Translated JDK wall-clock implementation
@@ -29,8 +29,8 @@ src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.common.LobData	pend
 src/common/LobData.h	io.github.arlowen.redoreplicator.redo.common.LobData	pending	Translate redo domain model
 src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
 src/common/LobKey.h	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
-src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
-src/common/MemoryManager.h	io.github.arlowen.redoreplicator.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
+src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
+src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	Translate transaction spill and cleanup behavior
 src/common/OraProtoBuf.pb.cpp	-	excluded	Protobuf output is out of scope
 src/common/OraProtoBuf.pb.h	-	excluded	Protobuf output is out of scope
 src/common/RedoLogRecord.h	io.github.arlowen.redoreplicator.redo.common.RedoLogRecord	translated	Translated record model and field traversal cursor with parity tests
@@ -167,12 +167,12 @@ src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1301	
 src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1801	translated	Translated DDL XID, type, fragment sequence, payload fields, temporary-object filtering and object identity
 src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A02	translated	Translated KTB and KDLI LOB operation fields
 src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A06	translated	Translated KDLI before-image payload and record object identity
-src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, cross-block LWN and vector parsing started; opcode and transaction behavior remains
-src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, cross-block LWN and vector parsing started; opcode and transaction behavior remains
-src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
-src/parser/Transaction.h	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
-src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.parser.TransactionBuffer	pending	Translate redo and transaction parsing
-src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.parser.TransactionBuffer	pending	Translate redo and transaction parsing
+src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, LWN, vector and opcode dispatch now route in-memory transactions; metadata filtering, multiblock undo, LOB and output integration remain
+src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, LWN, vector and opcode dispatch now route in-memory transactions; metadata filtering, multiblock undo, LOB and output integration remain
+src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	In-memory entries, rollback matching, commit snapshots and row grouping implemented; multiblock undo, LOB, multi-row and output flush remain
+src/parser/Transaction.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransaction	pending	In-memory entries, rollback matching, commit snapshots and row grouping implemented; multiblock undo, LOB, multi-row and output flush remain
+src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Transaction slot lookup, interleaving, commit, rollback and low-watermark implemented; spill, multiblock undo and orphaned LOB handling remain
+src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.redo.transaction.RedoTransactionBuffer	pending	Transaction slot lookup, interleaving, commit, rollback and low-watermark implemented; spill, multiblock undo and orphaned LOB handling remain
 src/reader/Reader.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	File and block headers started; asynchronous filesystem lifecycle remains
 src/reader/Reader.h	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	File and block headers started; asynchronous filesystem lifecycle remains
 src/reader/ReaderFilesystem.cpp	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader
