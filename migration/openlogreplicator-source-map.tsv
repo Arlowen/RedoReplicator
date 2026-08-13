@@ -1,6 +1,6 @@
 source_path	target_java_type	status	notes
-src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle scripts and atomic non-authoritative status are wired; rewind, backup and restore remain
-src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle scripts and atomic non-authoritative status are wired; rewind, backup and restore remain
+src/OpenLogReplicator.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status and stopped-state backup are wired; rewind and restore remain
+src/OpenLogReplicator.h	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Strict YAML, preflight, lock, continuous capture, SIGTERM shutdown, lifecycle/status and stopped-state backup are wired; rewind and restore remain
 src/StreamClient.cpp	-	excluded	Network stream client is out of scope
 src/builder/Builder.cpp	io.github.arlowen.redoreplicator.output.RedoJsonChangeAssembler	pending	Ordered user and SYS row routing, quick multi-row insert/delete, DDL assembly, typed values and native JSON conversion translated; compressed rows and LOB reconstruction remain
 src/builder/Builder.h	io.github.arlowen.redoreplicator.output.OracleJsonValueDecoder	pending	Oracle NUMBER, timestamp, RAW, binary float, interval, UROWID and BOOLEAN conversion translated; charset catalog and LOB reconstruction remain

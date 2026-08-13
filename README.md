@@ -122,6 +122,11 @@ REDO_REPLICATOR_JAR="$PWD/target/redo-replicator-0.1.0-SNAPSHOT.jar" \
   bin/validate.sh --help
 ```
 
+With capture stopped, `bin/backup.sh` creates a private ZIP under
+`data/backups/`. It contains the closed H2 file, YAML, optional status snapshot
+and a manifest with database identity and SHA-256 values. JSONL output and
+`data/tmp/` transaction spill are deliberately excluded.
+
 ## Compare JSONL output
 
 The stage 1 comparator checks JSONL line by line. JSON object key order and whitespace are ignored; array order, field types and values remain significant.

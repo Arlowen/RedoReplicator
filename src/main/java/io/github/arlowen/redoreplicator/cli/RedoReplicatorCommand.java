@@ -17,6 +17,7 @@ import io.github.arlowen.redoreplicator.source.OracleConnectionFactory;
 import io.github.arlowen.redoreplicator.source.OracleSourceValidation;
 import io.github.arlowen.redoreplicator.source.OracleSourceValidator;
 import io.github.arlowen.redoreplicator.state.StateDatabase;
+import io.github.arlowen.redoreplicator.state.StateBackupService;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -40,6 +41,7 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
     private final ConfigurationLoader configurationLoader;
     private final OracleSourceValidator sourceValidator;
     private final OracleCaptureRunner captureRunner;
+    private final StateBackupService backupService;
 
     @Option(
             names = {"-f", "--file"},
@@ -58,6 +60,11 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
             description = "Validate configuration, Oracle and redo file access, then exit")
     private boolean validateOnly;
 
+    @Option(
+            names = "--backup",
+            description = "Back up stopped H2 state, YAML and runtime status, then exit")
+    private boolean backup;
+
     public RedoReplicatorCommand() {
         this(new ConfigurationLoader(), new OracleSourceValidator(),
                 new OracleCaptureRunner());
@@ -70,6 +77,7 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
         this.configurationLoader = configurationLoader;
         this.sourceValidator = sourceValidator;
         this.captureRunner = captureRunner;
+        backupService = new StateBackupService();
     }
 
     @Override
@@ -79,6 +87,15 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
                     installationDirectory, configurationFile);
             for (String warning : configuration.warnings()) {
                 System.err.println("WARNING: " + warning);
+            }
+            if (backup && validateOnly) {
+                throw new ConfigurationException(
+                        30001, "--backup cannot be combined with --validate");
+            }
+            if (backup) {
+                Path backupFile = backupService.backup(configuration);
+                System.out.println("Backup created: " + backupFile);
+                return 0;
             }
             OracleConnectionFactory connectionFactory =
                     new OracleConnectionFactory(
