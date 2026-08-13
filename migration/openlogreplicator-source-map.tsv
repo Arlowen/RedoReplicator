@@ -167,14 +167,14 @@ src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.parser.OpCode1301	pendi
 src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.parser.OpCode1801	pending	Translate redo and transaction parsing
 src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.parser.OpCode1A02	pending	Translate redo and transaction parsing
 src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.parser.OpCode1A06	pending	Translate redo and transaction parsing
-src/parser/Parser.cpp	io.github.arlowen.redoreplicator.parser.Parser	pending	Translate redo and transaction parsing
-src/parser/Parser.h	io.github.arlowen.redoreplicator.parser.Parser	pending	Translate redo and transaction parsing
+src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header and LWN parsing started; vector, opcode and transaction behavior remains
+src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header and LWN parsing started; vector, opcode and transaction behavior remains
 src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
 src/parser/Transaction.h	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
 src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.parser.TransactionBuffer	pending	Translate redo and transaction parsing
 src/parser/TransactionBuffer.h	io.github.arlowen.redoreplicator.parser.TransactionBuffer	pending	Translate redo and transaction parsing
-src/reader/Reader.cpp	io.github.arlowen.redoreplicator.reader.Reader	pending	Translate filesystem redo reader
-src/reader/Reader.h	io.github.arlowen.redoreplicator.reader.Reader	pending	Translate filesystem redo reader
+src/reader/Reader.cpp	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	File and block headers started; asynchronous filesystem lifecycle remains
+src/reader/Reader.h	io.github.arlowen.redoreplicator.redo.reader.RedoReader	pending	File and block headers started; asynchronous filesystem lifecycle remains
 src/reader/ReaderFilesystem.cpp	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader
 src/reader/ReaderFilesystem.h	io.github.arlowen.redoreplicator.reader.ReaderFilesystem	pending	Translate filesystem redo reader
 src/replicator/DatabaseConnection.cpp	io.github.arlowen.redoreplicator.source.OracleConnection	pending	Translate online discovery using JDBC and local redo files
