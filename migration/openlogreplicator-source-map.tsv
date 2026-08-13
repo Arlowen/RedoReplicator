@@ -42,8 +42,8 @@ src/common/exception/BootException.cpp	io.github.arlowen.redoreplicator.error.Bo
 src/common/exception/BootException.h	io.github.arlowen.redoreplicator.error.BootException	pending	Translate domain error
 src/common/exception/ConfigurationException.cpp	io.github.arlowen.redoreplicator.error.ConfigurationException	pending	Translate domain error
 src/common/exception/ConfigurationException.h	io.github.arlowen.redoreplicator.error.ConfigurationException	pending	Translate domain error
-src/common/exception/DataException.cpp	io.github.arlowen.redoreplicator.error.DataException	pending	Translate domain error
-src/common/exception/DataException.h	io.github.arlowen.redoreplicator.error.DataException	pending	Translate domain error
+src/common/exception/DataException.cpp	io.github.arlowen.redoreplicator.error.DataException	translated	Translated domain error
+src/common/exception/DataException.h	io.github.arlowen.redoreplicator.error.DataException	translated	Translated domain error
 src/common/exception/NetworkException.cpp	-	excluded	Network output is out of scope
 src/common/exception/NetworkException.h	-	excluded	Network output is out of scope
 src/common/exception/RedoLogException.cpp	io.github.arlowen.redoreplicator.error.RedoLogException	pending	Translate domain error
@@ -84,15 +84,15 @@ src/common/table/XdbXPt.h	io.github.arlowen.redoreplicator.redo.common.XdbXPt	pe
 src/common/table/XdbXQn.h	io.github.arlowen.redoreplicator.redo.common.XdbXQn	pending	Translate redo domain model
 src/common/types/Data.cpp	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
 src/common/types/Data.h	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
-src/common/types/FileOffset.h	io.github.arlowen.redoreplicator.redo.common.FileOffset	pending	Translate fixed-width redo value type
+src/common/types/FileOffset.h	io.github.arlowen.redoreplicator.redo.common.FileOffset	translated	Translated and parity-tested fixed-width redo value type
 src/common/types/IntX.h	io.github.arlowen.redoreplicator.redo.common.IntX	pending	Translate fixed-width redo value type
 src/common/types/LobId.h	io.github.arlowen.redoreplicator.redo.common.LobId	pending	Translate fixed-width redo value type
-src/common/types/RowId.h	io.github.arlowen.redoreplicator.redo.common.RowId	pending	Translate fixed-width redo value type
-src/common/types/Scn.h	io.github.arlowen.redoreplicator.redo.common.Scn	pending	Translate fixed-width redo value type
-src/common/types/Seq.h	io.github.arlowen.redoreplicator.redo.common.Seq	pending	Translate fixed-width redo value type
+src/common/types/RowId.h	io.github.arlowen.redoreplicator.redo.common.RowId	translated	Translated and parity-tested fixed-width redo value type
+src/common/types/Scn.h	io.github.arlowen.redoreplicator.redo.common.Scn	translated	Translated and parity-tested fixed-width redo value type
+src/common/types/Seq.h	io.github.arlowen.redoreplicator.redo.common.Seq	translated	Translated and parity-tested fixed-width redo value type
 src/common/types/Time.h	io.github.arlowen.redoreplicator.redo.common.Time	pending	Translate fixed-width redo value type
-src/common/types/Types.h	io.github.arlowen.redoreplicator.redo.common.RedoConstants	pending	Translate fixed-width redo value type
-src/common/types/Xid.h	io.github.arlowen.redoreplicator.redo.common.Xid	pending	Translate fixed-width redo value type
+src/common/types/Types.h	io.github.arlowen.redoreplicator.redo.common.RedoConstants	translated	Translated primitive aliases as Java primitives and parity-tested UBA helpers
+src/common/types/Xid.h	io.github.arlowen.redoreplicator.redo.common.Xid	translated	Translated and parity-tested fixed-width redo value type
 src/locales/CharacterSet.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet	pending	Translate Oracle character set decoder
 src/locales/CharacterSet.h	io.github.arlowen.redoreplicator.charset.CharacterSet	pending	Translate Oracle character set decoder
 src/locales/CharacterSet16bit.cpp	io.github.arlowen.redoreplicator.charset.CharacterSet16bit	pending	Translate Oracle character set decoder
