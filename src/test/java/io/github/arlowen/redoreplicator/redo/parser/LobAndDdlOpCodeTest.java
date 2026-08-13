@@ -68,6 +68,32 @@ class LobAndDdlOpCodeTest {
     }
 
     @Test
+    void decodesDdlTypeSequenceAndPayloadFields() {
+        byte[] header = ddlHeader(3, 15, 2, 4);
+        byte[] schemaOrChunk = new byte[]{0x41, 0x50, 0x50};
+        byte[] finalChunk = new byte[]{0x41, 0x4C, 0x54, 0x45, 0x52};
+        RedoLogRecord record = RedoOpCodeTestSupport.record(
+                0x1801, 0,
+                header,
+                schemaOrChunk,
+                empty(), empty(), empty(), empty(), empty(),
+                finalChunk,
+                empty(), empty(), empty(),
+                unsignedIntField(0xE200_0002L));
+
+        assertTrue(dispatcher.dispatch(record));
+
+        assertEquals(15, record.ddlType);
+        assertEquals(3, record.ddlObjectType);
+        assertEquals(2, record.ddlSequence);
+        assertEquals(4, record.ddlCount);
+        assertArrayEquals(schemaOrChunk,
+                bytes(record, record.ddlPayload1, record.ddlPayload1Size));
+        assertArrayEquals(finalChunk,
+                bytes(record, record.ddlPayload2, record.ddlPayload2Size));
+    }
+
+    @Test
     void ignoresTemporaryDdlObject() {
         byte[] header = ddlHeader(4);
         RedoLogRecord record = RedoOpCodeTestSupport.record(
@@ -157,6 +183,26 @@ class LobAndDdlOpCodeTest {
                 header, 8, 0x9ABC_DEF0L, ByteOrder.LITTLE_ENDIAN);
         RedoBinaryTestSupport.writeUnsignedShort(
                 header, 16, ddlType, ByteOrder.LITTLE_ENDIAN);
+        return header;
+    }
+
+    private static byte[] ddlHeader(int objectType, int statementType,
+                                    int sequence, int count) {
+        byte[] header = RedoOpCodeTestSupport.field(22);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                header, 4, 0x1234, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                header, 6, 0x5678, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedInt(
+                header, 8, 0x9ABC_DEF0L, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                header, 12, statementType, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                header, 16, objectType, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                header, 18, sequence, ByteOrder.LITTLE_ENDIAN);
+        RedoBinaryTestSupport.writeUnsignedShort(
+                header, 20, count, ByteOrder.LITTLE_ENDIAN);
         return header;
     }
 

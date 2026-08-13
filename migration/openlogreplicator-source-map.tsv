@@ -135,8 +135,8 @@ src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.state.RuntimeState	pe
 src/metadata/Metadata.cpp	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/Metadata.h	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/RedoLog.h	io.github.arlowen.redoreplicator.schema.RedoLog	pending	Translate schema and redo metadata
-src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial Flashback dictionary assembly translated; system transaction and DDL mutation remain
-src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial Flashback dictionary assembly translated; system transaction and DDL mutation remain
+src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial dictionary, DDL snapshots, tombstones, and H2/Flashback/redo resolution translated; system transaction replay remains
+src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial dictionary, DDL snapshots, tombstones, and H2/Flashback/redo resolution translated; system transaction replay remains
 src/metadata/SchemaElement.h	io.github.arlowen.redoreplicator.schema.SchemaElement	pending	Translate schema and redo metadata
 src/metadata/Serializer.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
 src/metadata/Serializer.h	-	excluded	Checkpoint JSON serialization is replaced by H2
@@ -164,7 +164,7 @@ src/parser/OpCode0B0C.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B0C	
 src/parser/OpCode0B10.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B10	translated	Translated KTB and KDO row state
 src/parser/OpCode0B16.h	io.github.arlowen.redoreplicator.redo.parser.OpCode0B16	translated	Translated KTB and KDO row state
 src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1301	translated	Translated direct-loader LOB identity, page and payload location
-src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1801	translated	Translated DDL XID, temporary-object filtering and object identity
+src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1801	translated	Translated DDL XID, type, fragment sequence, payload fields, temporary-object filtering and object identity
 src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A02	translated	Translated KTB and KDLI LOB operation fields
 src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.redo.parser.OpCode1A06	translated	Translated KDLI before-image payload and record object identity
 src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, cross-block LWN and vector parsing started; opcode and transaction behavior remains

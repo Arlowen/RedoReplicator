@@ -30,12 +30,29 @@ public final class OpCode1801 {
         int slot = byteReader.readUnsignedShort(record.data(), absolutePosition + 6);
         long sequence = byteReader.readUnsignedInt(record.data(), absolutePosition + 8);
         record.xid = Xid.of(undoSegment, slot, sequence);
-        int ddlType = byteReader.readUnsignedShort(record.data(), absolutePosition + 16);
-        boolean validDdl = isPersistentDdl(ddlType);
+        record.ddlType = byteReader.readUnsignedShort(record.data(), absolutePosition + 12);
+        record.ddlObjectType = byteReader.readUnsignedShort(
+                record.data(), absolutePosition + 16);
+        boolean validDdl = isPersistentDdl(record.ddlObjectType);
+
+        if (fields.fieldSize() >= 22) {
+            record.ddlSequence = byteReader.readUnsignedShort(
+                    record.data(), absolutePosition + 18);
+            record.ddlCount = byteReader.readUnsignedShort(
+                    record.data(), absolutePosition + 20);
+        }
 
         for (int fieldNumber = 2; fieldNumber <= 12; fieldNumber++) {
             if (!fields.nextOptional()) {
                 return;
+            }
+            if (fieldNumber == 2) {
+                record.ddlPayload1 = fields.fieldPosition();
+                record.ddlPayload1Size = fields.fieldSize();
+            }
+            if (fieldNumber == 8) {
+                record.ddlPayload2 = fields.fieldPosition();
+                record.ddlPayload2Size = fields.fieldSize();
             }
         }
         if (validDdl) {

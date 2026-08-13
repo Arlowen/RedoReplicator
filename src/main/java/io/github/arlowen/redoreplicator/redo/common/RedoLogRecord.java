@@ -135,6 +135,15 @@ public final class RedoLogRecord {
     public long recordObj;
     public long recordDataObj;
 
+    public int ddlType;
+    public int ddlObjectType;
+    public int ddlSequence;
+    public int ddlCount;
+    public int ddlPayload1;
+    public int ddlPayload1Size;
+    public int ddlPayload2;
+    public int ddlPayload2Size;
+
     public RedoLogRecord() {
         clear();
     }
@@ -244,6 +253,15 @@ public final class RedoLogRecord {
         seq = 0;
         recordObj = 0;
         recordDataObj = 0;
+
+        ddlType = 0;
+        ddlObjectType = 0;
+        ddlSequence = 0;
+        ddlCount = 0;
+        ddlPayload1 = 0;
+        ddlPayload1Size = 0;
+        ddlPayload2 = 0;
+        ddlPayload2Size = 0;
     }
 
     @Override

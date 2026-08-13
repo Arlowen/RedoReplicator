@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class OracleDictionaryReader {
+public final class OracleDictionaryReader implements TableSchemaLoader {
     private static final String DATABASE_CHARACTER_SET = "NLS_CHARACTERSET";
     private static final String NATIONAL_CHARACTER_SET = "NLS_NCHAR_CHARACTERSET";
 
@@ -33,6 +33,7 @@ public final class OracleDictionaryReader {
         schemaAssembler = new OracleSchemaAssembler();
     }
 
+    @Override
     public Optional<TableSchema> loadTable(Connection connection, String owner,
                                            String tableName, Scn targetScn)
             throws SQLException {
