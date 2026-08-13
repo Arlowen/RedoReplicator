@@ -82,8 +82,8 @@ src/common/table/XdbTtSet.h	io.github.arlowen.redoreplicator.redo.common.XdbTtSe
 src/common/table/XdbXNm.h	io.github.arlowen.redoreplicator.redo.common.XdbXNm	pending	Translate redo domain model
 src/common/table/XdbXPt.h	io.github.arlowen.redoreplicator.redo.common.XdbXPt	pending	Translate redo domain model
 src/common/table/XdbXQn.h	io.github.arlowen.redoreplicator.redo.common.XdbXQn	pending	Translate redo domain model
-src/common/types/Data.cpp	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
-src/common/types/Data.h	io.github.arlowen.redoreplicator.redo.common.Data	pending	Translate fixed-width redo value type
+src/common/types/Data.cpp	io.github.arlowen.redoreplicator.redo.common.Data	translated	Maps bases parses all timezone aliases converts AD and BC epochs escapes bytes and validates identifiers with fixed C++ parity
+src/common/types/Data.h	io.github.arlowen.redoreplicator.redo.common.Data	translated	Maps bases parses all timezone aliases converts AD and BC epochs escapes bytes and validates identifiers with fixed C++ parity
 src/common/types/FileOffset.h	io.github.arlowen.redoreplicator.redo.common.FileOffset	translated	Translated and parity-tested fixed-width redo value type
 src/common/types/IntX.h	io.github.arlowen.redoreplicator.redo.common.IntX	translated	Translated and parity-tested unsigned 128-bit value type
 src/common/types/LobId.h	io.github.arlowen.redoreplicator.redo.common.LobId	translated	Translated and parity-tested fixed-width LOB identifier

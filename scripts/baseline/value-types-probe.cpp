@@ -16,6 +16,7 @@
 #include "src/common/exception/RedoLogException.h"
 #include "src/common/exception/RuntimeException.h"
 #include "src/common/types/IntX.h"
+#include "src/common/types/Data.h"
 #include "src/common/types/FileOffset.h"
 #include "src/common/types/LobId.h"
 #include "src/common/types/RowId.h"
@@ -32,6 +33,79 @@ namespace OpenLogReplicator {
 }
 
 int main() {
+    int64_t timezone;
+    std::cout << "data.timezone.prc="
+              << Data::parseTimezone("PRC", timezone) << ":" << timezone << '\n';
+    std::cout << "data.timezone.pst="
+              << Data::parseTimezone("PST8PDT", timezone) << ":" << timezone << '\n';
+    std::cout << "data.timezone.negative="
+              << Data::parseTimezone("-05:30", timezone) << ":" << timezone << '\n';
+    std::cout << "data.timezone.invalid="
+              << Data::parseTimezone("Asia/Shanghai", timezone) << '\n';
+    constexpr const char* timezoneAliases[]{
+        "Etc/GMT-14", "Etc/GMT-13", "Etc/GMT-12", "Etc/GMT-11",
+        "HST", "Etc/GMT-10", "Etc/GMT-9", "PST", "PST8PDT",
+        "Etc/GMT-8", "MST", "MST7MDT", "Etc/GMT-7", "CST",
+        "CST6CDT", "Etc/GMT-6", "EST", "EST5EDT", "Etc/GMT-5",
+        "Etc/GMT-4", "Etc/GMT-3", "Etc/GMT-2", "Etc/GMT-1",
+        "GMT", "Etc/GMT", "Greenwich", "Etc/Greenwich", "GMT0",
+        "Etc/GMT0", "GMT+0", "Etc/GMT-0", "Etc/GMT+0", "UTC",
+        "Etc/UTC", "UCT", "Etc/UCT", "Universal", "Etc/Universal",
+        "WET", "MET", "CET", "Etc/GMT+1", "EET", "Etc/GMT+2",
+        "Etc/GMT+3", "Etc/GMT+4", "Etc/GMT+5", "Etc/GMT+6",
+        "Etc/GMT+7", "PRC", "ROC", "Etc/GMT+8", "Etc/GMT+9",
+        "Etc/GMT+10", "Etc/GMT+11", "Etc/GMT+12"
+    };
+    std::cout << "data.timezone.aliases=";
+    for (const char* alias: timezoneAliases) {
+        Data::parseTimezone(alias, timezone);
+        std::cout << timezone << ',';
+    }
+    std::cout << '\n';
+    std::cout << "data.timezone.formatPositive=" << Data::timezoneToString(19800) << '\n';
+    std::cout << "data.timezone.formatNegative=" << Data::timezoneToString(-45000) << '\n';
+
+    const time_t adEpoch = Data::valuesToEpoch(2024, 1, 29, 12, 34, 56, 8 * 60 * 60);
+    const time_t leapEpoch = Data::valuesToEpoch(2000, 1, 29, 0, 0, 0, 0);
+    const time_t bcEpoch = Data::valuesToEpoch(0, 0, 1, 0, 0, 0, 0);
+    char isoBuffer[32];
+    std::cout << "data.epoch.ad=" << adEpoch << '\n';
+    std::cout << "data.epoch.leap=" << leapEpoch << '\n';
+    std::cout << "data.epoch.bc=" << bcEpoch << '\n';
+    Data::epochToIso8601(adEpoch, isoBuffer, true, true);
+    std::cout << "data.iso.ad=" << isoBuffer << '\n';
+    Data::epochToIso8601(leapEpoch, isoBuffer, false, false);
+    std::cout << "data.iso.leap=" << isoBuffer << '\n';
+    Data::epochToIso8601(bcEpoch, isoBuffer, true, true);
+    std::cout << "data.iso.bc=" << isoBuffer << '\n';
+
+    std::ostringstream escaped;
+    Data::writeEscapeValue(escaped, std::string{"A\t\n\b\f\r\"\\\x01Z", 11});
+    std::cout << "data.escape=" << escaped.str() << '\n';
+    std::cout << "data.escape.hex=";
+    constexpr char hex[]{"0123456789abcdef"};
+    for (const unsigned char value: escaped.str())
+        std::cout << hex[value >> 4] << hex[value & 0x0F];
+    std::cout << '\n';
+    std::cout << "data.map16=" << Data::map16(10) << Data::map16U(15) << '\n';
+    std::cout << "data.map64=" << Data::map64(62) << Data::map64(63) << '\n';
+    Data::epochToIso8601(-210831897600L, isoBuffer, true, true);
+    std::cout << "data.iso.minimum=" << isoBuffer << '\n';
+    Data::epochToIso8601(253402300799L, isoBuffer, true, true);
+    std::cout << "data.iso.maximum=" << isoBuffer << '\n';
+    try {
+        Data::epochToIso8601(253402300800L, isoBuffer, true, true);
+    } catch (const RuntimeException& exception) {
+        std::cout << "data.iso.invalidCode=" << exception.code << '\n';
+    }
+    Data::checkName(std::string(1023, 'A'));
+    std::cout << "data.name.maximum=ok\n";
+    try {
+        Data::checkName(std::string(1024, 'A'));
+    } catch (const DataException& exception) {
+        std::cout << "data.name.invalidCode=" << exception.code << '\n';
+    }
+
     const Scn scn{0x123456789ABCDEF0ULL};
     std::cout << "scn.to48=" << scn.to48() << '\n';
     std::cout << "scn.to64=" << scn.to64() << '\n';
