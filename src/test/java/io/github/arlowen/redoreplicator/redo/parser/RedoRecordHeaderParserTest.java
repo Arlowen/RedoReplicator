@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.ByteOrder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,6 +64,18 @@ class RedoRecordHeaderParserTest {
         RedoLogException lwnError = assertThrows(RedoLogException.class,
                 () -> parser.parseLwn(data, 16, 100));
         assertEquals(50051, lwnError.getErrorCode());
+    }
+
+    @Test
+    void acceptsShortRecordWhenUpstreamValidityFlagSaysToSkipIt() {
+        byte[] data = new byte[8];
+        RedoBinaryTestSupport.writeUnsignedInt(data, 0, data.length, ByteOrder.LITTLE_ENDIAN);
+
+        RedoRecordHeader header = parser.parse(data, 0, data.length);
+
+        assertEquals(5, header.headerSize());
+        assertEquals(0, header.containerUid());
+        assertFalse(header.isValid());
     }
 
 }

@@ -10,6 +10,7 @@ import io.github.arlowen.redoreplicator.redo.reader.RedoBlockHeaderParser;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public final class RedoBinaryTestSupport {
     private RedoBinaryTestSupport() {
@@ -66,6 +67,50 @@ public final class RedoBinaryTestSupport {
         writeScn(data, offset + 40, 0x0000_1234_5678_9ABCL, ByteOrder.LITTLE_ENDIAN);
         writeUnsignedInt(data, offset + 64, 989_619_936L, ByteOrder.LITTLE_ENDIAN);
         return data;
+    }
+
+    public static byte[] spanningLwnRecord() {
+        int recordSize = 600;
+        byte[] data = new byte[recordSize];
+        writeUnsignedInt(data, 0, recordSize, ByteOrder.LITTLE_ENDIAN);
+        data[4] = 0x05;
+        writeUnsignedShort(data, 6, 0x1234, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(data, 8, 0x5678_9000L, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(data, 12, 3, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(data, 16, 42, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(data, 24, 1, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(data, 26, 1, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(data, 28, 2, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(data, 32, recordSize, ByteOrder.LITTLE_ENDIAN);
+        writeScn(data, 40, 0x0000_1234_5678_9ABCL, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(data, 64, 989_619_936L, ByteOrder.LITTLE_ENDIAN);
+
+        int vectorOffset = 68;
+        data[vectorOffset] = 0x05;
+        data[vectorOffset + 1] = 0x02;
+        writeUnsignedShort(data, vectorOffset + 2, 17, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(data, vectorOffset + 4, 0xABCD_0007L, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedInt(data, vectorOffset + 8, 0x1234_5678L, ByteOrder.LITTLE_ENDIAN);
+        writeScn(data, vectorOffset + 12, 0x0000_1234_5678_8FFFL, ByteOrder.LITTLE_ENDIAN);
+        data[vectorOffset + 20] = 9;
+        data[vectorOffset + 21] = (byte) 0x83;
+        writeUnsignedShort(data, vectorOffset + 24, 4, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(data, vectorOffset + 28, 0x55AA, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(data, vectorOffset + 32, 4, ByteOrder.LITTLE_ENDIAN);
+        writeUnsignedShort(data, vectorOffset + 34, 496, ByteOrder.LITTLE_ENDIAN);
+        for (int index = 0; index < 496; index++) {
+            data[vectorOffset + 36 + index] = (byte) index;
+        }
+        return data;
+    }
+
+    public static List<byte[]> spanningLwnBlocks() {
+        byte[] record = spanningLwnRecord();
+        byte[] first = new byte[512];
+        byte[] second = new byte[512];
+        System.arraycopy(record, 0, first, 16, 496);
+        System.arraycopy(record, 496, second, 16, record.length - 496);
+        return List.of(first, second);
     }
 
     public static void writeScn(byte[] data, int offset, long value, ByteOrder byteOrder) {

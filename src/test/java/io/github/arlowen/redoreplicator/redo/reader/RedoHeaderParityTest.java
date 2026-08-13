@@ -8,9 +8,16 @@ package io.github.arlowen.redoreplicator.redo.reader;
 
 import io.github.arlowen.redoreplicator.redo.RedoBinaryTestSupport;
 import io.github.arlowen.redoreplicator.redo.common.RedoByteReader;
+import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
+import io.github.arlowen.redoreplicator.redo.common.RedoTime;
+import io.github.arlowen.redoreplicator.redo.common.Scn;
 import io.github.arlowen.redoreplicator.redo.common.Seq;
+import io.github.arlowen.redoreplicator.redo.parser.AssembledLwn;
+import io.github.arlowen.redoreplicator.redo.parser.AssembledRedoRecord;
+import io.github.arlowen.redoreplicator.redo.parser.RedoLwnAssembler;
 import io.github.arlowen.redoreplicator.redo.parser.RedoLwnHeader;
 import io.github.arlowen.redoreplicator.redo.parser.RedoRecordHeaderParser;
+import io.github.arlowen.redoreplicator.redo.parser.RedoVectorParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -98,5 +105,45 @@ class RedoHeaderParityTest {
         assertEquals(baseline.getProperty("big.block.checksum"), Integer.toString(blockHeader.checksum()));
         assertEquals(baseline.getProperty("big.block.calculatedChecksum"),
                 Integer.toString(blockParser.calculateChecksum(data, 512)));
+    }
+
+    @Test
+    void matchesPinnedRecordAssemblyAndVectorLayout() {
+        AssembledLwn lwn = new RedoLwnAssembler(ByteOrder.LITTLE_ENDIAN, 512)
+                .tryAssemble(RedoBinaryTestSupport.spanningLwnBlocks(), 100,
+                        Scn.zero(), Scn.none())
+                .orElseThrow();
+        AssembledRedoRecord assembledRecord = lwn.records().get(0);
+        RedoLogRecord vector = new RedoVectorParser(
+                ByteOrder.LITTLE_ENDIAN, RedoLogRecord.REDO_VERSION_19_0, 512)
+                .parseAll(assembledRecord, Seq.of(77), RedoTime.of(989_619_936L), 2)
+                .get(0);
+
+        assertEquals(baseline.getProperty("record.memberScn"),
+                assembledRecord.member().scn().toString());
+        assertEquals(baseline.getProperty("record.subScn"),
+                Integer.toString(assembledRecord.member().subScn()));
+        assertEquals(baseline.getProperty("vector.opCode"), Integer.toString(vector.opCode));
+        assertEquals(baseline.getProperty("vector.class"), Integer.toString(vector.cls));
+        assertEquals(baseline.getProperty("vector.usn"), Integer.toString(vector.usn));
+        assertEquals(baseline.getProperty("vector.afn"), Integer.toString(vector.afn));
+        assertEquals(baseline.getProperty("vector.dba"), Long.toString(vector.dba));
+        assertEquals(baseline.getProperty("vector.scn"), vector.scnRecord.toString());
+        assertEquals(baseline.getProperty("vector.sequence"), Integer.toString(vector.seq));
+        assertEquals(baseline.getProperty("vector.type"), Integer.toString(vector.typ));
+        int encrypted = 0;
+        if (vector.encryptedTablespace) {
+            encrypted = 1;
+        }
+        assertEquals(baseline.getProperty("vector.encrypted"), Integer.toString(encrypted));
+        assertEquals(baseline.getProperty("vector.container"), Integer.toString(vector.conId));
+        assertEquals(baseline.getProperty("vector.flags"), Integer.toString(vector.flgRecord));
+        assertEquals(baseline.getProperty("vector.fieldCount"), Integer.toString(vector.fieldCnt));
+        assertEquals(baseline.getProperty("vector.fieldPosition"), Integer.toString(vector.fieldPos));
+        assertEquals(baseline.getProperty("vector.fieldSize"),
+                Integer.toString(new RedoByteReader(ByteOrder.LITTLE_ENDIAN)
+                        .readUnsignedShort(vector.data(), vector.dataOffset() + 34)));
+        assertEquals(baseline.getProperty("vector.size"), Integer.toString(vector.size));
+        assertEquals(baseline.getProperty("vector.fileOffset"), vector.fileOffset.toString());
     }
 }

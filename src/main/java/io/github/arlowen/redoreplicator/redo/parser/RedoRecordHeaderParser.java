@@ -33,6 +33,9 @@ public final class RedoRecordHeaderParser {
         }
 
         int validity = data[offset + 4] & 0xFF;
+        if ((validity & 0x01) == 0) {
+            return new RedoRecordHeader(recordSize, validity, 5, 0);
+        }
         int headerSize = 24;
         if ((validity & 0x04) != 0) {
             headerSize = 68;

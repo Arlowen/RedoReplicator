@@ -82,6 +82,25 @@ int main() {
     Ctx::writeScnLittle(record.data() + 40, Scn{0x0000123456789ABCULL});
     Ctx::write32Little(record.data() + 64, 989619936);
 
+    Ctx::write16Little(record.data() + 6, 0x1234);
+    Ctx::write32Little(record.data() + 8, 0x56789000);
+    Ctx::write16Little(record.data() + 12, 3);
+    uint8_t* vector = record.data() + 68;
+    vector[0] = 0x05;
+    vector[1] = 0x02;
+    Ctx::write16Little(vector + 2, 17);
+    Ctx::write32Little(vector + 4, 0xABCD0007);
+    Ctx::write32Little(vector + 8, 0x12345678);
+    Ctx::writeScnLittle(vector + 12, Scn{0x0000123456788FFFULL});
+    vector[20] = 9;
+    vector[21] = 0x83;
+    Ctx::write16Little(vector + 24, 4);
+    Ctx::write16Little(vector + 28, 0x55AA);
+    Ctx::write16Little(vector + 32, 4);
+    Ctx::write16Little(vector + 34, 496);
+    for (uint32_t index = 0; index < 496; ++index)
+        vector[36 + index] = index;
+
     std::cout << "record.size=" << Ctx::read32Little(record.data()) << '\n';
     std::cout << "record.validity=" << static_cast<uint32_t>(record[4]) << '\n';
     std::cout << "record.containerUid=" << Ctx::read32Little(record.data() + 16) << '\n';
@@ -91,6 +110,32 @@ int main() {
     std::cout << "lwn.length=" << Ctx::read32Little(record.data() + 32) << '\n';
     std::cout << "lwn.scn=" << Ctx::readScnLittle(record.data() + 40).toString() << '\n';
     std::cout << "lwn.timestamp=" << Ctx::read32Little(record.data() + 64) << '\n';
+    const uint64_t memberScn = Ctx::read32Little(record.data() + 8) |
+            (static_cast<uint64_t>(Ctx::read16Little(record.data() + 6)) << 32);
+    const uint16_t fieldListLength = Ctx::read16Little(vector + 32);
+    const uint16_t fieldCount = (fieldListLength - 2) / 2;
+    const uint16_t fieldPosition = 32 + ((fieldListLength + 2) & 0xFFFC);
+    uint32_t vectorSize = fieldPosition;
+    for (uint16_t field = 1; field <= fieldCount; ++field)
+        vectorSize += (Ctx::read16Little(vector + 32 + field * 2) + 3) & 0xFFFC;
+    std::cout << "record.memberScn=" << Scn{memberScn}.toString() << '\n';
+    std::cout << "record.subScn=" << Ctx::read16Little(record.data() + 12) << '\n';
+    std::cout << "vector.opCode=" << ((static_cast<uint16_t>(vector[0]) << 8) | vector[1]) << '\n';
+    std::cout << "vector.class=" << Ctx::read16Little(vector + 2) << '\n';
+    std::cout << "vector.usn=" << (Ctx::read16Little(vector + 2) - 15) / 2 << '\n';
+    std::cout << "vector.afn=" << (Ctx::read32Little(vector + 4) & 0xFFFF) << '\n';
+    std::cout << "vector.dba=" << Ctx::read32Little(vector + 8) << '\n';
+    std::cout << "vector.scn=" << Ctx::readScnLittle(vector + 12).toString() << '\n';
+    std::cout << "vector.sequence=" << static_cast<uint32_t>(vector[20]) << '\n';
+    std::cout << "vector.type=" << static_cast<uint32_t>(vector[21] & 0x7F) << '\n';
+    std::cout << "vector.encrypted=1\n";
+    std::cout << "vector.container=" << Ctx::read16Little(vector + 24) << '\n';
+    std::cout << "vector.flags=" << Ctx::read16Little(vector + 28) << '\n';
+    std::cout << "vector.fieldCount=" << fieldCount << '\n';
+    std::cout << "vector.fieldPosition=" << fieldPosition << '\n';
+    std::cout << "vector.fieldSize=" << Ctx::read16Little(vector + 34) << '\n';
+    std::cout << "vector.size=" << vectorSize << '\n';
+    std::cout << "vector.fileOffset=" << (100 * blockSize + 16 + 68) << '\n';
 
     alignas(8) std::array<uint8_t, blockSize * 2> bigHeader{};
     bigHeader[1] = 0x22;

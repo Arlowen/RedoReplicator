@@ -167,8 +167,8 @@ src/parser/OpCode1301.h	io.github.arlowen.redoreplicator.parser.OpCode1301	pendi
 src/parser/OpCode1801.h	io.github.arlowen.redoreplicator.parser.OpCode1801	pending	Translate redo and transaction parsing
 src/parser/OpCode1A02.h	io.github.arlowen.redoreplicator.parser.OpCode1A02	pending	Translate redo and transaction parsing
 src/parser/OpCode1A06.h	io.github.arlowen.redoreplicator.parser.OpCode1A06	pending	Translate redo and transaction parsing
-src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header and LWN parsing started; vector, opcode and transaction behavior remains
-src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header and LWN parsing started; vector, opcode and transaction behavior remains
+src/parser/Parser.cpp	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, cross-block LWN and vector parsing started; opcode and transaction behavior remains
+src/parser/Parser.h	io.github.arlowen.redoreplicator.redo.parser.RedoParser	pending	Header, cross-block LWN and vector parsing started; opcode and transaction behavior remains
 src/parser/Transaction.cpp	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
 src/parser/Transaction.h	io.github.arlowen.redoreplicator.parser.Transaction	pending	Translate redo and transaction parsing
 src/parser/TransactionBuffer.cpp	io.github.arlowen.redoreplicator.parser.TransactionBuffer	pending	Translate redo and transaction parsing

@@ -2,7 +2,7 @@
 
 RedoReplicator is an in-progress JDK 17 translation of OpenLogReplicator's Oracle redo change data capture engine. The implementation target and acceptance gates are defined in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
-The project is currently implementing stage 1: repeatable build and baseline comparison infrastructure. It is not ready to capture Oracle redo yet.
+The project is currently implementing stage 2: redo block, LWN, record and vector parsing on top of the repeatable C++ baseline. It is not ready to capture Oracle redo yet.
 
 ## Build
 

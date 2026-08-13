@@ -9,3 +9,5 @@ The probe uses the pinned upstream `Ctx` byte readers and writers with a
 deterministic synthetic Oracle 19c little-endian header. It records the file,
 block, redo record and LWN fields used by the Java parsers. A second synthetic
 big-endian header pins the native-word checksum behavior used by `Reader.cpp`.
+The fixture also records the record member ordering key and vector field-list
+layout produced by the corresponding `Parser.cpp` formulas.
