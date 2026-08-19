@@ -99,7 +99,7 @@ trap 'rm -rf "$STAGE"' EXIT HUP INT TERM
 ROOT_NAME=redo-replicator-$VERSION
 ROOT=$STAGE/$ROOT_NAME
 mkdir -p "$ROOT/bin" "$ROOT/conf" "$ROOT/data" "$ROOT/lib" \
-    "$ROOT/logs" "$ROOT/output" "$ROOT/sql" \
+    "$ROOT/docs" "$ROOT/logs" "$ROOT/output" "$ROOT/sql" \
     "$ROOT/THIRD-PARTY-LICENSES"
 
 $JLINK_BIN \
@@ -117,7 +117,9 @@ cp "$PROJECT_DIR"/conf/* "$ROOT/conf/"
 cp "$PROJECT_DIR"/sql/*.sql "$ROOT/sql/"
 cp -R "$PROJECT_DIR/sql/test" "$ROOT/sql/"
 cp "$PROJECT_DIR/LICENSE" "$PROJECT_DIR/NOTICE" \
-    "$PROJECT_DIR/README.md" "$PROJECT_DIR/target/SBOM.json" "$ROOT/"
+    "$PROJECT_DIR/README.md" "$PROJECT_DIR/README_EN.md" \
+    "$PROJECT_DIR/target/SBOM.json" "$ROOT/"
+cp "$PROJECT_DIR"/docs/*.md "$ROOT/docs/"
 cp -R "$PROJECT_DIR/THIRD-PARTY-LICENSES/." \
     "$ROOT/THIRD-PARTY-LICENSES/"
 REDO_REPLICATOR_JAR_TOOL=$RELEASE_JDK/bin/jar \

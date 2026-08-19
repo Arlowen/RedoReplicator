@@ -41,7 +41,9 @@ for path in \
     LICENSE \
     NOTICE \
     README.md \
+    README_EN.md \
     SBOM.json \
+    docs/TROUBLESHOOTING.md \
     THIRD-PARTY-LICENSES/README.md \
     THIRD-PARTY-LICENSES/Apache-2.0.txt \
     THIRD-PARTY-LICENSES/MPL-2.0.txt \

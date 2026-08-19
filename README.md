@@ -1,296 +1,205 @@
 # RedoReplicator
 
-RedoReplicator is an in-progress JDK 17 translation of OpenLogReplicator's Oracle redo change data capture engine. The implementation target and acceptance gates are defined in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+[English](README_EN.md) | [实施计划](IMPLEMENTATION_PLAN.md) | [故障排查](docs/TROUBLESHOOTING.md)
 
-The current implementation covers parts of stages 3, 4 and 6. Parsed redo vectors
-now enter an in-memory transaction buffer keyed by Oracle transaction slot. The
-buffer supports interleaved transactions, begin/commit, complete rollback,
-savepoint partial rollback, commit-order delivery, row-piece grouping and an
-in-memory
-low-watermark. Transactions can spill decoded entries to `data/tmp`-style
-scratch files under a global memory limit; commit reads them in order, partial
-rollback truncates the tail, and startup removes stale spill files before
-low-watermark replay. Multi-block undo is merged across redo records, including
-middle fragments and split field buffers, then decoded again before pairing it
-with the business redo vector. Binary-vector integration tests cover that path
-through transaction spill, partial rollback and commit. Runtime YAML/CLI wiring
-now supplies the spill limit. The default CLI command opens H2, initializes the
-selected-table and SYS dictionaries at the replay SCN, discovers redo
-continuously and commits each complete LWN through JSONL fsync and the H2 safe
-position. Quick multi-row INSERT and DELETE are expanded in original slot order
-for both user JSON and SYS dictionary transactions. Text values retain their
-dictionary `charsetId`; AL32UTF8, Oracle UTF8/CESU-8, AL16UTF16, ZHS16GBK,
-all 14 upstream 7-bit character sets, all 101 upstream 8-bit character sets and
-all eight generic 16-bit character sets, all six Japanese EUC/SJIS identities
-and KO16KSCCS plus ZHS32GB18030 use upstream-compatible decoders across user
-values, DDL and SYS dictionary changes, including NCHAR/NVARCHAR values. The
-three specialized Taiwan identities complete all 138 upstream registrations.
-Inline BLOB/CLOB locators
-are decoded directly. In-index and classic out-of-row locators reconstruct
-direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
-including orphan pages later bound to a parent transaction and transactions
-spilled to disk. KDLI list-map chains and their incremental updates are also
-reconstructed. Binary XMLType and its XDB dictionary families are intentionally
-out of scope; XMLType stored as CLOB follows the translated CLOB path. As in the upstream
-Builder, Oracle compressed user rows are preserved losslessly as one RAW
-`COMPRESSED` field rather than presented as decoded logical columns.
+RedoReplicator 是 OpenLogReplicator 的 JDK 17 纯 Java 翻译版本，直接读取
+Oracle online redo 和 archive 文件，不使用 LogMiner、JNI、OCI、`Unsafe` 或
+C/C++ 动态库。项目当前版本是 `0.1.0-SNAPSHOT`，尚未发布 `0.1.0`，也不会提前
+发布 `1.0.0`。
 
-Strict YAML loading and the Picocli startup preflight are available. The loader
-rejects unknown or duplicate keys, invalid table regular expressions, duplicate
-redo path prefixes and state/output directories outside the installation root.
-It resolves `state.transactionMemoryMb` into the transaction spill buffer under
-`data/tmp`, uses the longest matching Oracle redo path prefix, and warns when
-the configuration file is not mode `0600`. `--validate` connects with the
-configured ordinary Oracle account and checks supported version, logging mode,
-dictionary access, redo/archive mappings and local read access without starting
-the capture loop.
+## 当前能力
 
-Redo catalog discovery now reads the current incarnation's archived logs and
-online log members with their redo thread, sequence and SCN range. The planner
-selects an archive covering the configured start SCN for every active thread,
-prefers continuous archived sequences before online redo, polls temporarily
-missing files, and stops on a proven gap, timeout or database identity change.
-A synchronous JDK `FileChannel` reader validates the selected file identity,
-header, block number, sequence and checksum, resumes at a block-aligned offset,
-distinguishes archive completion from online wait, and stops on truncation or
-online overwrite. A streaming parser retains incomplete LWN blocks across read
-batches, exposes each complete LWN with its safe position and low-watermark,
-preserves pre-start transaction state and filters output by commit SCN. A
-per-thread stream keeps open transactions across archive sequence switches,
-waits for online redo growth and advances to the exact next sequence only after
-the current file finishes. Startup uses the configured/current SCN only when H2
-has no state; recovery ignores YAML, validates the Oracle identity and replays
-from the earliest open-transaction low-watermark or the durable file offset.
-RAC and multiple active redo threads remain out of scope; the runtime currently
-requires a single active thread. The JSONL file layer itself now writes
-`redo-000001.jsonl` style files, rolls only
-between complete messages, fsyncs each LWN batch, truncates an uncommitted tail
-to H2's safe byte offset, and refuses to start when the file is shorter than
-that offset. User-table redo pairs can now be assembled into
-typed before/after column bytes with row identity, supplemental images,
-multi-piece value merging and primary-key placeholders. Compressed user-row
-payloads retain their complete bytes as the upstream `COMPRESSED` RAW field.
-Inline BLOB/CLOB locators are converted to their complete binary or text value;
-in-index and classic out-of-row locators use verified transaction page indexes,
-page counts and tail lengths, and stop capture if any referenced page or byte
-range is missing. The 12+ style-1 extent, style-2 KDLI list-page and legacy
-extent locator forms are reconstructed with byte-complete length checks. Other
-typed bytes can
-be converted to the fixed native JSON scalar forms for
-text, NUMBER, DATE/TIMESTAMP, RAW, binary floating point, intervals, UROWID and
-BOOLEAN. The fixed native JSON Builder emits separate begin, ordered DML/DDL
-and commit messages plus optional checkpoint heartbeats, always including the
-database name, and its byte messages are covered through JSONL fsync. Committed
-user transactions
-can now retain DML/DDL order from their redo entries, assemble supplemental row
-pieces, aggregate numbered DDL fragments and feed the Builder directly. Their
-table catalog is loaded from the latest live H2 schema versions at the requested
-SCN, with pre-commit fallback for dropped objects. Missing schema, incomplete
-DDL and unsupported row formats stop processing instead of silently losing a
-change. Committed rows for all fifteen translated SYS dictionary tables are
-routed through the system transaction overlay, never emitted as user JSON, and
-publish complete schema versions or drop tombstones at commit. Startup-side
-catalog loading requires the physical schema of every translated SYS table at
-the target SCN. The LWN commit processor now writes and fsyncs the complete
-JSONL batch before atomically storing schema versions, the low-watermark and the
-single durable position in H2. The CLI now invokes that processor from a
-continuous per-thread loop, waits when online redo has no complete LWN, switches
-to the exact next sequence, and handles SIGTERM only between complete LWN
-commits.
+- 支持 Oracle 19c 和 Oracle AI Database 26ai Free。
+- 支持单实例非 CDB、单 PDB，以及同一 CDB 下多个 `READ WRITE` PDB。
+- 使用 JDBC 查询数据库身份、redo 目录和字典；redo 字节始终从本地只读文件系统读取。
+- 支持 INSERT、UPDATE、DELETE、DDL、完整回滚和 rollback to savepoint。
+- 支持交错事务、提交顺序输出、跨文件长事务和磁盘 spill。
+- 支持分区表、隐藏列、row migration/chaining、rowdependencies。
+- 支持 BASICFILE BLOB/CLOB、以 CLOB 存储的 XMLType，以及上游全部 138 个字符集注册。
+- 固定输出 OpenLogReplicator 原生 JSONL，先 `fsync` JSONL，再提交 H2 安全位点。
+- H2 保存唯一安全位点和表结构历史；支持 backup、restore 和 SCN rewind。
+- 故障恢复允许重复完整事务，但不允许跳过已提交事务。
 
-One process can capture selected tables from multiple PDBs in the same CDB.
-Connect the YAML JDBC URL to `CDB$ROOT`; startup uses the root as its control
-connection, discovers every `READ WRITE` PDB, validates dictionary access in
-each one, and keeps independent object-number and SYS dictionary state by redo
-`CON_ID`. Root-container transactions are not output. Each captured
-transaction's JSON `db` field is the originating PDB. A JDBC URL connected
-directly to one PDB remains a supported single-PDB mode.
+明确不支持 RAC、ASM、Data Guard、远程 redo 文件系统、TDE、Heap/HCC
+compression、NOLOGGING、二进制 XMLType、Kafka、网络输出和离线 Batch 模式。
 
-An include pattern may match no table at startup. Each PDB still retains the
-stable user and tablespace dictionary rows needed to prove a later matching
-`CREATE TABLE`; its committed schema version is stored in H2 before subsequent
-DML is decoded.
+## 部署拓扑
 
-Oracle accounts are never created by the application or Docker Compose. Review
-and manually execute [sql/configure_database.sql](sql/configure_database.sql),
-then use [sql/create_common_capture_user.sql](sql/create_common_capture_user.sql)
-for the recommended CDB-root/multi-PDB mode. It creates an ordinary common user
-with `SET CONTAINER` and narrowly listed dictionary privileges; edit its
-username/password first, run it manually as SYSDBA, and put the same values in
-YAML. For direct single-PDB mode, run
-[sql/create_capture_user.sql](sql/create_capture_user.sql) manually in that PDB
-instead.
+RedoReplicator 必须部署在 Oracle 主机上，或作为共享同一 Oracle 数据卷的
+Sidecar。应用账号只通过 JDBC 连接数据库；容器或主机还必须把 Oracle 返回的
+redo/archive 路径映射为进程可读的本地路径。
 
-## Build
+```text
+Oracle JDBC ──身份、字典、文件目录──┐
+                                   ├─ RedoReplicator ─ JSONL
+本地 redo/archive 只读文件系统 ─────┘                  └ H2
+```
 
-Use JDK 17 and Maven 3.9 or later:
+应用不会自动创建 Oracle 账号，也不会修改账号权限。账号与数据库配置由用户手动执行。
+
+## 解压后启动
+
+运行包已携带非 Temurin 的 OpenJDK 17 jlink runtime，目标主机不需要预装 Java。
+
+```bash
+tar -xzf redo-replicator-0.1.0-SNAPSHOT-linux-arm64.tar.gz
+cd redo-replicator-0.1.0-SNAPSHOT
+```
+
+先阅读并手动执行：
+
+- `sql/configure_database.sql`：启用归档和必要的 supplemental logging。
+- `sql/create_common_capture_user.sql`：推荐的 CDB root / 多 PDB 公共账号。
+- `sql/create_capture_user.sql`：直接连接单个 PDB 时使用的本地账号。
+- `sql/validate_capture_user.sql`：验证账号权限。
+
+编辑 `conf/redo-replicator.yaml`，至少填写 JDBC、账号、表范围和 redo 路径映射。
+密码允许明文保存在 YAML 中，因此配置文件权限应为 `0600`。
+
+```yaml
+database:
+  url: jdbc:oracle:thin:@//127.0.0.1:1521/FREE
+  username: C##REDO_CAPTURE
+  password: change_me
+  redoPathMappings:
+    - oracle: /opt/oracle/oradata
+      local: /oracle/oradata
+
+capture:
+  startScn:
+  includeTables:
+    - FREEPDB1\.APP\..*
+  excludeTables: []
+
+output:
+  directory: output
+  maxFileSizeMb: 256
+  checkpointHeartbeat: true
+
+state:
+  directory: data
+  transactionMemoryMb: 1024
+```
+
+配置规则：
+
+- `includeTables` 必填，使用完整的 `PDB.OWNER.TABLE` Java 正则。
+- `excludeTables` 优先于 include。
+- `redoPathMappings` 使用最长 Oracle 路径前缀。
+- 未知字段、重复映射、无效正则和逃出安装目录的相对路径会直接失败。
+- 启动时尚不存在的匹配表会等待；后续 CREATE 提交后从该结构版本开始捕获。
+- H2 已有状态时忽略 YAML 的 `startScn`，只能通过 `rewind.sh` 回退。
+
+先验证，再启动：
+
+```bash
+bin/validate.sh
+bin/start.sh
+bin/status.sh
+```
+
+安全停止：
+
+```bash
+bin/stop.sh
+```
+
+`stop.sh` 只发送 SIGTERM，不会升级到 `kill -9`。进程在完整 LWN 边界完成
+JSONL fsync 和 H2 提交后退出。
+
+## 输出与恢复
+
+输出文件名为 `output/redo-000001.jsonl`，只在完整 JSON 消息之间滚动。每个事务
+按 begin、DML/DDL、commit 多行输出。消费者只有读到完整 commit 后才能应用事务。
+
+恢复顺序固定为：
+
+1. 从 H2 读取安全 redo 位置或最早未提交事务 low-watermark。
+2. 校验 DBID、incarnation 和 RESETLOGS。
+3. 将 JSONL 未提交尾部截断到 H2 已 fsync 字节位置。
+4. 从安全位置重放；允许完整事务重复，不允许缺失。
+
+如果 JSONL 实际长度小于 H2 安全偏移，程序停止，不猜测恢复位置。
+
+## 运维脚本
+
+```text
+bin/run.sh                         前台运行
+bin/start.sh                       后台运行
+bin/stop.sh                        SIGTERM 安全停止
+bin/restart.sh                     安全重启
+bin/status.sh                      PID 与非权威状态快照
+bin/validate.sh                    只做启动前检查
+bin/backup.sh                      备份 H2、YAML 和状态
+bin/restore.sh <backup-file>       校验身份后恢复
+bin/rewind.sh --scn <SCN>          验证 redo/结构后回退安全位点
+```
+
+backup 不包含 JSONL 和 `data/tmp/`。restore 与 rewind 都先保留旧 H2 安全副本，
+历史 JSONL 永不自动删除，新输出使用更大的文件编号。
+
+## 日志
+
+`logging.level` 支持 `TRACE`、`DEBUG`、`INFO`、`WARN` 和 `ERROR`。前台
+`run.sh` 同时写终端与 `logs/redo-replicator.log`；后台 `start.sh` 只写主日志，
+`console.log` 只保留启动器和直接 CLI 输出。主日志达到 100 MB 后滚动，保留 10 个
+gzip 压缩历史文件。日志不会输出数据库密码。
+
+## 开发构建
+
+开发、测试和运行验证统一使用本地非 Temurin OpenJDK 17 与 Maven 3.9+。
 
 ```bash
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home
 mvn clean verify
 ```
 
-Run the explicit long-transaction gate to force one 100,000-row transaction
-through disk spill, ordered commit readback and spill cleanup:
+显式执行 100,000 行单事务 spill 门禁：
 
 ```bash
 mvn -q -Dredoreplicator.test.scale=true \
   -Dtest=RedoTransactionBufferScaleTest test
 ```
 
-The Maven package is directly runnable with its copied runtime dependencies:
-
-```bash
-java -jar target/redo-replicator-0.1.0-SNAPSHOT.jar --help
-java -jar target/redo-replicator-0.1.0-SNAPSHOT.jar \
-  --install-dir . --file conf/redo-replicator.yaml --validate
-```
-
-Build a self-contained archive for the current operating system and CPU with
-the local non-Temurin OpenJDK 17. The archive includes a jlink runtime and does
-not require Java on the target host:
-
-```bash
-scripts/release/build-distribution.sh
-tar -xzf target/distributions/redo-replicator-0.1.0-SNAPSHOT-*.tar.gz
-redo-replicator-0.1.0-SNAPSHOT/bin/run.sh --help
-scripts/release/test-distribution.sh \
-  target/distributions/redo-replicator-0.1.0-SNAPSHOT-*.tar.gz
-```
-
-Linux ARM64 and x86_64 release archives must each be built on the matching
-Linux architecture. The Buildx wrapper uses the pinned multi-architecture
-Maven 3.9.16 + Amazon Corretto OpenJDK 17 image, builds both architectures, and
-runs the smoke test under each matching Linux platform:
-
-```bash
-scripts/release/build-linux-distributions.sh
-```
-
-A source archive is created only from a clean commit:
-
-```bash
-scripts/release/build-source-distribution.sh
-scripts/release/generate-checksums.sh
-```
-
-Maven package builds generate a reproducible CycloneDX 1.6 JSON SBOM with the
-official CycloneDX Maven plugin. Runtime archives contain `SBOM.json`; the
-standalone copy and `SHA256SUMS` are written under `target/distributions/`.
-
-The default command performs the preflight and then starts continuous capture;
-`--validate` exits after preflight without opening runtime state. The release
-layout uses the same entry point through `bin/run.sh`; `bin/validate.sh` adds
-`--validate`. `bin/start.sh`, `bin/stop.sh`, `bin/restart.sh` and `bin/status.sh`
-manage one background process and its installation-local PID. `stop.sh` sends
-SIGTERM and never escalates to `kill -9`; its default wait is 60 seconds.
-Runtime startup also takes an OS file lock under `data/` before opening H2 or
-clearing stale transaction spill, so a second process cannot touch the same
-installation state. SIGTERM requests a stop at the next complete LWN boundary,
-after JSONL fsync and H2 commit. After each successful H2 LWN commit, the process
-atomically replaces non-authoritative `data/status.json`; `status.sh` displays
-that snapshot after the PID state. Status write failures are logged but never
-alter the H2 recovery position. During source-tree development, the scripts can
-target the Maven artifact explicitly:
-
-```bash
-REDO_REPLICATOR_JAR="$PWD/target/redo-replicator-0.1.0-SNAPSHOT.jar" \
-  bin/validate.sh --help
-```
-
-`logging.level` sets the Logback root level after YAML is loaded. Foreground
-`run.sh` writes to both the terminal and `logs/redo-replicator.log`;
-`start.sh` selects the file-only background configuration so `console.log`
-contains only launcher and direct CLI output. The main log rolls at 100 MB and
-keeps ten gzip-compressed history files.
-
-With capture stopped, `bin/backup.sh` creates a private ZIP under
-`data/backups/`. It contains the closed H2 file, YAML, optional status snapshot
-and a manifest with database identity and SHA-256 values. JSONL output and
-`data/tmp/` transaction spill are deliberately excluded.
-
-`bin/restore.sh <backup-file>` validates every packaged digest and both the
-manifest and H2 identity against the connected Oracle incarnation before it
-replaces anything. Existing H2, YAML and status files remain in a timestamped
-`data/backups/restore-safety-*` directory. Because JSONL is not packaged, the
-restored state keeps its safe redo SCN but starts at a new file number above all
-existing JSONL files; historical output is neither deleted nor overwritten.
-
-With capture stopped, `bin/rewind.sh --scn <SCN>` moves the single H2 safe
-position backward. It rejects forward moves and validates the connected Oracle
-identity, a readable redo/archive sequence covering the target, and complete
-selected-table dictionary state at that SCN before changing H2. The previous H2
-is retained under `data/backups/rewind-safety-*`; old JSONL files remain intact,
-and resumed output starts in a new monotonically numbered file.
-
-## Compare JSONL output
-
-The stage 1 comparator checks JSONL line by line. JSON object key order and whitespace are ignored; array order, field types and values remain significant.
-
-```bash
-tools/compare-jsonl.sh expected.jsonl actual.jsonl
-```
-
-## Build the fixed C++ baseline
-
-The baseline is exported into `target/` before CMake runs, because upstream generates `config.h` in its source tree. The reference checkout is never modified.
+固定 C++ 基线提交为 `6bc92bc1b89255fbc491e3080cb12a4c1dd8e832`。构建基线：
 
 ```bash
 scripts/baseline/prepare-rapidjson.sh target/rapidjson
 scripts/baseline/build-openlogreplicator.sh \
-  /Users/pika/codex-cli-worker/OpenLogReplicator \
-  target/rapidjson
+  /Users/pika/codex-cli-worker/OpenLogReplicator target/rapidjson
 ```
 
-The complete 8-bit Java catalog is mechanically regenerated from the same
-fixed source checkout:
-
-```bash
-scripts/baseline/generate-character-set-8bit-catalog.py \
-  /Users/pika/codex-cli-worker/OpenLogReplicator \
-  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-8bit-catalog.tsv
-```
-
-The generic 16-bit catalog uses the corresponding generator and fixed checkout:
-
-```bash
-scripts/baseline/generate-character-set-16bit-catalog.py \
-  /Users/pika/codex-cli-worker/OpenLogReplicator \
-  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-16bit-catalog.tsv
-```
-
-The Japanese EUC/SJIS and Korean KSCCS tables are regenerated together:
-
-```bash
-scripts/baseline/generate-character-set-east-asian-catalog.py \
-  /Users/pika/codex-cli-worker/OpenLogReplicator \
-  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-east-asian-catalog.tsv
-```
-
-The ZHS32GB18030 two-byte and four-byte tables use their dedicated generator:
-
-```bash
-scripts/baseline/generate-character-set-gb18030-catalog.py \
-  /Users/pika/codex-cli-worker/OpenLogReplicator \
-  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-gb18030-catalog.tsv
-```
-
-The three specialized Taiwan character sets are regenerated together:
-
-```bash
-scripts/baseline/generate-character-set-taiwan-catalog.py \
-  /Users/pika/codex-cli-worker/OpenLogReplicator \
-  src/main/resources/io/github/arlowen/redoreplicator/charset/oracle-taiwan-catalog.tsv
-```
-
-## Source migration coverage
-
-The migration map is checked against the fixed OpenLogReplicator baseline:
+迁移清单覆盖校验：
 
 ```bash
 tools/verify-migration-map.sh /Users/pika/codex-cli-worker/OpenLogReplicator
 ```
 
-## License
+## 发行构建
 
-RedoReplicator is licensed under AGPL-3.0-or-later. Direct translations retain OpenLogReplicator provenance and copyright notices.
+本机架构自包含包：
+
+```bash
+scripts/release/build-distribution.sh
+scripts/release/test-distribution.sh \
+  target/distributions/redo-replicator-0.1.0-SNAPSHOT-*.tar.gz
+```
+
+固定 digest 的 Maven 3.9.16 + Amazon Corretto OpenJDK 17 Buildx 镜像会构建并
+验证 Linux ARM64 和 x86_64 两个运行包：
+
+```bash
+scripts/release/build-linux-distributions.sh
+scripts/release/build-source-distribution.sh
+scripts/release/generate-checksums.sh
+```
+
+产物位于 `target/distributions/`，包括两个 Linux `.tar.gz`、sources、
+CycloneDX 1.6 `SBOM.json` 和 `SHA256SUMS`。在迁移清单、Oracle 正确性矩阵、
+故障注入与性能门禁全部通过前，不发布 `0.1.0`。
+
+## 许可证
+
+RedoReplicator 使用 AGPL-3.0-or-later。直接翻译的文件保留 OpenLogReplicator
+版权与来源说明。运行包包含 `THIRD-PARTY-LICENSES/`、实际依赖 jar 内嵌条款、
+Oracle FUTC、NOTICE 和 SBOM。
