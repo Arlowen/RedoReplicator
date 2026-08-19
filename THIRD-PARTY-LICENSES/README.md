@@ -1,6 +1,9 @@
 # Third-party licenses
 
-RedoReplicator currently declares the following direct dependencies. Release packaging must include the complete license text and notices shipped by every resolved direct and transitive dependency.
+RedoReplicator declares the following runtime and build dependencies. Canonical
+license texts are stored beside this file. Distribution builds also extract
+every LICENSE, NOTICE and third-party notice embedded in the exact resolved
+runtime jars into `resolved/<artifact>/`.
 
 | Component | Selected license | Project |
 |---|---|---|
@@ -11,5 +14,17 @@ RedoReplicator currently declares the following direct dependencies. Release pac
 | SLF4J | MIT | https://www.slf4j.org/license.html |
 | Logback | LGPL-2.1 | https://logback.qos.ch/license.html |
 | JUnit 5 | EPL-2.0 | https://github.com/junit-team/junit5 |
+| SnakeYAML | Apache-2.0 | https://bitbucket.org/snakeyaml/snakeyaml |
+| CycloneDX Maven plugin | Apache-2.0 | https://github.com/CycloneDX/cyclonedx-maven-plugin |
 
-Oracle JDBC must be redistributed unmodified, with the Oracle Free Use Terms and Conditions included and all Oracle notices retained.
+Oracle JDBC is redistributed unmodified. Its embedded Oracle Free Use Terms and
+Conditions are extracted from `META-INF/license.txt` and retained in every
+runtime distribution.
+
+Canonical texts:
+
+- `Apache-2.0.txt`: Jackson, Picocli, SnakeYAML and CycloneDX Maven plugin.
+- `MPL-2.0.txt`: H2 Database selected license.
+- `LGPL-2.1.txt`: Logback selected license.
+- `MIT.txt`: SLF4J.
+- `EPL-2.0.txt`: JUnit build and test dependency.

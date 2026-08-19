@@ -40,6 +40,10 @@ for path in \
     README.md \
     SBOM.json \
     THIRD-PARTY-LICENSES/README.md \
+    THIRD-PARTY-LICENSES/Apache-2.0.txt \
+    THIRD-PARTY-LICENSES/MPL-2.0.txt \
+    THIRD-PARTY-LICENSES/LGPL-2.1.txt \
+    THIRD-PARTY-LICENSES/resolved/ojdbc17-23.26.3.0.0/META-INF_license.txt \
     VERSION
 do
     if [ ! -r "$ROOT/$path" ]; then
