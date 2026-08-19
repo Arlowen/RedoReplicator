@@ -33,6 +33,12 @@ class OracleContainerBootstrapIntegrationTest {
         String url = System.getProperty("oracle.test.root.url");
         String username = System.getProperty("oracle.test.root.username");
         String password = System.getProperty("oracle.test.root.password");
+        String pdb = System.getProperty(
+                "oracle.test.pdb", "FREEPDB1");
+        String owner = System.getProperty(
+                "oracle.test.table.owner", "SYSTEM");
+        String table = System.getProperty(
+                "oracle.test.table.name", "CODEX_REDO_TEST");
         try (Connection connection = DriverManager.getConnection(
                 url, username, password)) {
             OracleDatabaseContext context =
@@ -41,8 +47,8 @@ class OracleContainerBootstrapIntegrationTest {
                     new OracleContainerCatalogReader().read(
                             connection, context);
             TableFilter filter = new TableFilter(
-                    List.of(Pattern.compile(
-                            "FREEPDB1\\.SYSTEM\\.CODEX_REDO_TEST")),
+                    List.of(Pattern.compile(Pattern.quote(
+                            pdb + "." + owner + "." + table))),
                     List.of());
 
             OracleCaptureBootstrap bootstrap =
@@ -51,14 +57,16 @@ class OracleContainerBootstrapIntegrationTest {
                             filter, context.currentScn(),
                             new TableSchemaJsonCodec());
 
-            assertEquals(List.of("CDB$ROOT", "FREEPDB1"),
+            assertEquals(List.of("CDB$ROOT", pdb),
                     containers.containers().stream()
                             .map(container -> container.name())
                             .toList());
             assertEquals(1, bootstrap.initialSchemaVersions().size());
-            assertEquals("FREEPDB1",
+            assertEquals(pdb,
                     bootstrap.initialSchemaVersions().get(0).container());
-            assertEquals("CODEX_REDO_TEST",
+            assertEquals(owner,
+                    bootstrap.initialSchemaVersions().get(0).owner());
+            assertEquals(table,
                     bootstrap.initialSchemaVersions().get(0).table());
             for (var container : containers.containers()) {
                 var manager = bootstrap.systemTransactions().require(
