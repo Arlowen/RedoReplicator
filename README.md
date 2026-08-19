@@ -161,6 +161,14 @@ mvn -q -Dredoreplicator.test.scale=true \
   -Dtest=RedoTransactionBufferScaleTest test
 ```
 
+短性能 gate 默认处理 100,000 行；最终验收使用
+`-Dredoreplicator.performance.minutes=30` 持续运行 30 分钟：
+
+```bash
+mvn -q -Dredoreplicator.test.performance=true \
+  -Dtest=RedoPipelinePerformanceTest test
+```
+
 固定 C++ 基线提交为 `6bc92bc1b89255fbc491e3080cb12a4c1dd8e832`。构建基线：
 
 ```bash

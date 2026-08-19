@@ -140,6 +140,14 @@ mvn -q -Dredoreplicator.test.scale=true \
   -Dtest=RedoTransactionBufferScaleTest test
 ```
 
+The short performance gate processes 100,000 rows by default. Final acceptance
+adds `-Dredoreplicator.performance.minutes=30` for the required 30-minute run:
+
+```bash
+mvn -q -Dredoreplicator.test.performance=true \
+  -Dtest=RedoPipelinePerformanceTest test
+```
+
 The Maven package is directly runnable with its copied runtime dependencies:
 
 ```bash
