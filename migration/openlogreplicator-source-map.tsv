@@ -27,8 +27,8 @@ src/common/LobCtx.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	t
 src/common/LobCtx.h	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	translated	LOB data, page-index and list-page lifecycle translated with strict missing-page, cycle and byte-length failures
 src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobData	translated	Ordered fragments, page index, page size and full-page plus tail-length metadata translated with strict byte-complete reads
 src/common/LobData.h	io.github.arlowen.redoreplicator.redo.lob.RedoLobData	translated	LOB data map, page-number index, page size, full-page count and tail size translated
-src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
-src/common/LobKey.h	io.github.arlowen.redoreplicator.redo.common.LobKey	pending	Translate redo domain model
+src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	translated	LOB identifier and page equality ordering plus Java hash contract translated with fixed C++ parity
+src/common/LobKey.h	io.github.arlowen.redoreplicator.redo.common.LobKey	translated	LOB identifier and page equality ordering plus Java hash contract translated with fixed C++ parity
 src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill lifecycle and state.transactionMemoryMb runtime wiring implemented; metrics and scale parity remain
 src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill lifecycle and state.transactionMemoryMb runtime wiring implemented; metrics and scale parity remain
 src/common/OraProtoBuf.pb.cpp	-	excluded	Protobuf output is out of scope

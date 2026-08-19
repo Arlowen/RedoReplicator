@@ -10,6 +10,7 @@
 
 #include "src/common/Attribute.h"
 #include "src/common/DbIncarnation.h"
+#include "src/common/LobKey.h"
 #include "src/common/RedoLogRecord.h"
 #include "src/common/exception/BootException.h"
 #include "src/common/exception/ConfigurationException.h"
@@ -105,6 +106,19 @@ int main() {
     } catch (const DataException& exception) {
         std::cout << "data.name.invalidCode=" << exception.code << '\n';
     }
+
+    const uint8_t lobKeyFirstBytes[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
+    const uint8_t lobKeySecondBytes[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 8};
+    const LobKey lobKeyFirst(LobId(lobKeyFirstBytes), 16);
+    const LobKey lobKeySame(LobId(lobKeyFirstBytes), 16);
+    const LobKey lobKeyNextPage(LobId(lobKeyFirstBytes), 17);
+    const LobKey lobKeyNextId(LobId(lobKeySecondBytes), 1);
+    std::cout << std::boolalpha;
+    std::cout << "lobkey.equal=" << (lobKeyFirst == lobKeySame) << '\n';
+    std::cout << "lobkey.pageLess=" << (lobKeyFirst < lobKeyNextPage) << '\n';
+    std::cout << "lobkey.idLess=" << (lobKeyNextPage < lobKeyNextId) << '\n';
+    std::cout << "lobkey.different=" << (lobKeyFirst != lobKeyNextPage) << '\n';
+    std::cout << std::noboolalpha;
 
     const Scn scn{0x123456789ABCDEF0ULL};
     std::cout << "scn.to48=" << scn.to48() << '\n';

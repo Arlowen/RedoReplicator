@@ -13,6 +13,7 @@ package io.github.arlowen.redoreplicator.redo.transaction;
 import io.github.arlowen.redoreplicator.error.RedoLogException;
 import io.github.arlowen.redoreplicator.redo.common.Attribute;
 import io.github.arlowen.redoreplicator.redo.common.LobId;
+import io.github.arlowen.redoreplicator.redo.common.LobKey;
 import io.github.arlowen.redoreplicator.redo.common.RedoLogRecord;
 import io.github.arlowen.redoreplicator.redo.common.Xid;
 import io.github.arlowen.redoreplicator.state.RedoPosition;
@@ -22,7 +23,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Optional;
+import java.util.TreeMap;
 
 public final class RedoTransactionBuffer implements AutoCloseable {
     public static final int FLG_MULTIBLOCK_UNDO_HEAD = 0x0001;
@@ -35,8 +38,9 @@ public final class RedoTransactionBuffer implements AutoCloseable {
     private final Map<TransactionSlotKey, RedoTransaction> transactions;
     private final TransactionSpillManager spillManager;
     private final long memoryLimitBytes;
-    private final Map<LobId, Map<Long, RedoLogRecord>> orphanedLobs;
-    private final Map<LobId, TransactionSlotKey> lobOwners;
+    private final Map<Integer, NavigableMap<LobKey, RedoLogRecord>>
+            orphanedLobs;
+    private final Map<Integer, Map<LobId, TransactionSlotKey>> lobOwners;
     private final RedoLobIndexResolver lobIndexResolver;
 
     public RedoTransactionBuffer() {
@@ -138,7 +142,8 @@ public final class RedoTransactionBuffer implements AutoCloseable {
             return false;
         }
         if (lobIndex) {
-            TransactionSlotKey owner = lobOwners.get(redo.lobId);
+            TransactionSlotKey owner = lobOwner(
+                    undo.conId, redo.lobId);
             if (owner != null) {
                 RedoTransaction parent = transactions.get(owner);
                 if (parent != null && !parent.xid().equals(undo.xid)) {
@@ -358,7 +363,8 @@ public final class RedoTransactionBuffer implements AutoCloseable {
 
     public int orphanedLobCount() {
         int count = 0;
-        for (Map<Long, RedoLogRecord> records : orphanedLobs.values()) {
+        for (NavigableMap<LobKey, RedoLogRecord> records
+                : orphanedLobs.values()) {
             count += records.size();
         }
         return count;
@@ -397,16 +403,17 @@ public final class RedoTransactionBuffer implements AutoCloseable {
         if (!record.xid.isEmpty()) {
             return appendSingle(record);
         }
-        TransactionSlotKey owner = lobOwners.get(record.lobId);
+        TransactionSlotKey owner = lobOwner(
+                record.conId, record.lobId);
         if (owner == null) {
             orphanedLobs.computeIfAbsent(
-                            record.lobId, ignored -> new LinkedHashMap<>())
-                    .putIfAbsent(record.dba, record);
+                            record.conId, ignored -> new TreeMap<>())
+                    .putIfAbsent(new LobKey(record.lobId, record.dba), record);
             return false;
         }
         RedoTransaction transaction = transactions.get(owner);
         if (transaction == null) {
-            lobOwners.remove(record.lobId);
+            removeLobOwner(record.conId, record.lobId);
             return false;
         }
         record.xid = transaction.xid();
@@ -424,20 +431,61 @@ public final class RedoTransactionBuffer implements AutoCloseable {
         }
         TransactionSlotKey owner = TransactionSlotKey.of(
                 containerId, transaction.xid());
-        lobOwners.put(record.lobId, owner);
-        Map<Long, RedoLogRecord> orphans = orphanedLobs.remove(record.lobId);
-        if (orphans == null) {
+        lobOwners.computeIfAbsent(
+                        containerId, ignored -> new LinkedHashMap<>())
+                .put(record.lobId, owner);
+        NavigableMap<LobKey, RedoLogRecord> containerOrphans =
+                orphanedLobs.get(containerId);
+        if (containerOrphans == null) {
             return;
         }
-        for (RedoLogRecord orphan : orphans.values()) {
+        LobKey first = new LobKey(record.lobId, 0);
+        LobKey last = new LobKey(record.lobId, 0xFFFF_FFFFL);
+        List<LobKey> orphanKeys = new ArrayList<>(
+                containerOrphans.subMap(first, false, last, true).keySet());
+        for (LobKey orphanKey : orphanKeys) {
+            RedoLogRecord orphan = containerOrphans.remove(orphanKey);
             orphan.xid = transaction.xid();
             orphan.conId = owner.containerId();
             transaction.add(RedoTransactionEntry.single(orphan));
         }
+        if (containerOrphans.isEmpty()) {
+            orphanedLobs.remove(containerId);
+        }
     }
 
     private void removeLobOwners(TransactionSlotKey owner) {
-        lobOwners.entrySet().removeIf(entry -> entry.getValue().equals(owner));
+        Map<LobId, TransactionSlotKey> containerOwners =
+                lobOwners.get(owner.containerId());
+        if (containerOwners == null) {
+            return;
+        }
+        containerOwners.entrySet().removeIf(
+                entry -> entry.getValue().equals(owner));
+        if (containerOwners.isEmpty()) {
+            lobOwners.remove(owner.containerId());
+        }
+    }
+
+    private TransactionSlotKey lobOwner(int containerId, LobId lobId) {
+        Map<LobId, TransactionSlotKey> containerOwners =
+                lobOwners.get(containerId);
+        if (containerOwners == null) {
+            return null;
+        }
+        return containerOwners.get(lobId);
+    }
+
+    private void removeLobOwner(int containerId, LobId lobId) {
+        Map<LobId, TransactionSlotKey> containerOwners =
+                lobOwners.get(containerId);
+        if (containerOwners == null) {
+            return;
+        }
+        containerOwners.remove(lobId);
+        if (containerOwners.isEmpty()) {
+            lobOwners.remove(containerId);
+        }
     }
 
     private RedoTransaction findForRollback(RedoLogRecord rollback) {

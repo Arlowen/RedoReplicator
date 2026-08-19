@@ -326,6 +326,57 @@ class RedoTransactionBufferTest {
     }
 
     @Test
+    void isolatesSameLobIdentifierAcrossContainers() {
+        LobId lobId = LobId.of(
+                new byte[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7});
+        RedoTransactionBuffer buffer = new RedoTransactionBuffer();
+        RedoLogRecord firstBegin = begin(XID_1, 100);
+        firstBegin.conId = 1;
+        RedoLogRecord secondBegin = begin(XID_2, 101);
+        secondBegin.conId = 2;
+        buffer.begin(firstBegin, position(100, 10, 512));
+        buffer.begin(secondBegin, position(101, 10, 768));
+
+        RedoLogRecord firstPage = orphanedLobPage(lobId, 1, 200,
+                new byte[]{1});
+        RedoLogRecord secondPage = orphanedLobPage(lobId, 2, 200,
+                new byte[]{2});
+        buffer.accept(List.of(firstPage, secondPage),
+                position(105, 10, 1024));
+        assertEquals(2, buffer.orphanedLobCount());
+
+        RedoLogRecord firstUndo = undo(XID_1, 0);
+        firstUndo.conId = 1;
+        RedoLogRecord firstIndex = redo(0x1A02);
+        firstIndex.conId = 1;
+        firstIndex.lobId = lobId;
+        buffer.appendPair(firstUndo, firstIndex);
+        assertEquals(1, buffer.orphanedLobCount());
+
+        RedoLogRecord firstCommit = commit(XID_1, 200, 0);
+        firstCommit.conId = 1;
+        CommittedRedoTransaction committedFirst =
+                buffer.commit(firstCommit).orElseThrow();
+        assertArrayEquals(new byte[]{1},
+                committedFirst.entries().get(0).first().data());
+
+        RedoLogRecord secondUndo = undo(XID_2, 0);
+        secondUndo.conId = 2;
+        RedoLogRecord secondIndex = redo(0x1A02);
+        secondIndex.conId = 2;
+        secondIndex.lobId = lobId;
+        buffer.appendPair(secondUndo, secondIndex);
+        assertEquals(0, buffer.orphanedLobCount());
+
+        RedoLogRecord secondCommit = commit(XID_2, 201, 0);
+        secondCommit.conId = 2;
+        CommittedRedoTransaction committedSecond =
+                buffer.commit(secondCommit).orElseThrow();
+        assertArrayEquals(new byte[]{2},
+                committedSecond.entries().get(0).first().data());
+    }
+
+    @Test
     void routesClassicLobSubtransactionToItsParent() {
         LobId lobId = LobId.of(
                 new byte[]{0, 0, 0, 1, 2, 3, 4, 5, 6, 7});
@@ -509,6 +560,18 @@ class RedoTransactionBufferTest {
         record.scn = Scn.of(scn);
         record.thread = 1;
         record.conId = 0;
+        return record;
+    }
+
+    private static RedoLogRecord orphanedLobPage(
+            LobId lobId, int containerId, long page, byte[] data) {
+        RedoLogRecord record = record(0x1301, Xid.zero(), 105);
+        record.conId = containerId;
+        record.dba = page;
+        record.lobId = lobId;
+        record.lobData = 0;
+        record.lobDataSize = data.length;
+        record.attachData(data, 0, data.length);
         return record;
     }
 
