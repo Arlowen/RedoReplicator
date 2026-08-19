@@ -31,6 +31,7 @@ class MigrationMapTest {
 
         Set<String> sourcePaths = new HashSet<>();
         Set<String> validStatuses = Set.of("pending", "translated", "excluded");
+        int pending = 0;
         for (int index = 1; index < lines.size(); index++) {
             String[] columns = lines.get(index).split("\t", -1);
             assertEquals(4, columns.length, "Invalid column count at line " + (index + 1));
@@ -38,10 +39,26 @@ class MigrationMapTest {
             assertTrue(sourcePaths.add(columns[0]), "Duplicate source path: " + columns[0]);
             assertTrue(validStatuses.contains(columns[2]), "Invalid status at line " + (index + 1));
             assertFalse(columns[3].isBlank(), "Missing notes at line " + (index + 1));
-            if (!columns[2].equals("excluded")) {
-                assertFalse(columns[1].isBlank(), "Missing Java target at line " + (index + 1));
-                assertFalse(columns[1].equals("-"), "Missing Java target at line " + (index + 1));
+            if (columns[2].equals("excluded")) {
+                assertEquals("-", columns[1],
+                        "Excluded source has a Java target at line "
+                                + (index + 1));
+                continue;
+            }
+            assertFalse(columns[1].isBlank(),
+                    "Missing Java target at line " + (index + 1));
+            assertFalse(columns[1].equals("-"),
+                    "Missing Java target at line " + (index + 1));
+            Path target = Path.of("src/main/java",
+                    columns[1].replace('.', '/') + ".java");
+            assertTrue(Files.isRegularFile(target),
+                    "Java target does not exist at line " + (index + 1)
+                            + ": " + target);
+            if (columns[2].equals("pending")) {
+                pending++;
             }
         }
+        assertEquals(0, pending,
+                "The fixed source migration still has pending entries");
     }
 }
