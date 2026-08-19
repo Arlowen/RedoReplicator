@@ -27,12 +27,15 @@ class RunScriptTest {
                 installationDirectory.resolve("bin"));
         Path lib = Files.createDirectories(
                 installationDirectory.resolve("lib"));
+        Path conf = Files.createDirectories(
+                installationDirectory.resolve("conf"));
         Path run = bin.resolve("run.sh");
         Files.copy(
                 Path.of("bin/run.sh"), run,
                 StandardCopyOption.REPLACE_EXISTING);
         run.toFile().setExecutable(true);
         Files.write(lib.resolve("redo-replicator.jar"), new byte[]{1});
+        Files.writeString(conf.resolve("logback.xml"), "<configuration/>");
 
         Path arguments = installationDirectory.resolve("java-args.txt");
         Path java = installationDirectory.resolve("openjdk-17");
@@ -56,6 +59,10 @@ class RunScriptTest {
         assertEquals(0, process.waitFor());
 
         assertEquals(List.of(
+                        "-Dlogback.configurationFile="
+                                + conf.resolve("logback.xml"),
+                        "-Dredo.replicator.log.dir="
+                                + installationDirectory.resolve("logs"),
                         "-cp",
                         lib.resolve("redo-replicator.jar")
                                 + ":" + lib + "/*",

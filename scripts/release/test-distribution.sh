@@ -29,6 +29,8 @@ for path in \
     bin/start.sh \
     bin/stop.sh \
     bin/validate.sh \
+    conf/logback.xml \
+    conf/logback-background.xml \
     conf/redo-replicator.yaml \
     lib/redo-replicator.jar \
     runtime/bin/java \

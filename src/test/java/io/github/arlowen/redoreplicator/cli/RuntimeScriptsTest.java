@@ -50,6 +50,10 @@ class RuntimeScriptsTest {
         Path run = binDirectory.resolve("run.sh");
         Files.writeString(run, """
                 #!/bin/sh
+                SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+                INSTALL_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+                printf '%s\n' "${REDO_REPLICATOR_LOGBACK_CONFIG:-}" \
+                    > "$INSTALL_DIR/data/logback-config.txt"
                 trap 'exit 0' TERM
                 while :; do
                     sleep 1
@@ -73,6 +77,11 @@ class RuntimeScriptsTest {
 
         assertTrue(started.contains("started with PID " + pid));
         assertTrue(ProcessHandle.of(pid).orElseThrow().isAlive());
+        assertEquals(
+                installationDirectory.resolve("conf/logback-background.xml")
+                        .toString(),
+                Files.readString(installationDirectory.resolve(
+                        "data/logback-config.txt")).trim());
 
         String duplicate = runExpecting("start.sh", null, 3);
         assertTrue(duplicate.contains("already running"));

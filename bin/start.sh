@@ -32,7 +32,8 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 umask 077
-nohup "$SCRIPT_DIR/run.sh" "$@" >> "$CONSOLE_LOG" 2>&1 &
+REDO_REPLICATOR_LOGBACK_CONFIG="$INSTALL_DIR/conf/logback-background.xml" \
+    nohup "$SCRIPT_DIR/run.sh" "$@" >> "$CONSOLE_LOG" 2>&1 &
 PID=$!
 PID_TEMP=$PID_FILE.tmp.$$
 printf '%s\n' "$PID" > "$PID_TEMP"

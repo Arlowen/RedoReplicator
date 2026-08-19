@@ -6,6 +6,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 INSTALL_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 JAVA_BIN=${REDO_REPLICATOR_JAVA:-$INSTALL_DIR/runtime/bin/java}
 JAR_PATH=${REDO_REPLICATOR_JAR:-$INSTALL_DIR/lib/redo-replicator.jar}
+LOGBACK_CONFIG=${REDO_REPLICATOR_LOGBACK_CONFIG:-$INSTALL_DIR/conf/logback.xml}
 
 if [ ! -x "$JAVA_BIN" ]; then
     if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
@@ -37,8 +38,15 @@ if [ ! -r "$JAR_PATH" ]; then
     echo "RedoReplicator jar not found: $JAR_PATH" >&2
     exit 3
 fi
+if [ ! -r "$LOGBACK_CONFIG" ]; then
+    echo "Logback configuration not found: $LOGBACK_CONFIG" >&2
+    exit 3
+fi
+mkdir -p "$INSTALL_DIR/logs"
 
 exec "$JAVA_BIN" \
+    -Dlogback.configurationFile="$LOGBACK_CONFIG" \
+    -Dredo.replicator.log.dir="$INSTALL_DIR/logs" \
     -cp "$JAR_PATH:$INSTALL_DIR/lib/*" \
     io.github.arlowen.redoreplicator.cli.RedoReplicatorMain \
     --install-dir "$INSTALL_DIR" "$@"

@@ -113,7 +113,7 @@ $JLINK_BIN \
 cp "$MAIN_JAR" "$ROOT/lib/redo-replicator.jar"
 cp "$PROJECT_DIR"/target/lib/*.jar "$ROOT/lib/"
 cp "$PROJECT_DIR"/bin/*.sh "$ROOT/bin/"
-cp "$PROJECT_DIR/conf/redo-replicator.yaml" "$ROOT/conf/"
+cp "$PROJECT_DIR"/conf/* "$ROOT/conf/"
 cp "$PROJECT_DIR"/sql/*.sql "$ROOT/sql/"
 cp -R "$PROJECT_DIR/sql/test" "$ROOT/sql/"
 cp "$PROJECT_DIR/LICENSE" "$PROJECT_DIR/NOTICE" \

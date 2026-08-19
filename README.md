@@ -198,6 +198,12 @@ REDO_REPLICATOR_JAR="$PWD/target/redo-replicator-0.1.0-SNAPSHOT.jar" \
   bin/validate.sh --help
 ```
 
+`logging.level` sets the Logback root level after YAML is loaded. Foreground
+`run.sh` writes to both the terminal and `logs/redo-replicator.log`;
+`start.sh` selects the file-only background configuration so `console.log`
+contains only launcher and direct CLI output. The main log rolls at 100 MB and
+keeps ten gzip-compressed history files.
+
 With capture stopped, `bin/backup.sh` creates a private ZIP under
 `data/backups/`. It contains the closed H2 file, YAML, optional status snapshot
 and a manifest with database identity and SHA-256 values. JSONL output and

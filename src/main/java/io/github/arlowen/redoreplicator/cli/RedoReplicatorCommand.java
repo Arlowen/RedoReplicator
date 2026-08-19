@@ -11,6 +11,7 @@ import io.github.arlowen.redoreplicator.config.ResolvedConfiguration;
 import io.github.arlowen.redoreplicator.error.ConfigurationException;
 import io.github.arlowen.redoreplicator.error.RedoReplicatorException;
 import io.github.arlowen.redoreplicator.redo.common.Scn;
+import io.github.arlowen.redoreplicator.runtime.LoggingConfigurator;
 import io.github.arlowen.redoreplicator.runtime.OracleCaptureRunner;
 import io.github.arlowen.redoreplicator.runtime.RuntimeLock;
 import io.github.arlowen.redoreplicator.runtime.ShutdownCoordinator;
@@ -104,6 +105,8 @@ public final class RedoReplicatorCommand implements Callable<Integer> {
         try {
             ResolvedConfiguration configuration = configurationLoader.load(
                     installationDirectory, configurationFile);
+            LoggingConfigurator.apply(
+                    configuration.configuration().logging().level());
             for (String warning : configuration.warnings()) {
                 System.err.println("WARNING: " + warning);
             }
