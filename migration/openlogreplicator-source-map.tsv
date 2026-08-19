@@ -22,7 +22,7 @@ src/common/DbLob.cpp	io.github.arlowen.redoreplicator.schema.LobSchema	translate
 src/common/DbLob.h	io.github.arlowen.redoreplicator.schema.LobSchema	translated	LOB identity index and partition lists default and mapped page sizes plus diagnostic format translated with fixed C++ parity
 src/common/DbTable.cpp	io.github.arlowen.redoreplicator.schema.TableSchema	pending	Table columns partitions and lookup translated; conditions and system-table behavior remain
 src/common/DbTable.h	io.github.arlowen.redoreplicator.schema.TableSchema	pending	Table columns partitions and lookup translated; conditions and system-table behavior remain
-src/common/Format.h	io.github.arlowen.redoreplicator.output.Format	pending	Translate redo domain model
+src/common/Format.h	-	excluded	Upstream configurable output-format matrix is replaced by the fixed native JSONL contract
 src/common/LobCtx.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	translated	Orphan binding, page fragments, classic indexes, lengths, KDLI list replacement, append and page-chain ordering translated with fixed Builder parity
 src/common/LobCtx.h	io.github.arlowen.redoreplicator.redo.lob.RedoLobContext	translated	LOB data, page-index and list-page lifecycle translated with strict missing-page, cycle and byte-length failures
 src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobData	translated	Ordered fragments, page index, page size and full-page plus tail-length metadata translated with strict byte-complete reads
@@ -130,14 +130,14 @@ src/locales/CharacterSetZHT32TRIS.h	io.github.arlowen.redoreplicator.charset.Cha
 src/locales/Locales.cpp	io.github.arlowen.redoreplicator.charset.Locales	translated	All 138 fixed-upstream character-set registrations and mapping resources implemented with byte-level C++ parity evidence
 src/locales/Locales.h	io.github.arlowen.redoreplicator.charset.Locales	translated	Complete Oracle character-set id and name lookup contract translated for every fixed-upstream registration
 src/main.cpp	io.github.arlowen.redoreplicator.cli.RedoReplicatorCommand	pending	Picocli help/version, strict YAML, validation, continuous capture, graceful shutdown, lifecycle/status, backup/restore and rewind entry points are implemented
-src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated
-src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	pending	H2 single-row checkpoint, JSONL fsync ordering, schema-version atomic commit, low-watermark persistence, rewind, backup and restore are translated
+src/metadata/Checkpoint.cpp	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	translated	H2 single-row checkpoint follows JSONL fsync and atomically stores schema versions low-watermark and durable position
+src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.runtime.RedoLwnProcessor	translated	H2 is the single recovery database with rewind backup restore and no rotating checkpoint files
 src/metadata/Metadata.cpp	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/Metadata.h	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
-src/metadata/RedoLog.h	io.github.arlowen.redoreplicator.schema.RedoLog	pending	Translate schema and redo metadata
+src/metadata/RedoLog.h	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	translated	Online redo group and member association plus deterministic group and path ordering are performed by the JDBC catalog join
 src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial dictionary, DDL snapshots, tombstones, H2/Flashback/redo resolution, catalog-at-SCN and runtime system routing translated; multi-container lifecycle wiring remains
 src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Object, data object, partition and LOB lookup, live H2 catalog reconstruction and committed schema overlay translated; multi-container lifecycle wiring remains
-src/metadata/SchemaElement.h	io.github.arlowen.redoreplicator.schema.SchemaElement	pending	Translate schema and redo metadata
+src/metadata/SchemaElement.h	-	excluded	Upstream key tag condition and per-table output options are replaced by redesigned include and exclude YAML filters
 src/metadata/Serializer.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
 src/metadata/Serializer.h	-	excluded	Checkpoint JSON serialization is replaced by H2
 src/metadata/SerializerJson.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
@@ -189,18 +189,18 @@ src/replicator/ReplicatorBatch.cpp	-	excluded	Offline batch reader is out of sco
 src/replicator/ReplicatorBatch.h	-	excluded	Offline batch reader is out of scope
 src/replicator/ReplicatorOnline.cpp	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, catalog discovery, replay-SCN dictionary bootstrap, strict sequence planning and continuous single-thread consumption translated; configuration changes and full schema recovery remain
 src/replicator/ReplicatorOnline.h	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	pending	Database identity, catalog discovery, replay-SCN dictionary bootstrap, strict sequence planning and continuous single-thread consumption translated; configuration changes and full schema recovery remain
-src/state/State.cpp	io.github.arlowen.redoreplicator.state.StateStore	pending	H2 single-row runtime state, identity validation, low-watermark resume and verified rewind are translated; remaining parser-state integration is tracked separately
-src/state/State.h	io.github.arlowen.redoreplicator.state.StateStore	pending	H2 runtime state contract, recovery positioning and rewind are translated; remaining parser-state integration is tracked separately
-src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.StateDatabase	pending	Versioned H2 file, migration backup, backup/restore scripts and rewind safety copies replace disk checkpoints
-src/state/StateDisk.h	io.github.arlowen.redoreplicator.state.StateDatabase	pending	H2 database lifecycle, backup/restore and rewind replace disk checkpoint files
+src/state/State.cpp	io.github.arlowen.redoreplicator.state.StateStore	translated	H2 single-row runtime state validates database identity and persists durable plus low-watermark replay positions
+src/state/State.h	io.github.arlowen.redoreplicator.state.StateStore	translated	H2 state contract supports atomic LWN commits schema history resume and verified SCN rewind
+src/state/StateDisk.cpp	io.github.arlowen.redoreplicator.state.StateDatabase	translated	Versioned H2 file migration backup restore and rewind safety copies replace disk checkpoint files
+src/state/StateDisk.h	io.github.arlowen.redoreplicator.state.StateDatabase	translated	H2 database lifecycle with forward migrations backups restore and rewind replaces disk checkpoint files
 src/stream/Stream.cpp	-	excluded	Network output is out of scope
 src/stream/Stream.h	-	excluded	Network output is out of scope
 src/stream/StreamNetwork.cpp	-	excluded	Network output is out of scope
 src/stream/StreamNetwork.h	-	excluded	Network output is out of scope
 src/stream/StreamZeroMQ.cpp	-	excluded	Network output is out of scope
 src/stream/StreamZeroMQ.h	-	excluded	Network output is out of scope
-src/writer/Writer.cpp	io.github.arlowen.redoreplicator.output.Writer	pending	Translate JSONL file writer
-src/writer/Writer.h	io.github.arlowen.redoreplicator.output.Writer	pending	Translate JSONL file writer
+src/writer/Writer.cpp	-	excluded	Upstream asynchronous client-confirmation queue and writer checkpoint files are replaced by synchronous JSONL fsync then H2 commit
+src/writer/Writer.h	-	excluded	Upstream multi-target writer thread contract is outside the fixed file-only synchronous output design
 src/writer/WriterDiscard.cpp	-	excluded	Only JSONL file output is in scope
 src/writer/WriterDiscard.h	-	excluded	Only JSONL file output is in scope
 src/writer/WriterFile.cpp	io.github.arlowen.redoreplicator.output.JsonlFileWriter	translated	Fixed JSONL naming, message-boundary rolling, force(true), safe-offset truncation and short-file failure translated
