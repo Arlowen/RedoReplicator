@@ -30,8 +30,8 @@ are decoded directly. In-index and classic out-of-row locators reconstruct
 direct-loader pages, KDLI fill fragments and `0A02/0A08/0A12` page indexes,
 including orphan pages later bound to a parent transaction and transactions
 spilled to disk. KDLI list-map chains and their incremental updates are also
-reconstructed. XDB dictionary families are not complete, so the project is not
-production-ready yet. As in the upstream
+reconstructed. Binary XMLType and its XDB dictionary families are intentionally
+out of scope; XMLType stored as CLOB follows the translated CLOB path. As in the upstream
 Builder, Oracle compressed user rows are preserved losslessly as one RAW
 `COMPRESSED` field rather than presented as decoded logical columns.
 

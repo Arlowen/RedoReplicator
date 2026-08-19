@@ -37,6 +37,7 @@ fi
 c++ -std=c++17 -DCTXASSERT=0 \
     "${include_args[@]}" \
     "$project_dir/scripts/baseline/value-types-probe.cpp" \
+    "$source_dir/src/common/DbLob.cpp" \
     "$source_dir/src/common/LobKey.cpp" \
     "$source_dir/src/common/types/Data.cpp" \
     "$source_dir/src/common/exception/BootException.cpp" \

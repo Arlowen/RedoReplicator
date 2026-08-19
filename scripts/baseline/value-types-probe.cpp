@@ -10,6 +10,7 @@
 
 #include "src/common/Attribute.h"
 #include "src/common/DbIncarnation.h"
+#include "src/common/DbLob.h"
 #include "src/common/LobKey.h"
 #include "src/common/RedoLogRecord.h"
 #include "src/common/exception/BootException.h"
@@ -119,6 +120,15 @@ int main() {
     std::cout << "lobkey.idLess=" << (lobKeyNextPage < lobKeyNextId) << '\n';
     std::cout << "lobkey.different=" << (lobKeyFirst != lobKeyNextPage) << '\n';
     std::cout << std::noboolalpha;
+
+    DbLob dbLob(nullptr, 100, 101, 200, 2, 3);
+    dbLob.addIndex(301);
+    dbLob.addPartition(401, 16264);
+    std::cout << "dblob.formatted=" << dbLob << '\n';
+    std::cout << "dblob.defaultPageSize=" << dbLob.checkLobPageSize(999) << '\n';
+    std::cout << "dblob.partitionPageSize=" << dbLob.checkLobPageSize(401) << '\n';
+    std::cout << "dblob.indexCount=" << dbLob.lobIndexes.size() << '\n';
+    std::cout << "dblob.partitionCount=" << dbLob.lobPartitions.size() << '\n';
 
     const Scn scn{0x123456789ABCDEF0ULL};
     std::cout << "scn.to48=" << scn.to48() << '\n';

@@ -30,4 +30,10 @@ public record LobSchema(long objectId, long dataObjectId, long lobObjectId,
         }
         return DEFAULT_PAGE_SIZE;
     }
+
+    @Override
+    public String toString() {
+        return objectId + ": (" + columnNumber + ", "
+                + internalColumn + ", " + lobObjectId + ")";
+    }
 }
