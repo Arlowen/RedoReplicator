@@ -293,6 +293,14 @@ The migration map is checked against the fixed OpenLogReplicator baseline:
 tools/verify-migration-map.sh /Users/pika/codex-cli-worker/OpenLogReplicator
 ```
 
+Run the Oracle dictionary matrix fixture manually as SYSDBA/PDB administrator.
+The create arguments are PDB, test user and password; cleanup takes PDB and user:
+
+```sql
+@sql/test/create_dictionary_fixture.sql FREEPDB1 APP RedoFixture_26ai
+@sql/test/drop_dictionary_fixture.sql FREEPDB1 APP
+```
+
 ## License
 
 RedoReplicator is licensed under AGPL-3.0-or-later. Direct translations retain OpenLogReplicator provenance and copyright notices.

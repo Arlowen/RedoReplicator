@@ -175,6 +175,14 @@ scripts/baseline/build-openlogreplicator.sh \
 tools/verify-migration-map.sh /Users/pika/codex-cli-worker/OpenLogReplicator
 ```
 
+Oracle 字典矩阵 fixture 由 SYSDBA/PDB 管理员手动执行，参数依次是 PDB、测试用户和
+密码；清理脚本只需要 PDB 与测试用户：
+
+```sql
+@sql/test/create_dictionary_fixture.sql FREEPDB1 APP RedoFixture_26ai
+@sql/test/drop_dictionary_fixture.sql FREEPDB1 APP
+```
+
 ## 发行构建
 
 本机架构自包含包：

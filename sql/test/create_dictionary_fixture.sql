@@ -11,9 +11,9 @@
 WHENEVER SQLERROR EXIT SQL.SQLCODE
 SET VERIFY OFF
 
-DEFINE fixture_pdb = FREEPDB1
-DEFINE fixture_user = APP
-DEFINE fixture_password = "RedoFixture_26ai"
+DEFINE fixture_pdb = '&1'
+DEFINE fixture_user = '&2'
+DEFINE fixture_password = '&3'
 
 ALTER SESSION SET CONTAINER = &&fixture_pdb;
 

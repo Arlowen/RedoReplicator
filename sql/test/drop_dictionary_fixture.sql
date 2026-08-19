@@ -9,8 +9,8 @@
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE
 
-DEFINE fixture_pdb = FREEPDB1
-DEFINE fixture_user = APP
+DEFINE fixture_pdb = '&1'
+DEFINE fixture_user = '&2'
 
 ALTER SESSION SET CONTAINER = &&fixture_pdb;
 
