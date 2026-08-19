@@ -30,6 +30,16 @@ import java.util.Set;
 public final class OracleSystemDictionaryReader
         implements SystemDictionaryStateLoader {
     @Override
+    public SystemDictionaryState loadReferenceData(
+            Connection connection, Scn targetScn) throws SQLException {
+        Map<SystemDictionaryKey, SystemDictionaryRow> rows =
+                new LinkedHashMap<>();
+        addRows(rows, readUsers(connection, targetScn));
+        addRows(rows, readAllTablespaces(connection, targetScn));
+        return SystemDictionaryState.of(rows.values());
+    }
+
+    @Override
     public Optional<SystemDictionaryState> loadTable(
             Connection connection, String owner, String table, Scn targetScn)
             throws SQLException {
@@ -138,6 +148,25 @@ public final class OracleSystemDictionaryReader
                 return user;
             }
         }
+    }
+
+    private static List<SysUser> readUsers(
+            Connection connection, Scn targetScn) throws SQLException {
+        List<SysUser> rows = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                OracleDictionarySql.SYSTEM_USER_ROWS)) {
+            bindScn(statement, 1, targetScn);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(new SysUser(
+                            RowId.parse(resultSet.getString(1)),
+                            resultSet.getLong(2),
+                            resultSet.getString(3),
+                            intX(resultSet.getBigDecimal(4))));
+                }
+            }
+        }
+        return List.copyOf(rows);
     }
 
     private static List<SysObj> readObjects(Connection connection, long objectId,
@@ -455,6 +484,25 @@ public final class OracleSystemDictionaryReader
                 OracleDictionarySql.SYSTEM_TABLESPACE_ROWS)) {
             bindScn(statement, 1, targetScn);
             statement.setLong(2, tablespaceId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(new SysTs(
+                            RowId.parse(resultSet.getString(1)),
+                            resultSet.getLong(2),
+                            resultSet.getString(3),
+                            resultSet.getInt(4)));
+                }
+            }
+        }
+        return List.copyOf(rows);
+    }
+
+    private static List<SysTs> readAllTablespaces(
+            Connection connection, Scn targetScn) throws SQLException {
+        List<SysTs> rows = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                OracleDictionarySql.SYSTEM_ALL_TABLESPACE_ROWS)) {
+            bindScn(statement, 1, targetScn);
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     rows.add(new SysTs(

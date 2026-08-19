@@ -50,8 +50,13 @@ public final class OracleInitialSchemaLoader {
         Objects.requireNonNull(tableFilter, "tableFilter");
         Objects.requireNonNull(targetScn, "targetScn");
         SchemaCatalog catalog = identityCatalog.copy();
-        Map<String, SystemDictionaryRow> dictionaryRows =
+        Map<SystemDictionaryKey, SystemDictionaryRow> dictionaryRows =
                 new LinkedHashMap<>();
+        for (SystemDictionaryRow row : dictionaryStateLoader
+                .loadReferenceData(connection, targetScn).rows()) {
+            dictionaryRows.put(new SystemDictionaryKey(
+                    row.dictionaryTable(), row.rowId()), row);
+        }
         List<TableSchemaVersion> versions = new ArrayList<>();
         for (TableSchema identity : identityCatalog.tables()) {
             if (!tableFilter.matches(identity.qualifiedName())) {
@@ -73,7 +78,8 @@ public final class OracleInitialSchemaLoader {
                                     + targetScn + ": "
                                     + identity.qualifiedName()));
             for (SystemDictionaryRow row : state.rows()) {
-                String key = row.dictionaryTable() + ":" + row.rowId();
+                SystemDictionaryKey key = new SystemDictionaryKey(
+                        row.dictionaryTable(), row.rowId());
                 SystemDictionaryRow previous = dictionaryRows.putIfAbsent(
                         key, row);
                 if (previous != null && !previous.equals(row)) {

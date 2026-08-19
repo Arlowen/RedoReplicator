@@ -8,6 +8,7 @@ package io.github.arlowen.redoreplicator.runtime;
 
 import io.github.arlowen.redoreplicator.config.TableFilter;
 import io.github.arlowen.redoreplicator.schema.TableSchemaJsonCodec;
+import io.github.arlowen.redoreplicator.source.OracleContainer;
 import io.github.arlowen.redoreplicator.source.OracleContainerCatalogReader;
 import io.github.arlowen.redoreplicator.source.OracleContainerRegistry;
 import io.github.arlowen.redoreplicator.source.OracleDatabaseContext;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @EnabledIfSystemProperty(named = "oracle.test.root.url", matches = ".+")
@@ -59,8 +61,14 @@ class OracleContainerBootstrapIntegrationTest {
             assertEquals("CODEX_REDO_TEST",
                     bootstrap.initialSchemaVersions().get(0).table());
             for (var container : containers.containers()) {
-                assertNotNull(bootstrap.systemTransactions().require(
-                        container.id()));
+                var manager = bootstrap.systemTransactions().require(
+                        container.id());
+                assertNotNull(manager);
+                if (!OracleContainer.ROOT_NAME.equals(container.name())) {
+                    assertFalse(manager.dictionaryState().users().isEmpty());
+                    assertFalse(manager.dictionaryState()
+                            .tablespaces().isEmpty());
+                }
             }
         }
     }

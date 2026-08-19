@@ -291,6 +291,31 @@ class SystemTransactionManagerTest {
     }
 
     @Test
+    void buildsFutureLobTableFromStableReferenceRows() throws Exception {
+        SysUser user = new SysUser(
+                rowId(0), USER_ID, "APP", IntX.zero());
+        SysTs tablespace = new SysTs(
+                rowId(20), 7, "LOB_TS_16K", 16_384);
+        SystemTransactionManager manager = manager(
+                SystemDictionaryState.of(List.of(user, tablespace)));
+        for (SystemDictionaryChange change : extendedTableChanges()) {
+            if (change.table() == SystemDictionaryTable.USER
+                    || change.table() == SystemDictionaryTable.TABLESPACE) {
+                continue;
+            }
+            manager.apply(XID_1, change);
+        }
+
+        SystemTransactionCommit commit = manager.commit(
+                XID_1, Scn.of(1150));
+
+        assertEquals(1, commit.schemaVersions().size());
+        TableSchema schema = commit.schemaVersions().get(0).decode(jsonCodec);
+        assertEquals("FREEPDB1.APP.ORDERS", schema.qualifiedName());
+        assertEquals(16_264, schema.lobs().get(0).pageSize(201));
+    }
+
+    @Test
     void mapsIndirectLobFragmentChangeBackToBaseTable() throws Exception {
         List<SystemDictionaryRow> rows = new ArrayList<>(extendedTableState().rows());
         rows.add(new SysTs(rowId(30), 8, "LOB_TS_32K", 32_768));

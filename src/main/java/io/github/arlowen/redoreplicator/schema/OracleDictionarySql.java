@@ -146,6 +146,13 @@ final class OracleDictionarySql {
              WHERE U.USER# = ?
             """;
 
+    static final String SYSTEM_USER_ROWS = """
+            SELECT ROWIDTOCHAR(U.ROWID), U.USER#, U.NAME, NVL(U.SPARE1, 0)
+              FROM SYS.USER$ AS OF SCN ? U
+             WHERE U.NAME <> 'SYS'
+             ORDER BY U.USER#
+            """;
+
     static final String SYSTEM_OBJECT_ROWS = """
             SELECT ROWIDTOCHAR(O.ROWID), O.OWNER#, O.OBJ#,
                    NVL(O.DATAOBJ#, 0), O.TYPE#, O.NAME, NVL(O.FLAGS, 0)
@@ -250,6 +257,12 @@ final class OracleDictionarySql {
             SELECT ROWIDTOCHAR(T.ROWID), T.TS#, T.NAME, T.BLOCKSIZE
               FROM SYS.TS$ AS OF SCN ? T
              WHERE T.TS# = ?
+            """;
+
+    static final String SYSTEM_ALL_TABLESPACE_ROWS = """
+            SELECT ROWIDTOCHAR(T.ROWID), T.TS#, T.NAME, T.BLOCKSIZE
+              FROM SYS.TS$ AS OF SCN ? T
+             ORDER BY T.TS#
             """;
 
     private OracleDictionarySql() {

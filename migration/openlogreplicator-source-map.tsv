@@ -135,8 +135,8 @@ src/metadata/Checkpoint.h	io.github.arlowen.redoreplicator.runtime.RedoLwnProces
 src/metadata/Metadata.cpp	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/Metadata.h	io.github.arlowen.redoreplicator.schema.Metadata	pending	Translate schema and redo metadata
 src/metadata/RedoLog.h	io.github.arlowen.redoreplicator.source.OracleRedoCatalogReader	translated	Online redo group and member association plus deterministic group and path ordering are performed by the JDBC catalog join
-src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Initial dictionary, DDL snapshots, tombstones, H2/Flashback/redo resolution, catalog-at-SCN and runtime system routing translated; multi-container lifecycle wiring remains
-src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.SchemaCatalog	pending	Object, data object, partition and LOB lookup, live H2 catalog reconstruction and committed schema overlay translated; multi-container lifecycle wiring remains
+src/metadata/Schema.cpp	io.github.arlowen.redoreplicator.schema.SchemaCatalog	translated	Per-container initial and reference dictionaries DDL and SYS redo versions H2 Flashback recovery tombstones and future CREATE lifecycle are translated
+src/metadata/Schema.h	io.github.arlowen.redoreplicator.schema.SchemaCatalog	translated	Container-scoped object data-object partition and LOB lookup plus H2 catalog-at-SCN and committed overlays are translated
 src/metadata/SchemaElement.h	-	excluded	Upstream key tag condition and per-table output options are replaced by redesigned include and exclude YAML filters
 src/metadata/Serializer.cpp	-	excluded	Checkpoint JSON serialization is replaced by H2
 src/metadata/Serializer.h	-	excluded	Checkpoint JSON serialization is replaced by H2

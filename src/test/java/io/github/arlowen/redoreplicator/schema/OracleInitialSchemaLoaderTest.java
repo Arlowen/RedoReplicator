@@ -24,6 +24,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OracleInitialSchemaLoaderTest {
 
     @Test
+    void keepsReferenceRowsWhileWaitingForFutureTables() throws Exception {
+        SysUser user = new SysUser(
+                RowId.of(300, 10, 1), 12, "APP", IntX.zero());
+        SysTs tablespace = new SysTs(
+                RowId.of(300, 10, 2), 7, "USERS", 16_384);
+        OracleInitialSchemaLoader loader = new OracleInitialSchemaLoader(
+                (connection, owner, table, scn) -> Optional.empty(),
+                new FixedReferenceDictionaryLoader(
+                        SystemDictionaryState.of(List.of(user, tablespace))),
+                new TableSchemaJsonCodec());
+        TableFilter filter = new TableFilter(
+                List.of(Pattern.compile("FREEPDB1\\.APP\\.FUTURE_.*")),
+                List.of());
+
+        InitialSchemaSnapshot snapshot = loader.load(
+                connection(), new SchemaCatalog(), filter, Scn.of(500));
+
+        assertEquals(List.of(user), snapshot.dictionaryState().users());
+        assertEquals(List.of(tablespace),
+                snapshot.dictionaryState().tablespaces());
+        assertTrue(snapshot.schemaVersions().isEmpty());
+    }
+
+    @Test
     void loadsFullHistoryOnlyForSelectedTablesAndKeepsOtherIdentities()
             throws Exception {
         SchemaCatalog identities = new SchemaCatalog();

@@ -106,6 +106,11 @@ each one, and keeps independent object-number and SYS dictionary state by redo
 transaction's JSON `db` field is the originating PDB. A JDBC URL connected
 directly to one PDB remains a supported single-PDB mode.
 
+An include pattern may match no table at startup. Each PDB still retains the
+stable user and tablespace dictionary rows needed to prove a later matching
+`CREATE TABLE`; its committed schema version is stored in H2 before subsequent
+DML is decoded.
+
 Oracle accounts are never created by the application or Docker Compose. Review
 and manually execute [sql/configure_database.sql](sql/configure_database.sql),
 then use [sql/create_common_capture_user.sql](sql/create_common_capture_user.sql)

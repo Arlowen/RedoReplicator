@@ -14,6 +14,11 @@ import java.util.Optional;
 
 @FunctionalInterface
 public interface SystemDictionaryStateLoader {
+    default SystemDictionaryState loadReferenceData(
+            Connection connection, Scn targetScn) throws SQLException {
+        return SystemDictionaryState.empty();
+    }
+
     Optional<SystemDictionaryState> loadTable(
             Connection connection, String owner, String table, Scn targetScn)
             throws SQLException;
