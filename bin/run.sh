@@ -38,4 +38,7 @@ if [ ! -r "$JAR_PATH" ]; then
     exit 3
 fi
 
-exec "$JAVA_BIN" -jar "$JAR_PATH" --install-dir "$INSTALL_DIR" "$@"
+exec "$JAVA_BIN" \
+    -cp "$JAR_PATH:$INSTALL_DIR/lib/*" \
+    io.github.arlowen.redoreplicator.cli.RedoReplicatorMain \
+    --install-dir "$INSTALL_DIR" "$@"

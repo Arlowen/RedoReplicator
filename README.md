@@ -146,6 +146,25 @@ java -jar target/redo-replicator-0.1.0-SNAPSHOT.jar \
   --install-dir . --file conf/redo-replicator.yaml --validate
 ```
 
+Build a self-contained archive for the current operating system and CPU with
+the local non-Temurin OpenJDK 17. The archive includes a jlink runtime and does
+not require Java on the target host:
+
+```bash
+scripts/release/build-distribution.sh
+tar -xzf target/distributions/redo-replicator-0.1.0-SNAPSHOT-*.tar.gz
+redo-replicator-0.1.0-SNAPSHOT/bin/run.sh --help
+scripts/release/test-distribution.sh \
+  target/distributions/redo-replicator-0.1.0-SNAPSHOT-*.tar.gz
+```
+
+Linux ARM64 and x86_64 release archives must each be built on the matching
+Linux architecture. A source archive is created only from a clean commit:
+
+```bash
+scripts/release/build-source-distribution.sh
+```
+
 The default command performs the preflight and then starts continuous capture;
 `--validate` exits after preflight without opening runtime state. The release
 layout uses the same entry point through `bin/run.sh`; `bin/validate.sh` adds
