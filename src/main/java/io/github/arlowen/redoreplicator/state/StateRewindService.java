@@ -99,7 +99,7 @@ public final class StateRewindService {
                         additions.add(version);
                     }
                 }
-                database.store().commitLwn(rewound, additions);
+                database.store().rewind(rewound, additions, targetScn);
             }
             Files.deleteIfExists(configuration.installationDirectory()
                     .resolve("data/status.json"));

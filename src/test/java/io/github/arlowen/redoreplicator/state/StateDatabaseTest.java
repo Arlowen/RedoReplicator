@@ -28,6 +28,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -214,6 +215,21 @@ class StateDatabaseTest {
 
         assertThrows(ConfigurationException.class,
                 () -> StateDatabase.open(temporaryDirectory));
+    }
+
+    @Test
+    void preservesCorruptDatabaseForManualRecovery() throws Exception {
+        Path databaseFile = temporaryDirectory.resolve(
+                "redo-replicator.mv.db");
+        byte[] corrupt = "not-an-h2-database".getBytes(
+                java.nio.charset.StandardCharsets.UTF_8);
+        Files.write(databaseFile, corrupt);
+
+        assertThrows(SQLException.class,
+                () -> StateDatabase.open(temporaryDirectory));
+
+        assertTrue(Files.exists(databaseFile));
+        assertArrayEquals(corrupt, Files.readAllBytes(databaseFile));
     }
 
     private static RuntimeState runtimeState(Scn durableScn,

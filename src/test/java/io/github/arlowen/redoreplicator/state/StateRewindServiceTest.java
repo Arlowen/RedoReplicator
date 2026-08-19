@@ -105,6 +105,51 @@ class StateRewindServiceTest {
         }
     }
 
+    @Test
+    void removesFutureSchemaBeforeReplayingTheSameDdl() throws Exception {
+        ResolvedConfiguration configuration = configuration();
+        save(configuration, 900, 8, 4096);
+        TableSchemaVersion initial = schemaVersion(500, "INITIAL");
+        TableSchemaVersion firstDdl = schemaVersion(700, "ALTER");
+        try (StateDatabase database = StateDatabase.open(
+                configuration.stateDirectory())) {
+            RuntimeState state = database.store().loadRuntimeState()
+                    .orElseThrow();
+            database.store().commitLwn(
+                    state, List.of(initial, firstDdl));
+        }
+        RewindSourceValidator validator = (
+                connection, resolved, context, targetScn) ->
+                new RewindSourceValidation(
+                        new RedoPosition(
+                                targetScn, 1, Seq.of(6), FileOffset.zero()),
+                        List.of(initial));
+
+        new StateRewindService(validator, CLOCK).rewind(
+                null, configuration, databaseContext(), Scn.of(500));
+
+        try (StateDatabase database = StateDatabase.open(
+                configuration.stateDirectory())) {
+            TableSchemaVersion afterRewind = database.store().findSchemaAt(
+                    "FREEPDB1", "APP", "ORDERS", Scn.of(900))
+                    .orElseThrow();
+            assertEquals(Scn.of(500), afterRewind.effectiveScn());
+
+            RuntimeState replayed = new RuntimeState(
+                    IDENTITY.databaseId(), IDENTITY.incarnation(),
+                    IDENTITY.resetlogsId(),
+                    new RedoPosition(
+                            Scn.of(700), 1, Seq.of(7), FileOffset.of(4096)),
+                    Optional.empty(), 9, 1024, "fingerprint",
+                    OffsetDateTime.now(CLOCK));
+            database.store().commitLwn(replayed, List.of(firstDdl));
+
+            assertEquals(Scn.of(700), database.store().findSchemaAt(
+                    "FREEPDB1", "APP", "ORDERS", Scn.of(900))
+                    .orElseThrow().effectiveScn());
+        }
+    }
+
     private void save(
             ResolvedConfiguration configuration,
             long scn,
@@ -148,5 +193,13 @@ class StateRewindServiceTest {
         return new OracleDatabaseContext(
                 IDENTITY, Scn.of(1_000), "FREE", "FREEPDB1",
                 "19.0.0.0.0", true, "ARCHIVELOG", true, true);
+    }
+
+    private static TableSchemaVersion schemaVersion(
+            long scn, String ddlType) {
+        return new TableSchemaVersion(
+                "FREEPDB1", "APP", "ORDERS", 100, 101,
+                Scn.of(scn), "{}", ddlType,
+                ddlType + " TABLE APP.ORDERS", SchemaSource.REDO, false);
     }
 }

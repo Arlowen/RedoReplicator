@@ -116,9 +116,24 @@ public final class StateStore {
 
     public void commitLwn(RuntimeState runtimeState,
                           List<TableSchemaVersion> schemaVersions) throws SQLException {
+        commit(runtimeState, schemaVersions, null);
+    }
+
+    public void rewind(RuntimeState runtimeState,
+                       List<TableSchemaVersion> schemaVersions,
+                       Scn targetScn) throws SQLException {
+        commit(runtimeState, schemaVersions, targetScn);
+    }
+
+    private void commit(RuntimeState runtimeState,
+                        List<TableSchemaVersion> schemaVersions,
+                        Scn discardSchemasAfter) throws SQLException {
         boolean originalAutoCommit = connection.getAutoCommit();
         connection.setAutoCommit(false);
         try {
+            if (discardSchemasAfter != null) {
+                deleteSchemaVersionsAfter(discardSchemasAfter);
+            }
             for (TableSchemaVersion schemaVersion : schemaVersions) {
                 insertSchemaVersion(schemaVersion);
             }
@@ -131,6 +146,15 @@ public final class StateStore {
             throw e;
         } finally {
             connection.setAutoCommit(originalAutoCommit);
+        }
+    }
+
+    private void deleteSchemaVersionsAfter(Scn targetScn)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "DELETE FROM table_schema_history WHERE effective_scn > ?")) {
+            statement.setBigDecimal(1, unsigned(targetScn.rawValue()));
+            statement.executeUpdate();
         }
     }
 

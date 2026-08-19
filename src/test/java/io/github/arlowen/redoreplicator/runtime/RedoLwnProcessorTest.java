@@ -50,6 +50,8 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -127,6 +129,45 @@ class RedoLwnProcessorTest {
 
             assertEquals(Optional.of(initial),
                     database.store().loadRuntimeState());
+        }
+    }
+
+    @Test
+    void truncatesFsyncedTailAfterH2CommitFailure() throws Exception {
+        Path stateDirectory = temporaryDirectory.resolve("failed-state");
+        Path output = temporaryDirectory.resolve("failed-output");
+        TableSchemaJsonCodec jsonCodec = new TableSchemaJsonCodec();
+        try (StateDatabase database = StateDatabase.open(stateDirectory)) {
+            RuntimeState initial = seed(database, jsonCodec);
+            try (JsonlFileWriter writer = JsonlFileWriter.open(
+                    output, 1_048_576,
+                    Optional.of(new JsonlPosition(1, 0)))) {
+                RedoLwnProcessor processor = processor(
+                        database, writer, jsonCodec, false);
+                String jdbcUrl = "jdbc:h2:file:"
+                        + stateDirectory.resolve("redo-replicator")
+                        + ";DATABASE_TO_UPPER=FALSE;DB_CLOSE_ON_EXIT=FALSE";
+                try (var control = DriverManager.getConnection(
+                        jdbcUrl, "sa", "");
+                     var statement = control.createStatement()) {
+                    statement.execute("ALTER TABLE runtime_state ADD CONSTRAINT"
+                            + " fail_future_scn CHECK (durable_scn <= 100)");
+                }
+
+                assertThrows(SQLException.class,
+                        () -> processor.process(lwn()));
+
+                assertEquals(Optional.of(initial),
+                        database.store().loadRuntimeState());
+                assertEquals(3,
+                        Files.readAllLines(writer.currentFile()).size());
+            }
+        }
+
+        try (JsonlFileWriter recovered = JsonlFileWriter.open(
+                output, 1_048_576,
+                Optional.of(new JsonlPosition(1, 0)))) {
+            assertEquals(0, Files.size(recovered.currentFile()));
         }
     }
 
