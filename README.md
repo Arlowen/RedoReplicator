@@ -130,6 +130,14 @@ export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home
 mvn clean verify
 ```
 
+Run the explicit long-transaction gate to force one 100,000-row transaction
+through disk spill, ordered commit readback and spill cleanup:
+
+```bash
+mvn -q -Dredoreplicator.test.scale=true \
+  -Dtest=RedoTransactionBufferScaleTest test
+```
+
 The Maven package is directly runnable with its copied runtime dependencies:
 
 ```bash

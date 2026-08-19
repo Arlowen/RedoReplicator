@@ -29,8 +29,8 @@ src/common/LobData.cpp	io.github.arlowen.redoreplicator.redo.lob.RedoLobData	tra
 src/common/LobData.h	io.github.arlowen.redoreplicator.redo.lob.RedoLobData	translated	LOB data map, page-number index, page size, full-page count and tail size translated
 src/common/LobKey.cpp	io.github.arlowen.redoreplicator.redo.common.LobKey	translated	LOB identifier and page equality ordering plus Java hash contract translated with fixed C++ parity
 src/common/LobKey.h	io.github.arlowen.redoreplicator.redo.common.LobKey	translated	LOB identifier and page equality ordering plus Java hash contract translated with fixed C++ parity
-src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill lifecycle and state.transactionMemoryMb runtime wiring implemented; metrics and scale parity remain
-src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	pending	JDK spill lifecycle and state.transactionMemoryMb runtime wiring implemented; metrics and scale parity remain
+src/common/MemoryManager.cpp	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	translated	Global memory threshold spills ordered transaction entries to private files and passes the explicit 100000-row commit gate
+src/common/MemoryManager.h	io.github.arlowen.redoreplicator.redo.transaction.TransactionSpillManager	translated	Spill lifecycle cleanup rollback tail operations stale-file startup cleanup and 100000-row scale are translated
 src/common/OraProtoBuf.pb.cpp	-	excluded	Protobuf output is out of scope
 src/common/OraProtoBuf.pb.h	-	excluded	Protobuf output is out of scope
 src/common/RedoLogRecord.h	io.github.arlowen.redoreplicator.redo.common.RedoLogRecord	translated	Translated record model and field traversal cursor with parity tests
