@@ -159,7 +159,15 @@ scripts/release/test-distribution.sh \
 ```
 
 Linux ARM64 and x86_64 release archives must each be built on the matching
-Linux architecture. A source archive is created only from a clean commit:
+Linux architecture. The Buildx wrapper uses the pinned multi-architecture
+Maven 3.9.16 + Amazon Corretto OpenJDK 17 image, builds both architectures, and
+runs the smoke test under each matching Linux platform:
+
+```bash
+scripts/release/build-linux-distributions.sh
+```
+
+A source archive is created only from a clean commit:
 
 ```bash
 scripts/release/build-source-distribution.sh

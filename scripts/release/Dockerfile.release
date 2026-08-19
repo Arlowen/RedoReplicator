@@ -1,0 +1,13 @@
+# syntax=docker/dockerfile:1.7
+FROM maven:3.9.16-amazoncorretto-17@sha256:c7411a43a466ffece2e4a80892fc44c9d24011c3d31be71e773f970978d32768 AS build
+
+RUN dnf install -y binutils && dnf clean all
+
+WORKDIR /workspace
+COPY . .
+RUN --mount=type=cache,target=/root/.m2 \
+    scripts/release/build-distribution.sh
+
+FROM scratch AS distribution
+COPY --from=build /workspace/target/distributions/*.tar.gz /
+COPY --from=build /workspace/target/distributions/SBOM.json /

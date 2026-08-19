@@ -32,6 +32,7 @@ for path in \
     conf/redo-replicator.yaml \
     lib/redo-replicator.jar \
     runtime/bin/java \
+    runtime/legal/java.base/LICENSE \
     sql/configure_database.sql \
     sql/create_capture_user.sql \
     sql/create_common_capture_user.sql \
