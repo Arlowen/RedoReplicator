@@ -38,6 +38,7 @@ for path in \
     LICENSE \
     NOTICE \
     README.md \
+    SBOM.json \
     THIRD-PARTY-LICENSES/README.md \
     VERSION
 do
@@ -46,6 +47,12 @@ do
         exit 3
     fi
 done
+
+if ! grep -q '"bomFormat"[[:space:]]*:[[:space:]]*"CycloneDX"' \
+        "$ROOT/SBOM.json"; then
+    echo "Distribution SBOM is not CycloneDX JSON" >&2
+    exit 3
+fi
 
 if [ ! -x "$ROOT/bin/run.sh" ] || [ ! -x "$ROOT/runtime/bin/java" ]; then
     echo "Distribution launchers are not executable" >&2

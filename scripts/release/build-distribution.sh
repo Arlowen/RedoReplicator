@@ -81,6 +81,10 @@ if [ ! -r "$MAIN_JAR" ]; then
     echo "Maven did not create $MAIN_JAR" >&2
     exit 3
 fi
+if [ ! -r "$PROJECT_DIR/target/SBOM.json" ]; then
+    echo "Maven did not create target/SBOM.json" >&2
+    exit 3
+fi
 
 MODULES=$($JDEPS_BIN \
     --ignore-missing-deps \
@@ -113,11 +117,13 @@ cp "$PROJECT_DIR/conf/redo-replicator.yaml" "$ROOT/conf/"
 cp "$PROJECT_DIR"/sql/*.sql "$ROOT/sql/"
 cp -R "$PROJECT_DIR/sql/test" "$ROOT/sql/"
 cp "$PROJECT_DIR/LICENSE" "$PROJECT_DIR/NOTICE" \
-    "$PROJECT_DIR/README.md" "$ROOT/"
+    "$PROJECT_DIR/README.md" "$PROJECT_DIR/target/SBOM.json" "$ROOT/"
 cp -R "$PROJECT_DIR/THIRD-PARTY-LICENSES/." \
     "$ROOT/THIRD-PARTY-LICENSES/"
 printf '%s\n' "$VERSION" > "$ROOT/VERSION"
 
 ARTIFACT=$PROJECT_DIR/target/distributions/$ROOT_NAME-$PLATFORM-$ARCHITECTURE.tar.gz
 tar -C "$STAGE" -czf "$ARTIFACT" "$ROOT_NAME"
+cp "$PROJECT_DIR/target/SBOM.json" \
+    "$PROJECT_DIR/target/distributions/SBOM.json"
 echo "Distribution: $ARTIFACT"

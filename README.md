@@ -163,7 +163,12 @@ Linux architecture. A source archive is created only from a clean commit:
 
 ```bash
 scripts/release/build-source-distribution.sh
+scripts/release/generate-checksums.sh
 ```
+
+Maven package builds generate a reproducible CycloneDX 1.6 JSON SBOM with the
+official CycloneDX Maven plugin. Runtime archives contain `SBOM.json`; the
+standalone copy and `SHA256SUMS` are written under `target/distributions/`.
 
 The default command performs the preflight and then starts continuous capture;
 `--validate` exits after preflight without opening runtime state. The release
